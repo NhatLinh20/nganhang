@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     // Create the ZIP archive
     const zip = new AdmZip()
-    const configDir = path.join(process.cwd(), 'public', 'latex-config')
+    const configDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'latex-config')
 
     // Add shared config/sty files
     const sharedFiles = [

@@ -7,7 +7,7 @@ import * as path from 'path'
 import * as os from 'os'
 
 const PDFLATEX_PATH = 'C:\\texlive\\2024\\bin\\windows\\pdflatex.exe'
-const CONFIG_DIR = path.join(process.cwd(), 'public', 'latex-config')
+const CONFIG_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'latex-config')
 
 // Chạy pdflatex trong thư mục temp
 async function runPdflatex(texFilePath: string, workDir: string): Promise<{ success: boolean; log: string }> {

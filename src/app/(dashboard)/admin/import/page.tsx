@@ -68,7 +68,7 @@ export default function ImportPage() {
         if (!textContent.includes('\\begin{ex}')) continue // Bỏ qua file không chứa câu hỏi
 
         const fileName = relativePath.split('/').pop() || relativePath
-        const file = new File([content], fileName, { type: 'text/x-tex' })
+        const file = new File([content.buffer as ArrayBuffer], fileName, { type: 'text/x-tex' })
         texFiles.push(file)
       } catch (e) {
         console.warn(`Không thể đọc file ${relativePath} trong ZIP:`, e)
