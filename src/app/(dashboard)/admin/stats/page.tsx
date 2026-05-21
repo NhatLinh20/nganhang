@@ -13,6 +13,13 @@ interface Stats {
   by_subject: Record<string, number>
 }
 
+interface EmbeddingProgress {
+  total_questions: number
+  embedded_questions: number
+  pending_questions: number
+  progress_pct: number
+}
+
 const DIFFICULTY_LABELS: Record<string, string> = { N: 'Nhận biết', H: 'Thông hiểu', V: 'Vận dụng', C: 'Vận dụng cao' }
 const DIFFICULTY_COLORS: Record<string, string> = { N: '#22c55e', H: '#3b82f6', V: '#f59e0b', C: '#ef4444' }
 const TYPE_LABELS: Record<string, string> = { multiple_choice: 'Trắc nghiệm', true_false: 'Đúng/Sai', short_answer: 'Trả lời kết quả', essay: 'Tự luận' }
@@ -20,6 +27,7 @@ const SUBJECT_LABELS: Record<string, string> = { D: 'Đại số', H: 'Hình h�
 
 export default function StatsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
+  const [embedProgress, setEmbedProgress] = useState<EmbeddingProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
@@ -41,6 +49,13 @@ export default function StatsPage() {
       }
 
       setStats({ total: data.length, by_grade, by_type, by_difficulty, by_subject })
+      
+      // Fetch embedding progress from RPC
+      const { data: embedData } = await supabase.rpc('embedding_progress')
+      if (embedData && embedData[0]) {
+        setEmbedProgress(embedData[0])
+      }
+      
       setLoading(false)
     }
     fetchStats()
@@ -136,6 +151,62 @@ export default function StatsPage() {
                 </div>
                 <div className="card-body">
                   <BarGroup data={stats.by_subject} labels={SUBJECT_LABELS} />
+                </div>
+              </div>
+
+              {/* Embedding Progress Card */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="card-header">
+                  <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    🤖 Tiến độ Vector hóa (Embedding)
+                  </h3>
+                </div>
+                <div className="card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  {embedProgress ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
+                        <div>
+                          <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: 'var(--color-primary-600)' }}>
+                            {embedProgress.progress_pct}%
+                          </div>
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)', marginTop: '4px' }}>
+                            Đã tạo Vector tìm kiếm thông minh
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)' }}>
+                          <div>Đã tạo: <strong>{embedProgress.embedded_questions.toLocaleString()}</strong> / {embedProgress.total_questions.toLocaleString()} câu</div>
+                          <div style={{ color: '#ef4444', marginTop: '2px' }}>Chưa tạo: <strong>{embedProgress.pending_questions.toLocaleString()}</strong> câu</div>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar with modern gradient */}
+                      <div style={{ background: 'var(--color-gray-100)', borderRadius: '99px', height: '16px', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${embedProgress.progress_pct}%`,
+                          background: 'linear-gradient(90deg, var(--color-primary-500), var(--color-accent-500))',
+                          height: '100%',
+                          borderRadius: '99px',
+                          transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }} />
+                      </div>
+
+                      <div style={{
+                        padding: '10px 12px',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '12px',
+                        color: '#1e40af',
+                        lineHeight: 1.5
+                      }}>
+                        💡 <strong>Embedding</strong> là quá trình chuyển đổi câu hỏi Toán thành vector toán học. Giúp AI tìm kiếm, chọn lọc câu hỏi tương đương theo ma trận đề thi chính xác hơn gấp nhiều lần.
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', color: 'var(--color-gray-400)', fontSize: '13px' }}>
+                      ⏳ Đang tải tiến độ...
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
