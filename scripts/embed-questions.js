@@ -195,8 +195,8 @@ async function main() {
       console.error('❌ Lỗi xử lý batch:', err.message)
       
       // Lỗi API key hết hạn hoặc không hợp lệ → chuyển key ngay
-      if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key expired') || err.message.includes('API key not valid')) {
-        console.log('⚠️ Key hiện tại đã HẾT HẠN hoặc KHÔNG HỢP LỆ.')
+      if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key expired') || err.message.includes('API key not valid') || err.message.includes('leaked')) {
+        console.log('⚠️ Key hiện tại đã BỊ HỎNG hoặc BỊ LỘ (Leaked).')
         switchApiKey()
         await sleep(2000)
       } else if (err.message.includes('429')) {
