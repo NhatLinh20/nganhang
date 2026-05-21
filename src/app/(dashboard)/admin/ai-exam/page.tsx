@@ -1059,7 +1059,7 @@ export default function AiExamPage() {
               {/* Question List */}
               <div className={tableStyles.tableArea} style={{ padding: 0, flex: 1, overflowY: 'auto' }}>
                 <div className={tableStyles.tableContainer} style={{ border: 'none', borderRadius: 0 }}>
-                  <table className={tableStyles.table}>
+                  <table className={`${tableStyles.table} ${styles.aiExamTable}`}>
                     <thead>
                       <tr>
                         <th style={{ width: 40 }}>#</th>
@@ -1073,7 +1073,7 @@ export default function AiExamPage() {
                         <th>Loại câu</th>
                         <th>Đáp án</th>
                         <th style={{ width: 40 }}>🖼</th>
-                        <th style={{ width: 130 }}>Thao tác</th>
+                        <th style={{ width: 80 }}>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1169,9 +1169,9 @@ export default function AiExamPage() {
                                       onClick={(e) => { e.stopPropagation(); handleSwapQuestion(q) }}
                                       disabled={swappingId !== null}
                                       style={{
-                                        padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: swappingId ? 'not-allowed' : 'pointer',
+                                        padding: '3px 6px', borderRadius: '4px', border: 'none', cursor: swappingId ? 'not-allowed' : 'pointer',
                                         background: swappingId === q.id ? '#dbeafe' : '#e0f2fe',
-                                        color: '#0369a1', fontSize: '14px', lineHeight: 1,
+                                        color: '#0369a1', fontSize: '11px', lineHeight: 1,
                                         opacity: (swappingId && swappingId !== q.id) ? 0.4 : 1,
                                       }}
                                     >
@@ -1201,8 +1201,8 @@ export default function AiExamPage() {
                                       }}
                                       disabled={swappingId !== null}
                                       style={{
-                                        padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: swappingId ? 'not-allowed' : 'pointer',
-                                        background: '#fef08a', color: '#854d0e', fontSize: '14px', lineHeight: 1,
+                                        padding: '3px 6px', borderRadius: '4px', border: 'none', cursor: swappingId ? 'not-allowed' : 'pointer',
+                                        background: '#fef08a', color: '#854d0e', fontSize: '11px', lineHeight: 1,
                                         opacity: swappingId ? 0.4 : 1,
                                       }}
                                     >
@@ -1211,7 +1211,7 @@ export default function AiExamPage() {
                                     <button
                                       title="Xóa câu này"
                                       onClick={(e) => { e.stopPropagation(); handleRemoveQuestion(q.id) }}
-                                      style={{ padding: '4px 8px', borderRadius: '4px', border: 'none', background: '#fee2e2', color: '#ef4444', cursor: 'pointer', fontSize: '14px', lineHeight: 1 }}
+                                      style={{ padding: '3px 6px', borderRadius: '4px', border: 'none', background: '#fee2e2', color: '#ef4444', cursor: 'pointer', fontSize: '11px', lineHeight: 1 }}
                                     >
                                       ✕
                                     </button>
