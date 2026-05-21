@@ -1,0 +1,393 @@
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,enumerate,multirow,makecell,currfile,venndiagram,fontawesome,pifont}
+\usepackage{mathpazo}
+\usepackage{tikz-3dplot,tikz,tkz-tab,tabvar,tkz-euclide}
+\usetikzlibrary{arrows,calc,intersections,angles,snakes,quotes,backgrounds,shapes.geometric,patterns, shapes.symbols}
+\usepackage{pgfplots}
+\usepackage[loigiai]{ex_test}
+%\usepackage[dethi]{ex_test}
+\pgfplotsset{compat=1.9}
+\usepgfplotslibrary{fillbetween}
+\usepackage[tikz]{bclogo}
+\usepackage[
+top=1.3cm,
+bottom=1.3cm,
+left=1.5cm,
+right=1cm,
+headsep=10pt,   % nhỏ lại
+footskip=22pt  % khoảng cách từ nội dung xuống footer
+]{geometry}
+\usepackage[hidelinks,unicode,hypertexnames=false]{hyperref}
+\usepackage[final]{pdfpages}
+\usepackage{tcolorbox,diagbox}
+\tcbuselibrary{theorems, breakable, skins}
+\usepackage{xcolor}
+%=====
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{1}
+\usepackage{titlesec}
+\usepackage{titletoc}
+\makeatletter
+%%%%%%%%%%%%%%======Khai báo màu
+\definecolor{myred}{RGB}{210,0,0}
+%Khai báo chapter, section, subsection, subsubsection
+% chapter
+\titleformat{\chapter}
+{\bfseries\large\color{myred}}
+{CHƯƠNG \thechapter.}
+{0.5em}{\MakeUppercase}
+[\tikz{\draw[myred, line width=1pt,double,thick] (0,0)--(\textwidth,0);}]
+\titlespacing*{\chapter}{0pt}{-5pt}{5pt}
+% Section
+\titleformat{\section}
+{\bfseries\large\color{myred}}
+{BÀI \arabic{section}.}{0.3em}{\MakeUppercase}
+\titlespacing*{\section}{0pt}{3pt}{5pt}
+% Subsection
+\renewcommand{\thesubsection}{\Alph{subsection}.}
+\titleformat{\subsection}
+{\bfseries}
+{\Alph{subsection}.}{0.3em}{}
+\titlespacing*{\subsection}{0pt}{3pt}{5pt}
+% Subsubsection
+\titleformat{\subsubsection}
+{\bfseries}
+{\arabic{subsubsection}.}{0.25em}{}
+\titlespacing*{\subsubsection}{0pt}{3pt}{0pt}
+% Paragraph
+\renewcommand{\theparagraph}{\arabic{paragraph})}
+\titleformat{\paragraph}
+{\bfseries}
+{\arabic{subsubsection}.\arabic{paragraph}.}{0.3em}{}
+\titlespacing*{\paragraph}{0pt}{3pt}{0pt}
+%part
+\titleformat{\part}[display]
+{\Large\bfseries\color{red!50!blue}}{
+	\thispagestyle{empty}
+	\centering
+	\begin{tikzpicture}
+		\fill[red!50!blue] (-1.5,-1) rectangle (1.5,1);
+		\draw(0,1.5)node{\fontfamily{ccr}\selectfont\Large PHẦN};
+		\draw(0,0)node{\color{white}\fontsize{60pt}{1pt}\selectfont\thepart};
+	\end{tikzpicture}
+}
+{0.5em}
+{\titlerule[2.5pt]\vskip3pt\titlerule\vskip4pt\centering\fontsize{60pt}{1pt}\fontfamily{qhv}\selectfont\MakeUppercase}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+	{1ex\@plus -1ex \@minus -.2ex}%
+	{0pt}%
+	{\normalfont\normalsize\bfseries}}
+\makeatother
+%=====Đổi màu phương án đúng
+\def\colorEX{\color{blue}}
+%Môi trường bài tập tự luận
+\newtheorem{bt}{Bài}
+%Định nghĩa thêm cách gõ vectơ, khuyến khích gõ \overrightarrow
+\usepackage{esvect}
+\def\vec{\vv}
+\def\overrightarrow{\vv}
+%Tạo background
+%\usepackage{background}
+%\usepackage{ifoddpage}
+%\newcommand\VnMathsLatex[3]{
+%	\def\ktra{#3}
+%	\backgroundsetup{%
+%		scale=1,       %% change accordingly
+%		angle=0,       %% change accordingly
+%		opacity=.6,    %% change accordingly
+%		color =black,  %% change accordingly
+%		contents={
+%			\checkoddpage
+%			\ifoddpage
+%			{\begin{tikzpicture}[remember picture,overlay,scale=.75]
+%					\node[rotate=90] at ($(current page.east)+(-1.26cm,0)$) {\fontsize{20pt}{15pt}\fontfamily{qag}\selectfont #1};
+%					\ifnum\ktra=1
+%					\else
+%					{\node at (current page.center) {\includegraphics[width=0.5\paperwidth]{LogoVnMaths.png}};}
+%					\fi
+%			\end{tikzpicture}}
+%			\else
+%			{\begin{tikzpicture}[remember picture,overlay,scale=.5]
+%					\node[rotate=90] at ($(current page.west)+(1.26cm,0)$) {\fontsize{20pt}{15pt}\fontfamily{qag}\selectfont#2};
+%					\ifnum\ktra=1
+%					\else
+%					{\node at (current page.center) {\includegraphics[width=0.5\paperwidth]{LogoVnMaths.png}};}
+%					\fi
+%			\end{tikzpicture}}
+%			\fi
+%		}
+%}}
+%\VnMathsLatex{\null}{\null}{1}
+%\def\trangtrang{\newpage\null\thispagestyle{empty}\newpage
+%	\VnMathsLatex{ĐỀ THAM KHẢO GIỮA KỲ 2 - HỌC KỲ 2, TOÁN 12}{\faGroup~NHÓM VN - MATHS \& \LaTeX}{2}}
+%Làm lại mục lục part
+\makeatletter
+\renewcommand*\l@part[2]{%
+	\ifnum \c@tocdepth >\m@ne
+	\addpenalty{-\@highpenalty}%
+	\vskip 1.0em \@plus\p@
+	\setlength\@tempdima{1.5em}%
+	\begingroup
+	\parindent \z@ \rightskip \@pnumwidth
+	\parfillskip -\@pnumwidth
+	\leavevmode
+	\advance\leftskip\@tempdima
+	\hskip -\leftskip
+	\colorbox{violet}{\strut%
+		\makebox[\dimexpr\textwidth-1\fboxsep-6pt\relax][l]{%
+			%\fontsize{12pt}{1pt}
+			\color{white}\bfseries\fontfamily{qag}\selectfont\hspace*{0.3\textwidth} PHẦN #1%
+			\nobreak\hfill\nobreak\hb@xt@\@pnumwidth{\hss #2}}}\par\smallskip
+	\penalty\@highpenalty
+	\endgroup
+	\fi}
+\makeatother
+%Lệnh của gói mathrsfs
+%\DeclareSymbolFont{rsfs}{U}{rsfs}{m}{n}
+%\DeclareSymbolFontAlphabet{\mathscr}{rsfs}
+%Lệnh cung
+%\DeclareSymbolFont{largesymbols}{OMX}{yhex}{m}{n}
+%\DeclareMathAccent{\wideparen}{\mathord}{largesymbols}{"F3}
+%Lệnh song song
+\DeclareSymbolFont{symbolsC}{U}{txsyc}{m}{n}
+\DeclareMathSymbol{\varparallel}{\mathrel}{symbolsC}{9}
+\DeclareMathSymbol{\parallel}{\mathrel}{symbolsC}{9}
+%Hệ hoặc, hệ và
+\newcommand{\hoac}[1]{
+	\left[\begin{aligned}#1\end{aligned}\right.}
+\newcommand{\heva}[1]{
+	\left\{\begin{aligned}#1\end{aligned}\right.}
+%Giãn dòng
+% \renewcommand{\baselinestretch}{1.4}
+%Thay đổi đếm alpha môi trường enumerate
+\makeatletter
+\renewcommand{\labelenumi}{\alph{enumi})}
+\makeatother
+%Tạo biến đếm số đề và khung tiêu đề
+\def\khoi{12}
+\def\made{1234}
+\newcounter{demsode}[chapter]
+\setcounter{demsode}{1}
+\newenvironment{name}[6]{
+	\noindent
+	\begin{minipage}[]{0.4\textwidth}
+		\centering
+		{\large\color{red}\bfseries\MakeUppercase{#1}}\\
+		{\bfseries\color{blue}{#2}}\\
+		\textit{#3}
+	\end{minipage}
+	\begin{minipage}[]{0.6\textwidth}
+		\color{black}	\centering
+		{\large\bfseries\selectfont\MakeUppercase {#4}}\\
+		{\bfseries\color{black}{#5}}\\
+		\textit{#6}
+	\end{minipage}
+	\\[1mm]
+	\tikz \draw[double] (0,0)--(\textwidth,0);\\
+	\textit{Họ và tên thí sinh:} \tikz \draw[dotted,very thin] (0,0)--(\textwidth/3,0); 
+	\textit{Số báo danh:}\tikz \draw[dotted,very thin] (0,0)--(\textwidth/3.8,0);\quad
+	\fbox{\color{blue} \bf \large\fontfamily{anttlc}\selectfont \made}
+	%=====
+	\addcontentsline{toc}{section}{Đề \thedemsode. Đề KSCL năm học 2025-2026, #2, Môn Toán \khoi}
+	\addtocounter{demsode}{1}
+	\gdef\socaulc{12}
+	\gdef\socauds{4}
+	\gdef\socaukq{6}
+	\gdef\socautl{3}
+}
+
+%%%%%%%%%%%%%%
+\newcommand{\indapan}[1]{
+%	\begin{center}
+%		\fbox{\large \textbf{\color{purple} \large BẢNG ĐÁP ÁN}}
+%	\end{center}
+	\IfFileExists{#1-Phan-I}{
+		\noindent
+		\inputansbox{12}{#1-Phan-I}
+	}{\null}
+	\IfFileExists{#1-Phan-II}{
+		\noindent
+		\inputansbox{2}{#1-Phan-II}
+	}{\null}
+	\IfFileExists{#1-Phan-III}{
+		\noindent
+		\inputansbox{3}{#1-Phan-III}
+	}{\null}
+}
+\newcommand{\indapancuoi}[1]{
+	\phantomsection
+	\begin{center}
+		\fbox{\large \textbf{\color{purple} \large BẢNG ĐÁP ÁN ĐỀ SỐ \thedemsode}}
+	\end{center}
+	\IfFileExists{#1-Phan-I}{
+		\noindent
+		\inputansbox{12}{#1-Phan-I}
+	}{\null}
+	\IfFileExists{#1-Phan-II}{
+		\noindent
+		\inputansbox[2]{2}{#1-Phan-II}
+	}{\null}
+	\IfFileExists{#1-Phan-III}{
+		\noindent
+		\inputansbox[2]{6}{#1-Phan-III}
+	}{\null}
+	\addcontentsline{toc}{section}{Đề số \thedemsode}
+	\addtocounter{demsode}{1}
+	\newpage}
+%Cấu trúc đề mới
+%\def\socaulc{12}
+%\def\socauds{2}
+%\def\socaukq{4}
+%\def\socautl{3}
+\newcommand{\caulc}{
+	\noindent\textbf{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.}
+	\setcounter{ex}{0}
+}
+\newcommand{\cauds}{
+	\noindent\textbf{PHẦN II. Câu trắc nghiệm đúng sai.}
+	\setcounter{ex}{0}}
+\newcommand{\caukq}{
+	\noindent\textbf{PHẦN III. Câu trắc nghiệm trả lời ngắn.}
+	\setcounter{ex}{0}}
+\newcommand{\cautl}{
+	\noindent\textbf{PHẦN IV. Câu tự luận.}
+	\setcounter{ex}{0}
+	\setcounter{bt}{0}}
+%Định nghĩa Head và Foot
+\pagestyle{fancy}
+\fancyhf{}
+% Header
+%\fancyhead[L]{\color{red!50!white}\faPhone\,0812.8787.92}
+%\fancyhead[R]{\color{red!50!white}Lưu hành nội bộ}
+% Footer
+%\fancyfoot[L]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
+%\fancyfoot[R]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
+% Số trang:
+% LE = trang chẵn bên trái
+% RO = trang lẻ bên phải
+\fancyfoot[LE,RO]{Trang \thepage \,--\, mã đề \made}
+% Quan trọng: sửa style plain
+\fancypagestyle{plain}{
+%	\fancyhf{}
+%	\fancyhead[L]{\color{red!50!white}\faPhone\,0812.8787.92}
+%	\fancyhead[R]{\color{red!50!white}Lưu hành nội bộ}
+%	\fancyfoot[L]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
+%	\fancyfoot[R]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
+	\fancyfoot[LE,RO]{\thepage/\made}
+}
+\renewcommand{\headrulewidth}{0pt}
+%\renewcommand{\footrulewidth}{0.5pt}
+%\makeatletter
+%\renewcommand{\headrule}{%
+%	{\color{red}\hrule \@height \headrulewidth \@width \headwidth}
+%}
+%\renewcommand{\footrule}{%
+%	{\color{red}\hrule \@height \footrulewidth \@width \headwidth}
+%}
+%\makeatother
+%=====
+%%%%%%%%%===Tạo khung
+\newtcolorbox{khung}{
+	before upper=\raggedright,
+	colback=white,    % màu nền
+	boxrule=0.5pt,
+	colframe=gray!50!black,  % màu khung
+%	title=\textbf{Định nghĩa},
+	fonttitle=\bfseries,
+	breakable,               % cho phép xuống dòng qua trang
+	arc=1mm,                  % bo góc
+	left=2pt,
+	right=2pt,
+	top=2pt,
+	bottom=2pt
+}
+%%%%%%%%%%---Khai báo định nghĩa, định lý, lưu ý, chú ý, note
+\newenvironment{dn}
+{\begin{khung}\textcolor{red}{\textbf{Định nghĩa. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{dl}
+{\begin{khung}\textcolor{blue}{\textbf{Định lý. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{luuy}
+{\begin{khung}\textcolor{purple}{\textbf{Lưu ý. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{nx}
+{\begin{khung}\textcolor{purple}{\textbf{Nhận xét. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{pp}
+{\begin{khung}\textcolor{red}{\textbf{Phương pháp. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{chuy}
+{\begin{khung}\textcolor{green}{\textbf{Chú ý. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{note}
+{\begin{khung}\textcolor{cyan}{\textbf{Ghi chú. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{tc}
+{\begin{khung}\textcolor{green!70!black}{\textbf{Tính chất. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcounter{vd}
+\newenvironment{vd}
+{\refstepcounter{vd}%
+\begin{khung}\textcolor{black}{\textbf{Ví dụ \thevd. }}}{\end{khung}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%======dòng chấm, oli
+\newcommand{\dongcham}[1]{
+	\def\sod{#1}
+	\pgfmathsetmacro{\sodong}{2*\sod -1} 
+	\columnsep=10pt
+	\vspace*{-3.5mm}
+	\begin{multicols}{2}
+		\foreach \dotline in{1,...,\sodong}
+		{\noindent\color{black!90}{\tiny\dotfill}\\[2mm]}
+		{\noindent\color{black!90}{\tiny\dotfill}}\\[-4mm]
+	\end{multicols}
+}
+\newcommand{\dc}[2][1.3]{%
+	\begingroup
+	% đặt parskip = 0 chỉ trong nhóm này
+	\setlength{\parskip}{0pt}%
+	\setlength{\parindent}{0pt}% nếu bạn không muốn indent
+	% bắt đầu in dòng dotfill
+	\par\nobreak
+	\noindent\rule{0pt}{#1\baselineskip}%
+	\foreach \i in {1,...,#2}{%
+		\noindent
+		\makebox[\linewidth]{\rule{0pt}{#1\baselineskip}\tiny\dotfill}\par
+	}%
+	\endgroup
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\oli}[1]{%
+	\noindent
+	\ifdim\textwidth>10cm
+	\tikz{\draw[gray!70, dashed, step=\textwidth/24] 
+		(0,0) grid (\textwidth,{#1*\textwidth/24});}
+	\else
+	\tikz{\draw[gray!70, dashed, step=\textwidth/13] 
+		(0,0) grid (\textwidth,{#1*\textwidth/13});}
+	\fi
+}
+%%%%%%==============lệnh chia hai cột
+\newcommand{\chiahaicot}[2]{
+	\noindent
+	\begin{minipage}[t]{0.5\textwidth}
+		\begin{khung}
+			#1
+		\end{khung}
+	\end{minipage}
+	\begin{minipage}[t]{0.5\textwidth}
+		\begin{khung}
+			#2
+		\end{khung}
+	\end{minipage}
+}
+%%%%%%%%%%%%======================
+\newcommand{\anloigiai}{
+	\hideansEX{vd}
+	\hideansEX{ex}
+	\hideansEX{bt}
+}
+\newcommand{\tatdongcham}{
+	\renewcommand{\dc}[2][1.2]{}
+	\renewcommand{\dongcham}[1]{}
+}

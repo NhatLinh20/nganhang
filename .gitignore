@@ -1,0 +1,59 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# LaTeX build artifacts (root level only)
+/error_output.*
+/ai_debug.json
+/test.aux
+/test.log
+/test.pdf
+/test.tex
+/test.thm
+/test_batch.ts
+
+# Other non-essential files
+/cauhinh.rar
+/mucluc-ID.txt
+/cautruccauhoi.txt
+/ex_test.sty
+/scratch/
+/docs/
