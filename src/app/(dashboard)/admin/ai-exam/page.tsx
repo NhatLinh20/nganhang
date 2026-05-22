@@ -887,14 +887,22 @@ export default function AiExamPage() {
                 {loadingStep === 3 && `Đang bốc câu hỏi từ ngân hàng${examCount > 1 ? ` cho ${examCount} đề...` : '...'}`}
               </div>
               <div className={styles.loadingSteps}>
-                <div className={`${styles.loadingStep} ${loadingStep >= 1 ? styles.active : ''}`}>
-                  {loadingStep > 1 ? '✅' : '⏳'} Phân tích yêu cầu
-                </div>
-                <div className={`${styles.loadingStep} ${loadingStep >= 2 ? styles.active : ''}`}>
-                  {loadingStep > 2 ? '✅' : loadingStep === 2 ? '⏳' : '⬜'} Gemini tạo ma trận JSON
-                </div>
-                <div className={`${styles.loadingStep} ${loadingStep >= 3 ? styles.active : ''}`}>
-                  {loadingStep === 3 ? '⏳' : '⬜'} Bốc câu hỏi từ Supabase{examCount > 1 ? ` (${examCount} đề)` : ''}
+                <div style={{ 
+                  width: '100%', 
+                  maxWidth: '320px', 
+                  height: '10px', 
+                  background: 'var(--color-gray-200)', 
+                  borderRadius: '5px', 
+                  overflow: 'hidden', 
+                  margin: '16px auto 0' 
+                }}>
+                  <div style={{ 
+                    height: '100%', 
+                    background: 'var(--color-primary-600)', 
+                    width: loadingStep === 1 ? '33%' : loadingStep === 2 ? '66%' : loadingStep === 3 ? '100%' : '0%',
+                    transition: 'width 0.5s ease-in-out',
+                    borderRadius: '5px'
+                  }} />
                 </div>
               </div>
             </div>
