@@ -831,8 +831,6 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                                         >
                                           📋 Copy
                                         </button>
-                                      </>
-                                    )}
                                   </div>
                                 </div>
                                 {editingId === q.id ? (
