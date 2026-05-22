@@ -85,7 +85,8 @@ export const CURRICULUM: Record<number, Record<string, Record<number, Record<num
 
 const PAGE_SIZE = 30
 
-export default function QuestionsClient() {
+export default function QuestionsClient({ userRole }: { userRole: string }) {
+  const isAdmin = userRole === 'admin'
   const supabase = createClient()
   const [questions, setQuestions] = useState<Question[]>([])
   const [total, setTotal] = useState(0)
@@ -612,54 +613,58 @@ export default function QuestionsClient() {
                   🗑 Xóa {selectedIds.size} câu đã chọn
                 </button>
               )}
-              <button
-                className="btn btn-sm"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                  background: 'var(--color-gray-100)',
-                  border: '1px solid var(--color-gray-200)',
-                  color: 'var(--color-gray-700)',
-                  cursor: 'pointer',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontWeight: 500,
-                  fontSize: '13px',
-                }}
-                onClick={handleScanDuplicates}
-                disabled={scanningDups}
-              >
-                {scanningDups ? '⏳ Đang quét...' : '✨ Quét trùng lặp'}
-              </button>
-              <button
-                className="btn btn-sm"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                  background: 'var(--color-primary-600)',
-                  border: 'none',
-                  color: '#ffffff',
-                  cursor: compilingBatch ? 'not-allowed' : 'pointer',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontWeight: 500,
-                  fontSize: '13px',
-                  opacity: compilingBatch ? 0.7 : 1,
-                }}
-                onClick={handleCompileBatch}
-                disabled={compilingBatch || questions.length === 0}
-              >
-                {compilingBatch 
-                  ? '⏳ Đang biên dịch...' 
-                  : selectedIds.size > 0 
-                    ? `📄 Biên dịch ${selectedIds.size} câu đã chọn`
-                    : `📄 Biên dịch ${questions.length} câu`
-                }
-              </button>
+              {isAdmin && (
+                <>
+                  <button
+                    className="btn btn-sm"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      background: 'var(--color-gray-100)',
+                      border: '1px solid var(--color-gray-200)',
+                      color: 'var(--color-gray-700)',
+                      cursor: 'pointer',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontWeight: 500,
+                      fontSize: '13px',
+                    }}
+                    onClick={handleScanDuplicates}
+                    disabled={scanningDups}
+                  >
+                    {scanningDups ? '⏳ Đang quét...' : '✨ Quét trùng lặp'}
+                  </button>
+                  <button
+                    className="btn btn-sm"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      background: 'var(--color-primary-600)',
+                      border: 'none',
+                      color: '#ffffff',
+                      cursor: compilingBatch ? 'not-allowed' : 'pointer',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontWeight: 500,
+                      fontSize: '13px',
+                      opacity: compilingBatch ? 0.7 : 1,
+                    }}
+                    onClick={handleCompileBatch}
+                    disabled={compilingBatch || questions.length === 0}
+                  >
+                    {compilingBatch 
+                      ? '⏳ Đang biên dịch...' 
+                      : selectedIds.size > 0 
+                        ? `📄 Biên dịch ${selectedIds.size} câu đã chọn`
+                        : `📄 Biên dịch ${questions.length} câu`
+                    }
+                  </button>
+                </>
+              )}
               <div className={styles.searchBox}>
                 <span className={styles.searchIcon}>🔍</span>
                 <input
@@ -701,13 +706,15 @@ export default function QuestionsClient() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: 40, textAlign: 'center' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={questions.length > 0 && questions.every(q => selectedIds.has(q.id))}
-                          onChange={handleSelectAll}
-                        />
-                      </th>
+                      {isAdmin && (
+                        <th style={{ width: 40, textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={questions.length > 0 && questions.every(q => selectedIds.has(q.id))}
+                            onChange={handleSelectAll}
+                          />
+                        </th>
+                      )}
                       <th style={{ width: 40 }}>#</th>
                       <th>Mã ID</th>
                       <th>Lớp</th>
@@ -719,7 +726,7 @@ export default function QuestionsClient() {
                       <th>Loại câu</th>
                       <th>Đáp án</th>
                       <th style={{ width: 40 }}>🖼</th>
-                      <th style={{ width: 80 }}>Thao tác</th>
+                      {isAdmin && <th style={{ width: 80 }}>Thao tác</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -729,13 +736,15 @@ export default function QuestionsClient() {
                           className={`${styles.tableRow} ${expandedId === q.id ? styles.tableRowExpanded : ''}`}
                           onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}
                         >
-                          <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                            <input 
-                              type="checkbox" 
-                              checked={selectedIds.has(q.id)}
-                              onChange={(e) => handleSelectOne(q.id, e.target.checked)}
-                            />
-                          </td>
+                          {isAdmin && (
+                            <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                              <input 
+                                type="checkbox" 
+                                checked={selectedIds.has(q.id)}
+                                onChange={(e) => handleSelectOne(q.id, e.target.checked)}
+                              />
+                            </td>
+                          )}
                           <td>{(page - 1) * PAGE_SIZE + idx + 1}</td>
                           <td><span className={styles.categoryCode}>{q.category_code}</span></td>
                           <td>{q.grade}</td>
@@ -751,61 +760,67 @@ export default function QuestionsClient() {
                           </td>
                           <td><span className={styles.answerCell}>{q.correct_answer || '—'}</span></td>
                           <td><span className={styles.imageIcon}>{q.has_image ? '🖼' : ''}</span></td>
-                          <td>
-                            <div className={styles.actions}>
-                              <button
-                                className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                                title="Xóa"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(q.id) }}
-                              >
-                                🗑
-                              </button>
-                            </div>
-                          </td>
+                          {isAdmin && (
+                            <td>
+                              <div className={styles.actions}>
+                                <button
+                                  className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                                  title="Xóa"
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(q.id) }}
+                                >
+                                  🗑
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                         {/* Expanded row - LaTeX preview */}
                         {expandedId === q.id && (
                           <tr key={`${q.id}-expanded`} className={styles.expandedRow}>
-                            <td colSpan={13}>
+                            <td colSpan={isAdmin ? 13 : 11}>
                               <div className={styles.expandedContent}>
                                 <div className={styles.expandedHeader}>
                                   <span className={styles.expandedTitle}>
                                     Raw LaTeX — {q.category_code} • {TYPE_LABELS[q.question_type]} • Đáp án: {q.correct_answer || 'N/A'}
                                   </span>
                                   <div className={styles.expandedActions}>
-                                    {editingId === q.id ? (
-                                      <>
-                                        <button className="btn btn-sm btn-secondary" onClick={cancelEdit}>
-                                          Hủy
-                                        </button>
-                                        <button className="btn btn-sm btn-primary" onClick={(e) => saveEdit(q, e)}>
-                                          💾 Lưu lại
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <button
-                                          className="btn btn-sm btn-secondary"
-                                          onClick={(e) => startEdit(q, e)}
-                                        >
-                                          ✏️ Sửa
-                                        </button>
-                                        <button
-                                          className="btn btn-sm"
-                                          style={{
-                                            background: compilingId === q.id ? 'var(--color-gray-300)' : 'var(--color-primary-600)',
-                                            color: '#fff',
-                                            border: 'none',
-                                            cursor: compilingId === q.id ? 'not-allowed' : 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                          }}
-                                          onClick={(e) => handleCompileSingle(q, e)}
-                                          disabled={compilingId === q.id}
-                                        >
-                                          {compilingId === q.id ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
-                                        </button>
+                                    {isAdmin ? (
+                                      editingId === q.id ? (
+                                        <>
+                                          <button className="btn btn-sm btn-secondary" onClick={cancelEdit}>
+                                            Hủy
+                                          </button>
+                                          <button className="btn btn-sm btn-primary" onClick={(e) => saveEdit(q, e)}>
+                                            💾 Lưu lại
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <button
+                                            className="btn btn-sm btn-secondary"
+                                            onClick={(e) => startEdit(q, e)}
+                                          >
+                                            ✏️ Sửa
+                                          </button>
+                                          <button
+                                            className="btn btn-sm"
+                                            style={{
+                                              background: compilingId === q.id ? 'var(--color-gray-300)' : 'var(--color-primary-600)',
+                                              color: '#fff',
+                                              border: 'none',
+                                              cursor: compilingId === q.id ? 'not-allowed' : 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                            }}
+                                            onClick={(e) => handleCompileSingle(q, e)}
+                                            disabled={compilingId === q.id}
+                                          >
+                                            {compilingId === q.id ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
+                                          </button>
+                                        </>
+                                      )
+                                    ) : null}
                                         <button
                                           className="btn btn-sm btn-secondary"
                                           onClick={(e) => {

@@ -37,11 +37,17 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
   // Lọc menu theo role
   const visibleNavItems = navItems.map(section => {
     if (userRole === 'teacher') {
-      // Giáo viên chỉ thấy mục AI trong phần Đề thi, và không thấy phần Quản lý
+      // Giáo viên thấy mục AI trong Đề thi, và Ngân hàng câu hỏi trong Quản lý
       if (section.section === 'Đề thi') {
         return {
           ...section,
           items: section.items.filter(item => item.href === '/admin/ai-exam')
+        }
+      }
+      if (section.section === 'Quản lý') {
+        return {
+          ...section,
+          items: section.items.filter(item => item.href === '/admin/questions')
         }
       }
       return null

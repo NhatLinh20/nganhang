@@ -65,12 +65,12 @@ export async function middleware(request: NextRequest) {
     // Xử lý các route admin và teacher
     if (pathname.startsWith('/admin') || pathname.startsWith('/teacher')) {
       if (role === 'teacher') {
-        // Giáo viên CHỈ được phép vào /admin/ai-exam
-        if (pathname !== '/admin/ai-exam') {
-          return NextResponse.redirect(new URL('/admin/ai-exam', request.url))
+        // Giáo viên được phép vào /admin/ai-exam và /admin/questions
+        if (pathname !== '/admin/ai-exam' && pathname !== '/admin/questions') {
+          return NextResponse.redirect(new URL('/admin/questions', request.url))
         }
       } else if (role !== 'admin') {
-        // Nếu không phải admin và không phải teacher (vd user thường, bị khóa...)
+        // Nếu không phải admin và không phải teacher
         return NextResponse.redirect(new URL('/login', request.url))
       }
     }
