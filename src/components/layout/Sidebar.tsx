@@ -5,6 +5,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import styles from './Sidebar.module.css'
 
+interface SidebarProps {
+  userRole: string
+  userEmail: string
+}
+
 const navItems = [
   {
     section: 'Quản lý',
@@ -26,8 +31,24 @@ const navItems = [
   },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ userRole, userEmail }: SidebarProps) {
   const pathname = usePathname()
+
+  // Lọc menu theo role
+  const visibleNavItems = navItems.map(section => {
+    if (userRole === 'teacher') {
+      // Giáo viên chỉ thấy mục AI trong phần Đề thi, và không thấy phần Quản lý
+      if (section.section === 'Đề thi') {
+        return {
+          ...section,
+          items: section.items.filter(item => item.href === '/admin/ai-exam')
+        }
+      }
+      return null
+    }
+    // Admin thấy tất cả
+    return section
+  }).filter(Boolean) as typeof navItems
 
   return (
     <aside className={styles.sidebar}>
@@ -42,7 +63,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className={styles.nav}>
-        {navItems.map((section) => (
+        {visibleNavItems.map((section) => (
           <div key={section.section}>
             <div className={styles.sectionLabel}>{section.section}</div>
             {section.items.map((item) => (
@@ -63,10 +84,16 @@ export default function Sidebar() {
 
       {/* User */}
       <div className={styles.userSection}>
-        <div className={styles.userAvatar}>A</div>
+        <div className={styles.userAvatar}>
+          {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
+        </div>
         <div className={styles.userInfo}>
-          <div className={styles.userName}>Admin</div>
-          <div className={styles.userRole}>Quản trị viên</div>
+          <div className={styles.userName}>
+            {userEmail ? userEmail.split('@')[0] : 'User'}
+          </div>
+          <div className={styles.userRole}>
+            {userRole === 'admin' ? 'Quản trị viên' : userRole === 'teacher' ? 'Giáo viên' : 'Học sinh'}
+          </div>
         </div>
       </div>
     </aside>

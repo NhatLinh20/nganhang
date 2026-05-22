@@ -49,22 +49,30 @@ export async function middleware(request: NextRequest) {
 
   // Kiểm tra role nếu đã đăng nhập
   if (user) {
-    // Lấy role từ user metadata
-    const role = user.user_metadata?.role as string | undefined
+    // Lấy role từ user metadata (mặc định coi như không có quyền nếu không map)
+    const role = (user.user_metadata?.role as string) || ''
 
-    // Admin routes
-    if (pathname.startsWith('/admin') && role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Nếu vào trang dashboard thì điều hướng dựa trên quyền
+    if (pathname === '/dashboard' || pathname === '/') {
+      if (role === 'teacher') {
+        return NextResponse.redirect(new URL('/admin/ai-exam', request.url))
+      }
+      if (role === 'admin') {
+        return NextResponse.redirect(new URL('/admin/questions', request.url))
+      }
     }
 
-    // Teacher routes
-    if (pathname.startsWith('/teacher') && !['admin', 'teacher'].includes(role || '')) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-
-    // Student routes
-    if (pathname.startsWith('/student') && !['admin', 'teacher', 'student'].includes(role || '')) {
-      return NextResponse.redirect(new URL('/login', request.url))
+    // Xử lý các route admin và teacher
+    if (pathname.startsWith('/admin') || pathname.startsWith('/teacher')) {
+      if (role === 'teacher') {
+        // Giáo viên CHỈ được phép vào /admin/ai-exam
+        if (pathname !== '/admin/ai-exam') {
+          return NextResponse.redirect(new URL('/admin/ai-exam', request.url))
+        }
+      } else if (role !== 'admin') {
+        // Nếu không phải admin và không phải teacher (vd user thường, bị khóa...)
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
     }
   }
 

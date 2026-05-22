@@ -25,7 +25,7 @@ export default function LoginPage() {
       setError('Email hoặc mật khẩu không đúng.')
       setLoading(false)
     } else {
-      router.push('/admin/questions')
+      router.push('/dashboard')
       router.refresh()
     }
   }
