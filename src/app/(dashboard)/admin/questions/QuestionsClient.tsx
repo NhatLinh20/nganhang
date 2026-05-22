@@ -821,6 +821,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                                         </>
                                       )
                                     ) : null}
+                                      {isAdmin && (
                                         <button
                                           className="btn btn-sm btn-secondary"
                                           onClick={(e) => {
@@ -831,6 +832,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                                         >
                                           📋 Copy
                                         </button>
+                                      )}
                                   </div>
                                 </div>
                                 {editingId === q.id ? (
