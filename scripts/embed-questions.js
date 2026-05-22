@@ -15,8 +15,16 @@ const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI
 
 // DANH SÁCH API KEY (Thêm nhiều key vào đây để vượt qua giới hạn 1000 câu/ngày)
 const API_KEYS = [
-  'AIzaSyAxAHZbKhq8n2EJdGUnGnwru58-eYkRK7w',
-  'AIzaSyDlZWbMvfY7WOlxK7aoKoGlt2KWMllyEUA'
+  'AIzaSyB5yxjvjjsJ7LnBpOBqFJLvFy3O23ZVyWY',
+  'AIzaSyCGz0zsYQEM0SR-jwVQWuXvNhUTGcqzk2I',
+  'AIzaSyDUiuUcuUawBQkx9eub26ZJy3u57e6HFTI',
+  'AIzaSyDhNdeXm8mJ38-m37yvJ-UMssb-maN4D-E',
+  'AIzaSyAcsfTG31mlWCSFKLqDnLnYPMuATp-65tY',
+  'AIzaSyBKgnWCTxDIK0CC_Za6a5daBF3qAqRBCJY',
+  'AIzaSyDwgYu6YaMqes9eWUKnxwJWQtxgM2E-h2M',
+  'AIzaSyDK1x-IiWLf-EVCDEzQoQyvfHt5gN59o6o',
+  'AIzaSyARyt2-YOb2L8V5VLfkhgOBBdFCnntpUDo',
+  'AIzaSyADTa4IMo-rYSvQNEts_C5Zrd5HnE4mebQ'
 ]
 
 let currentKeyIndex = 0
