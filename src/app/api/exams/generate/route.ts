@@ -33,11 +33,11 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a
 }
 
-// Gán phan (1=TN, 2=ĐS, 3=Ngắn/TL) dựa theo question_type
 function getPhan(question_type: string): number {
   if (question_type === 'multiple_choice') return 1
   if (question_type === 'true_false') return 2
-  return 3
+  if (question_type === 'short_answer') return 3
+  return 4
 }
 
 export async function POST(request: NextRequest) {

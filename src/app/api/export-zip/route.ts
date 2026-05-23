@@ -73,16 +73,17 @@ function buildMaTranTex(
       partHeader = '\\cauds\n'
       fileSuffix = 'Phan-II'
     } else if (partNum === 3) {
-      const hasEssay = partQuestions.some(q => q.question_type === 'essay')
-      partHeader = hasEssay ? '\\cautl\n' : '\\caukq\n'
+      partHeader = '\\caukq\n'
       fileSuffix = 'Phan-III'
+    } else if (partNum === 4) {
+      partHeader = '\\cautl\n'
+      fileSuffix = 'Phan-IV'
     } else {
       partHeader = `\\caulc\n`
       fileSuffix = `Phan-${partNum}`
     }
 
-    // Re-open ansbook for Part III as in reference code
-    if (partNum === 3) {
+    if (partNum === 3 || (partNum === 4 && !sortedParts.includes(3))) {
       tex += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n`
     }
 

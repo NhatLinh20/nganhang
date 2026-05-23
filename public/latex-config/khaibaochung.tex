@@ -238,20 +238,39 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 %\def\socauds{2}
 %\def\socaukq{4}
 %\def\socautl{3}
+\newcounter{phan}
+\setcounter{phan}{0}
+
+\renewcommand{\thephan}{\Roman{phan}}
+
+% PHẦN I
 \newcommand{\caulc}{
-	\noindent\textbf{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.}
+	\stepcounter{phan}
+	\noindent\textbf{PHẦN \thephan. Câu trắc nghiệm nhiều phương án lựa chọn.}
 	\setcounter{ex}{0}
 }
+
+% PHẦN II
 \newcommand{\cauds}{
-	\noindent\textbf{PHẦN II. Câu trắc nghiệm đúng sai.}
-	\setcounter{ex}{0}}
-\newcommand{\caukq}{
-	\noindent\textbf{PHẦN III. Câu trắc nghiệm trả lời ngắn.}
-	\setcounter{ex}{0}}
-\newcommand{\cautl}{
-	\noindent\textbf{PHẦN IV. Câu tự luận.}
+	\stepcounter{phan}
+	\noindent\textbf{PHẦN \thephan. Câu trắc nghiệm đúng sai.}
 	\setcounter{ex}{0}
-	\setcounter{bt}{0}}
+}
+
+% PHẦN III
+\newcommand{\caukq}{
+	\stepcounter{phan}
+	\noindent\textbf{PHẦN \thephan. Câu trắc nghiệm trả lời ngắn.}
+	\setcounter{ex}{0}
+}
+
+% PHẦN IV
+\newcommand{\cautl}{
+	\stepcounter{phan}
+	\noindent\textbf{PHẦN \thephan. Câu tự luận.}
+	\setcounter{ex}{0}
+	\setcounter{bt}{0}
+}
 %Định nghĩa Head và Foot
 \pagestyle{fancy}
 \fancyhf{}

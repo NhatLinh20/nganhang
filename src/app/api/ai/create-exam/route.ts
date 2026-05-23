@@ -161,7 +161,8 @@ QUY TẮC ĐỌC BẢNG (VÔ CÙNG QUAN TRỌNG):
 1. CÁCH NHẬN DIỆN VÀ GỘP CÂU HỎI THEO TỪNG PHẦN:
 - PHẦN 1 (Trắc nghiệm nhiều phương án): Các dòng có cột "Câu" được ghi bằng SỐ (1, 2, 3, 4...). Mỗi số là 1 câu. Bạn tạo mỗi dòng 1 object với \`phan: 1\`, \`question_type: "multiple_choice"\`.
 - PHẦN 2 (Trắc nghiệm Đúng/Sai): Các dòng có cột "Câu" được ghi bằng CHỮ CÁI (a, b, c, d). ĐÂY LÀ ĐIỂM DỄ SAI NHẤT: Cứ 4 dòng a, b, c, d thuộc về MỘT câu hỏi duy nhất! Bạn PHẢI GỘP 4 dòng a,b,c,d này lại thành CHỈ 1 OBJECT (so_luong = 1, \`phan: 2\`, \`question_type: "true_false"\`). Phần \`query_text\` hãy tóm tắt nội dung chung của cả 4 dòng.
-- PHẦN 3 (Trả lời ngắn / Tự luận): Các dòng được ghi bằng SỐ (1, 2, 3...). Bạn tạo mỗi dòng 1 object với \`phan: 3\`, \`question_type: "short_answer"\` (nếu tiêu đề ghi trả lời ngắn) hoặc "essay" (nếu ghi tự luận).
+- PHẦN 3 (Trả lời ngắn): Các dòng được ghi bằng SỐ (1, 2, 3...). Bạn tạo mỗi dòng 1 object với \`phan: 3\`, \`question_type: "short_answer"\`.
+- PHẦN 4 (Tự luận): Các dòng được ghi bài tập tự luận. Bạn tạo mỗi dòng 1 object với \`phan: 4\`, \`question_type: "essay"\`.
 
 2. CÁCH XÁC ĐỊNH SỐ LƯỢNG (so_luong):
 - Nếu ô giao giữa dòng và cột mức độ (NB, TH, VD, VDC) ghi dấu X hoặc dấu tích: \`so_luong\` = 1.
@@ -280,6 +281,15 @@ export async function POST(req: NextRequest) {
         raw: responseText 
       }, { status: 422 })
     }
+
+    // Chuẩn hóa lại phan: Đảm bảo tự luận luôn là phần 4, trả lời ngắn luôn là phần 3
+    examMatrix.matrix.forEach((row: any) => {
+      if (row.question_type === 'essay') {
+        row.phan = 4;
+      } else if (row.question_type === 'short_answer') {
+        row.phan = 3;
+      }
+    });
 
     // ── Bước 2: Kiểm tra có thể dùng pgvector không ────────────────────────
     const useVector = await hasEmbeddings()

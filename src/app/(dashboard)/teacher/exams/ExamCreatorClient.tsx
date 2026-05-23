@@ -541,8 +541,15 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       if (partNum === 1) { partHeader = '\\caulc\n'; fileSuffix = 'Phan-I'; }
       else if (partNum === 2) { partHeader = '\\cauds\n'; fileSuffix = 'Phan-II'; }
       else if (partNum === 3) {
-        partHeader = partQuestions.some(q => q.question_type === 'essay') ? '\\cautl\n' : '\\caukq\n';
+        partHeader = '\\caukq\n';
         fileSuffix = 'Phan-III';
+      }
+      else if (partNum === 4) {
+        partHeader = '\\cautl\n';
+        fileSuffix = 'Phan-IV';
+      }
+
+      if (partNum === 3 || (partNum === 4 && !sortedParts.includes(3))) {
         combined += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n`;
       }
 
@@ -1120,12 +1127,15 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(groupedQuestions).sort(([a], [b]) => Number(a) - Number(b)).flatMap(([phan, phanQs]) => {
+                  {Object.entries(groupedQuestions).sort(([a], [b]) => Number(a) - Number(b)).flatMap(([phan, phanQs], index) => {
                     const partNum = Number(phan)
-                    const partTitle = 
-                      partNum === 1 ? 'PHẦN I: TRẮC NGHIỆM 4 ĐÁP ÁN' :
-                      partNum === 2 ? 'PHẦN II: CÂU HỎI ĐÚNG/SAI' :
-                      phanQs.some(q => q.question_type === 'essay') ? 'PHẦN III: TỰ LUẬN' : 'PHẦN III: TRẢ LỜI NGẮN'
+                    const romanNumerals = ['I', 'II', 'III', 'IV']
+                    const displayRoman = romanNumerals[index] || 'I'
+                    const titleType = 
+                      partNum === 1 ? 'TRẮC NGHIỆM 4 ĐÁP ÁN' :
+                      partNum === 2 ? 'CÂU HỎI ĐÚNG/SAI' :
+                      partNum === 3 ? 'TRẢ LỜI NGẮN' : 'TỰ LUẬN'
+                    const partTitle = `PHẦN ${displayRoman}: ${titleType}`
 
                     return [
                       <tr key={`header-${phan}`} style={{ background: '#f8fafc' }}>
@@ -1138,7 +1148,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setCustomAddPhan(partNum)
-                                setCustomType(partNum === 1 ? 'multiple_choice' : partNum === 2 ? 'true_false' : 'short_answer')
+                                setCustomType(partNum === 1 ? 'multiple_choice' : partNum === 2 ? 'true_false' : partNum === 3 ? 'short_answer' : 'essay')
                               }}
                               title="Thêm câu hỏi mới vào phần này"
                               style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#0284c7', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}

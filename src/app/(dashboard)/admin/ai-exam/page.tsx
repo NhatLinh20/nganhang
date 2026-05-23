@@ -516,30 +516,25 @@ export default function AiExamPage() {
       const partQuestions = groupedForPdf[partNum];
       if (partQuestions.length === 0) continue;
 
-      let partHeader = '';
-      let fileSuffix = '';
-      if (partNum === 1) {
-        partHeader = `\\caulc\n`;
-        fileSuffix = 'Phan-I';
-      } else if (partNum === 2) {
-        partHeader = `\\cauds\n`;
-        fileSuffix = 'Phan-II';
-      } else if (partNum === 3) {
-        const hasEssay = partQuestions.some(q => q.question_type === 'essay');
-        if (hasEssay) {
-          partHeader = `\\cautl\n`;
-        } else {
-          partHeader = `\\caukq\n`;
-        }
+      let partHeader = '\\caulc\n';
+      let fileSuffix = `Phan-${partNum}`;
+      
+      if (partNum === 1) { partHeader = '\\caulc\n'; fileSuffix = 'Phan-I'; }
+      else if (partNum === 2) { partHeader = '\\cauds\n'; fileSuffix = 'Phan-II'; }
+      else if (partNum === 3) {
+        partHeader = '\\caukq\n';
         fileSuffix = 'Phan-III';
-      } else {
-        partHeader = `\\caulc\n`;
-        fileSuffix = `Phan-${partNum}`;
+      }
+      else if (partNum === 4) {
+        partHeader = '\\cautl\n';
+        fileSuffix = 'Phan-IV';
       }
 
-      if (partNum === 3) {
+      if (partNum === 3 || (partNum === 4 && !sortedParts.includes(3))) {
         combined += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n`;
       }
+
+      combined += partHeader;
 
       combined += partHeader;
       combined += `\\Opensolutionfile{ans}[ans/ans\\currfilebase-${fileSuffix}]\n\n`;
@@ -1126,13 +1121,15 @@ export default function AiExamPage() {
                     <tbody>
                       {Object.entries(grouped)
                         .sort(([a], [b]) => Number(a) - Number(b))
-                        .flatMap(([phan, phanQuestions]) => {
+                        .flatMap(([phan, phanQuestions], index) => {
                           const partNum = Number(phan)
-                          const partTitle = 
-                            partNum === 1 ? 'PHẦN I: TRẮC NGHIỆM 4 ĐÁP ÁN' :
-                            partNum === 2 ? 'PHẦN II: CÂU HỎI ĐÚNG/SAI (MỖI CÂU 4 Ý)' :
-                            phanQuestions.some(q => q.question_type === 'essay') ? 'PHẦN III: TỰ LUẬN' :
-                            'PHẦN III: CÂU HỎI TRẢ LỜI NGẮN'
+                          const romanNumerals = ['I', 'II', 'III', 'IV']
+                          const displayRoman = romanNumerals[index] || 'I'
+                          const titleType = 
+                            partNum === 1 ? 'TRẮC NGHIỆM 4 ĐÁP ÁN' :
+                            partNum === 2 ? 'CÂU HỎI ĐÚNG/SAI (MỖI CÂU 4 Ý)' :
+                            partNum === 3 ? 'CÂU HỎI TRẢ LỜI NGẮN' : 'TỰ LUẬN'
+                          const partTitle = `PHẦN ${displayRoman}: ${titleType}`
 
                           return [
                             // Dòng tiêu đề phân loại phần
@@ -1150,10 +1147,9 @@ export default function AiExamPage() {
                                       } else if (partNum === 2) {
                                         setCustomType('true_false')
                                       } else if (partNum === 3) {
-                                        const hasEssay = phanQuestions.some(q => q.question_type === 'essay')
-                                        setCustomType(hasEssay ? 'essay' : 'short_answer')
+                                        setCustomType('short_answer')
                                       } else {
-                                        setCustomType('multiple_choice')
+                                        setCustomType('essay')
                                       }
                                     }}
                                     title="Thêm câu hỏi mới vào phần này"
