@@ -129,7 +129,60 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   ])
 
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
+  const [isLoaded, setIsLoaded] = useState(false)
   
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('manual-exam-state')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.mainTab) setMainTab(parsed.mainTab)
+        if (parsed.filterGrade) setFilterGrade(parsed.filterGrade)
+        if (parsed.filterSubject) setFilterSubject(parsed.filterSubject)
+        if (parsed.filterChapter !== undefined) setFilterChapter(parsed.filterChapter)
+        if (parsed.filterLesson) setFilterLesson(parsed.filterLesson)
+        if (parsed.filterVariant) setFilterVariant(parsed.filterVariant)
+        if (parsed.filterType) setFilterType(parsed.filterType)
+        if (parsed.selections) setSelections(parsed.selections)
+        if (parsed.configTitle !== undefined) setConfigTitle(parsed.configTitle)
+        if (parsed.configDuration) setConfigDuration(parsed.configDuration)
+        if (parsed.configNumExams) setConfigNumExams(parsed.configNumExams)
+        if (parsed.hasGenerated) setHasGenerated(parsed.hasGenerated)
+        if (parsed.activeExamIndex !== undefined) setActiveExamIndex(parsed.activeExamIndex)
+        if (parsed.questions) setQuestions(parsed.questions)
+        if (parsed.allExamsQuestions) setAllExamsQuestions(parsed.allExamsQuestions)
+        if (parsed.examStats) setExamStats(parsed.examStats)
+        if (parsed.warnings) setWarnings(parsed.warnings)
+        if (parsed.swappedOutIds) setSwappedOutIds(parsed.swappedOutIds)
+        if (parsed.examCodes) setExamCodes(parsed.examCodes)
+        if (parsed.headerLabels) setHeaderLabels(parsed.headerLabels)
+      }
+    } catch (e) {
+      console.error('Failed to load manual exam state', e)
+    }
+    setIsLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isLoaded) return
+    const stateToSave = {
+      mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
+      selections, configTitle, configDuration, configNumExams,
+      hasGenerated, activeExamIndex, questions, allExamsQuestions,
+      examStats, warnings, swappedOutIds, examCodes, headerLabels
+    }
+    try {
+      localStorage.setItem('manual-exam-state', JSON.stringify(stateToSave))
+    } catch (e) {
+      console.error('Failed to save manual exam state', e)
+    }
+  }, [
+    isLoaded, mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
+    selections, configTitle, configDuration, configNumExams,
+    hasGenerated, activeExamIndex, questions, allExamsQuestions,
+    examStats, warnings, swappedOutIds, examCodes, headerLabels
+  ])
+
   const fetchStats = useCallback(async () => {
     if (!filterGrade || !filterSubject || filterChapter === undefined) return
     setLoadingStats(true)
@@ -184,6 +237,39 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const handleClearSelections = () => {
     if (confirm('Bạn có chắc muốn xoá tất cả các ô đã chọn?')) {
       setSelections({})
+    }
+  }
+
+  const handleReset = () => {
+    if (window.confirm('Bạn có chắc chắn muốn làm mới trang? Toàn bộ dữ liệu đang làm việc sẽ bị xóa.')) {
+      localStorage.removeItem('manual-exam-state')
+      setMainTab('config')
+      setFilterGrade(12)
+      setFilterSubject('D')
+      setFilterChapter(1)
+      setFilterLesson('')
+      setFilterVariant('')
+      setFilterType('')
+      setSelections({})
+      setConfigTitle('Đề kiểm tra')
+      setConfigDuration(90)
+      setConfigNumExams(1)
+      setHasGenerated(false)
+      setActiveExamIndex(0)
+      setQuestions([])
+      setAllExamsQuestions([])
+      setExamStats({ requested: 0, found: 0 })
+      setWarnings([])
+      setSwappedOutIds([])
+      setExamCodes([''])
+      setHeaderLabels([
+        'SỞ GDĐT ...',
+        'TRƯỜNG THPT ...',
+        '(Đề gồm ... trang, ... câu)',
+        'ĐỀ KIỂM TRA',
+        'Môn: TOÁN',
+        'Thời gian làm bài: 90 phút'
+      ])
     }
   }
 
@@ -578,19 +664,93 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       
       {/* ─── MAIN TABS ─── */}
       <div className={styles.mainTabs}>
-        <button 
-          onClick={() => setMainTab('config')} 
-          className={`${styles.mainTab} ${mainTab === 'config' ? styles.mainTabActive : ''}`}
-        >
-          <span className={styles.tabIcon}>⚙️</span> 1. Thiết lập & Chọn câu
-        </button>
-        <button 
-          onClick={() => setMainTab('result')} 
-          disabled={!hasGenerated} 
-          className={`${styles.mainTab} ${mainTab === 'result' ? styles.mainTabActive : ''}`}
-        >
-          <span className={styles.tabIcon}>📝</span> 2. Kết quả tạo đề
-        </button>
+        <div style={{ display: 'flex' }}>
+          <button 
+            onClick={() => setMainTab('config')} 
+            className={`${styles.mainTab} ${mainTab === 'config' ? styles.mainTabActive : ''}`}
+          >
+            <span className={styles.tabIcon}>⚙️</span> 1. Thiết lập & Chọn câu
+          </button>
+          <button 
+            onClick={() => setMainTab('result')} 
+            disabled={!hasGenerated} 
+            className={`${styles.mainTab} ${mainTab === 'result' ? styles.mainTabActive : ''}`}
+          >
+            <span className={styles.tabIcon}>📝</span> 2. Kết quả tạo đề
+          </button>
+          
+          <button
+            onClick={handleReset}
+            style={{
+              marginLeft: '12px',
+              padding: '6px 10px',
+              background: '#fef2f2',
+              border: '1px solid #fca5a5',
+              borderRadius: '6px',
+              color: '#dc2626',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              alignSelf: 'center',
+              whiteSpace: 'nowrap'
+            }}
+            title="Làm mới trang (Xóa toàn bộ dữ liệu đang làm việc)"
+          >
+            🧹 Làm mới
+          </button>
+        </div>
+
+        {/* ─── TOP ACTION BAR ─── */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '16px', padding: '8px 0' }}>
+          <div className={styles.configInputs}>
+            <div className={styles.configInputGroup} style={{ width: 250 }}>
+              <input 
+                type="text" 
+                placeholder="Tên đề thi (VD: Đề kiểm tra 15p)"
+                value={configTitle}
+                onChange={e => setConfigTitle(e.target.value)}
+                className={styles.configInput}
+                style={{ padding: '8px 12px' }}
+              />
+            </div>
+            <div className={styles.configInputGroup} style={{ width: 100, position: 'relative' }}>
+              <input 
+                type="number" 
+                min={1} max={20}
+                value={configNumExams}
+                onChange={e => setConfigNumExams(parseInt(e.target.value) || 1)}
+                className={styles.configInput}
+                style={{ padding: '8px 12px', paddingRight: '28px' }}
+                title="Số lượng đề"
+              />
+              <span style={{ position: 'absolute', right: '10px', top: '9px', fontSize: '13px', color: '#94a3b8', pointerEvents: 'none' }}>đề</span>
+            </div>
+            <div className={styles.configInputGroup} style={{ width: 110, position: 'relative' }}>
+              <input 
+                type="number"
+                min={1}
+                value={configDuration}
+                onChange={e => setConfigDuration(parseInt(e.target.value) || 90)}
+                className={styles.configInput}
+                style={{ padding: '8px 12px', paddingRight: '40px' }}
+                title="Thời gian làm bài"
+              />
+              <span style={{ position: 'absolute', right: '10px', top: '9px', fontSize: '13px', color: '#94a3b8', pointerEvents: 'none' }}>phút</span>
+            </div>
+          </div>
+
+          <button 
+            className={styles.generateBtn}
+            onClick={handleGenerate}
+            disabled={loadingGenerate || selStats.total === 0}
+            style={{ padding: '8px 16px', fontSize: '13px', height: '100%', whiteSpace: 'nowrap' }}
+          >
+            {loadingGenerate ? '⏳ ĐANG TẠO...' : `✨ TẠO ${configNumExams} ĐỀ`}
+          </button>
+        </div>
       </div>
 
       <div className={styles.viewContainer}>
@@ -822,49 +982,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
               )}
             </div>
 
-            {/* Bottom Config & Generate */}
-            <div className={styles.configBottomBar}>
-              <div className={styles.configInputs}>
-                <div className={styles.configInputGroup} style={{ width: 300 }}>
-                  <label className={styles.configInputLabel}>Tên đề thi</label>
-                  <input 
-                    type="text" 
-                    placeholder="Nhập tên đề thi"
-                    value={configTitle}
-                    onChange={e => setConfigTitle(e.target.value)}
-                    className={styles.configInput}
-                  />
-                </div>
-                <div className={styles.configInputGroup} style={{ width: 120 }}>
-                  <label className={styles.configInputLabel}>Số lượng đề</label>
-                  <input 
-                    type="number" 
-                    min={1} max={20}
-                    value={configNumExams}
-                    onChange={e => setConfigNumExams(parseInt(e.target.value) || 1)}
-                    className={styles.configInput}
-                  />
-                </div>
-                <div className={styles.configInputGroup} style={{ width: 120 }}>
-                  <label className={styles.configInputLabel}>Thời gian (phút)</label>
-                  <input 
-                    type="number"
-                    min={1}
-                    value={configDuration}
-                    onChange={e => setConfigDuration(parseInt(e.target.value) || 90)}
-                    className={styles.configInput}
-                  />
-                </div>
-              </div>
 
-              <button 
-                className={styles.generateBtn}
-                onClick={handleGenerate}
-                disabled={loadingGenerate || selStats.total === 0}
-              >
-                {loadingGenerate ? '⏳ ĐANG TẠO ĐỀ...' : `✨ TẠO ${configNumExams} ĐỀ (${selStats.total} câu)`}
-              </button>
-            </div>
 
           </div>
         )}
@@ -878,12 +996,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
             <div className={styles.resultToolbar}>
               <div>
                 <div className={styles.resultTitle}>
-                  {configTitle}
-                  {allExamsQuestions.length > 1 && (
-                    <span style={{ fontSize: '15px', fontWeight: 500, color: '#64748b', marginLeft: '12px' }}>
-                      — Đề {activeExamIndex + 1}/{allExamsQuestions.length}
-                    </span>
-                  )}
+                  {configTitle || 'Kết quả tạo đề'}
                 </div>
                 <div className={styles.resultStats} style={{ marginTop: 8 }}>
                   <div className={styles.statBadge}>
@@ -1133,40 +1246,82 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       {/* Export LaTeX Modal */}
       {showExportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 720, padding: 32, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 720, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
-                <p style={{ margin: '4px 0 0', fontSize: 14, color: '#64748b' }}>Tùy chỉnh thông tin tiêu đề và mã đề trước khi xuất file ZIP.</p>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
               </div>
-              <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 24, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+              <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-              <div style={{ background: '#fef2f2', padding: 20, borderRadius: 12, border: '1px solid #fecaca' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 16, letterSpacing: '0.05em' }}>CỘT TRÁI</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div style={{ background: '#fef2f2', padding: 16, borderRadius: 12, border: '1px solid #fecaca' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT TRÁI</div>
                 {[0, 1, 2].map(i => (
-                  <div key={i} style={{ marginBottom: 12 }}>
+                  <div key={i} style={{ marginBottom: 8 }}>
                     <input type="text" value={headerLabels[i]} onChange={e => {
                       const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
-                    }} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #fca5a5', fontSize: 14, outline: 'none' }} />
+                    }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #fca5a5', fontSize: 13, outline: 'none' }} />
                   </div>
                 ))}
               </div>
-              <div style={{ background: '#eff6ff', padding: 20, borderRadius: 12, border: '1px solid #bfdbfe' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af', marginBottom: 16, letterSpacing: '0.05em' }}>CỘT PHẢI</div>
+              <div style={{ background: '#eff6ff', padding: 16, borderRadius: 12, border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT PHẢI</div>
                 {[3, 4, 5].map(i => (
-                  <div key={i} style={{ marginBottom: 12 }}>
+                  <div key={i} style={{ marginBottom: 8 }}>
                     <input type="text" value={headerLabels[i]} onChange={e => {
                       const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
-                    }} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #93c5fd', fontSize: 14, outline: 'none' }} />
+                    }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #93c5fd', fontSize: 13, outline: 'none' }} />
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ background: '#f0fdf4', padding: 20, borderRadius: 12, marginBottom: 24, border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 16, letterSpacing: '0.05em' }}>MÃ ĐỀ THI ({examCodes.length} đề)</div>
+            {/* Preview */}
+            <div style={{
+              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px',
+              padding: '12px', marginBottom: '16px',
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>👁 Xem trước tiêu đề đề thi</div>
+              <div style={{ display: 'flex', gap: '0' }}>
+                <div style={{ flex: '0 0 40%', textAlign: 'center', padding: '4px' }}>
+                  <div style={{ color: '#dc2626', fontWeight: 700, fontSize: '13px', textTransform: 'uppercase' }}>{headerLabels[0] || '...'}</div>
+                  <div style={{ color: '#2563eb', fontWeight: 600, fontSize: '12px' }}>{headerLabels[1] || '...'}</div>
+                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[2] || '...'}</div>
+                </div>
+                <div style={{ flex: '0 0 60%', textAlign: 'center', padding: '4px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '13px', textTransform: 'uppercase' }}>{headerLabels[3] || '...'}</div>
+                  <div style={{ fontWeight: 600, fontSize: '12px' }}>{headerLabels[4] || '...'}</div>
+                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[5] || '...'}</div>
+                </div>
+              </div>
+              <div style={{ borderTop: '1px dashed #cbd5e1', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
+                <span style={{ fontStyle: 'italic' }}>Họ và tên thí sinh: .........................</span>
+                <span style={{ fontStyle: 'italic' }}>Số báo danh: ....................</span>
+                <span style={{ fontWeight: 700, border: '1px solid #333', padding: '1px 6px', fontSize: '12px', color: '#2563eb' }}>{examCodes[0] || '1234'}</span>
+              </div>
+            </div>
+
+            <div style={{ background: '#f0fdf4', padding: 16, borderRadius: 10, marginBottom: 16, border: '1px solid #bbf7d0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', letterSpacing: '0.05em' }}>MÃ ĐỀ THI ({examCodes.length} đề)</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newCodes = generateUniqueExamCodes(examCodes.length)
+                    setExamCodes(newCodes)
+                  }}
+                  style={{
+                    padding: '4px 12px', borderRadius: '6px', border: '1px solid #86efac',
+                    background: 'white', color: '#166534', cursor: 'pointer', fontSize: '12px', fontWeight: 600,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#166534'; e.currentTarget.style.color = 'white' }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#166534' }}
+                >
+                  🎲 Tạo mã ngẫu nhiên
+                </button>
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                 {examCodes.map((code, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
