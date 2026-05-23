@@ -106,11 +106,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
   const [showDupModal, setShowDupModal] = useState(false)
   const [deletingDups, setDeletingDups] = useState(false)
 
-  // State for PDF compilation
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-  const [pdfTitle, setPdfTitle] = useState('')
-  const [compilingId, setCompilingId] = useState<string | null>(null)
-  const [compilingBatch, setCompilingBatch] = useState(false)
+
 
   // Debounce search input — chờ gõ xong 300ms mới query
   useEffect(() => {
@@ -282,76 +278,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     }
   }
 
-  // Biên dịch PDF 1 câu hỏi
-  const handleCompileSingle = async (q: Question, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setCompilingId(q.id)
-    if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null) }
 
-    try {
-      const res = await fetch('/api/compile-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latex_content: q.latex_content, mode: 'single' }),
-      })
-
-      if (!res.ok) {
-        const json = await res.json()
-        alert(`❌ Biên dịch thất bại:\n${json.error || ''}\n${json.details || ''}`)
-        return
-      }
-
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      setPdfUrl(url)
-      setPdfTitle(`Preview câu ${q.category_code}`)
-    } catch (err) {
-      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Lỗi không xác định'))
-    } finally {
-      setCompilingId(null)
-    }
-  }
-
-  // Biên dịch PDF toàn bộ trang hiện tại (tối đa 30 câu)
-  const handleCompileBatch = async () => {
-    const targetQuestions = selectedIds.size > 0 
-      ? questions.filter(q => selectedIds.has(q.id)) 
-      : questions;
-
-    if (targetQuestions.length === 0) return
-    setCompilingBatch(true)
-    if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null) }
-
-    const combined = targetQuestions.map(q => q.latex_content).join('\n\n')
-
-    try {
-      const res = await fetch('/api/compile-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latex_content: combined, mode: 'batch' }),
-      })
-
-      if (!res.ok) {
-        const json = await res.json()
-        alert(`❌ Biên dịch thất bại:\n${json.error || ''}\n${json.details || ''}`)
-        return
-      }
-
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      setPdfUrl(url)
-      setPdfTitle(`Preview ${targetQuestions.length} câu hỏi - Trang ${page}`)
-    } catch (err) {
-      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Lỗi không xác định'))
-    } finally {
-      setCompilingBatch(false)
-    }
-  }
-
-  // Đóng modal PDF
-  const closePdfModal = () => {
-    if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null) }
-  }
 
   // Edit Inline
   const startEdit = (q: Question, e: React.MouseEvent) => {
@@ -636,33 +563,6 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                   >
                     {scanningDups ? '⏳ Đang quét...' : '✨ Quét trùng lặp'}
                   </button>
-                  <button
-                    className="btn btn-sm"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      whiteSpace: 'nowrap',
-                      background: 'var(--color-primary-600)',
-                      border: 'none',
-                      color: '#ffffff',
-                      cursor: compilingBatch ? 'not-allowed' : 'pointer',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      fontWeight: 500,
-                      fontSize: '13px',
-                      opacity: compilingBatch ? 0.7 : 1,
-                    }}
-                    onClick={handleCompileBatch}
-                    disabled={compilingBatch || questions.length === 0}
-                  >
-                    {compilingBatch 
-                      ? '⏳ Đang biên dịch...' 
-                      : selectedIds.size > 0 
-                        ? `📄 Biên dịch ${selectedIds.size} câu đã chọn`
-                        : `📄 Biên dịch ${questions.length} câu`
-                    }
-                  </button>
                 </>
               )}
               <div className={styles.searchBox}>
@@ -802,22 +702,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                                           >
                                             ✏️ Sửa
                                           </button>
-                                          <button
-                                            className="btn btn-sm"
-                                            style={{
-                                              background: compilingId === q.id ? 'var(--color-gray-300)' : 'var(--color-primary-600)',
-                                              color: '#fff',
-                                              border: 'none',
-                                              cursor: compilingId === q.id ? 'not-allowed' : 'pointer',
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              gap: '4px',
-                                            }}
-                                            onClick={(e) => handleCompileSingle(q, e)}
-                                            disabled={compilingId === q.id}
-                                          >
-                                            {compilingId === q.id ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
-                                          </button>
+
                                         </>
                                       )
                                     ) : null}
@@ -963,75 +848,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
         </div>
       )}
 
-      {/* PDF Modal */}
-      {pdfUrl && (
-        <div 
-          onClick={closePdfModal}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div 
-            onClick={e => e.stopPropagation()}
-            style={{
-              backgroundColor: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: '12px',
-              padding: '24px',
-              width: '95%',
-              maxWidth: '1200px',
-              height: '90vh',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-              color: '#f8fafc',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{pdfTitle || 'PDF Preview'}</h3>
-              <button 
-                onClick={closePdfModal}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '28px',
-                  cursor: 'pointer',
-                  color: '#94a3b8',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  lineHeight: 1,
-                }}
-                title="Đóng"
-              >
-                &times;
-              </button>
-            </div>
-            <iframe 
-              src={pdfUrl} 
-              style={{ 
-                flex: 1, 
-                width: '100%', 
-                border: '1px solid #334155', 
-                borderRadius: '8px',
-                backgroundColor: '#ffffff'
-              }} 
-              title="PDF Preview"
-            />
-          </div>
-        </div>
-      )}
+
     </>
   )
 }

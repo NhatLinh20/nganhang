@@ -103,8 +103,7 @@ export default function AiExamPage() {
   const [loadingStep, setLoadingStep] = useState(0)
   const [result, setResult] = useState<ExamResult | null>(null)
   const [questions, setQuestions] = useState<ExamQuestion[]>([])
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-  const [compilingPdf, setCompilingPdf] = useState(false)
+
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [swappingId, setSwappingId] = useState<string | null>(null)
   const [swappedOutIds, setSwappedOutIds] = useState<string[]>([])
@@ -226,10 +225,7 @@ export default function AiExamPage() {
       setExpandedId(null)
       setActiveExamIndex(0)
       setAllExamsQuestions([])
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl)
-        setPdfUrl(null)
-      }
+
     }
   }
 
@@ -481,90 +477,7 @@ export default function AiExamPage() {
     }
   }
 
-  // Compile to PDF
-  const handleCompilePdf = async () => {
-    if (questions.length === 0) return;
-    setCompilingPdf(true);
-    if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null); }
 
-    // Group questions by phan to insert proper section headers in PDF
-    const groupedForPdf = questions.reduce((acc, q) => {
-      const key = q.phan ?? 1;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(q);
-      return acc;
-    }, {} as Record<number, ExamQuestion[]>);
-
-    let combined = '';
-    
-    // Add dynamic name header block
-    const grade = result?.exam_info?.grade || 12;
-    const currentCode = examCodes[activeExamIndex] || generateExamCode();
-    combined += `%` + ` Đề thi Toán lớp ${grade}\n`;
-    combined += `\\def\\made{${currentCode}}\n`;
-    combined += `\\begin{name}\n`;
-    for (const label of headerLabels) {
-      combined += `\t{${label}}\n`;
-    }
-    combined += `\\end{name}\n\n`;
-
-    combined += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n\n`;
-
-    const sortedParts = Object.keys(groupedForPdf).map(Number).sort((a, b) => a - b);
-    
-    for (const partNum of sortedParts) {
-      const partQuestions = groupedForPdf[partNum];
-      if (partQuestions.length === 0) continue;
-
-      let partHeader = '\\caulc\n';
-      let fileSuffix = `Phan-${partNum}`;
-      
-      if (partNum === 1) { partHeader = '\\caulc\n'; fileSuffix = 'Phan-I'; }
-      else if (partNum === 2) { partHeader = '\\cauds\n'; fileSuffix = 'Phan-II'; }
-      else if (partNum === 3) {
-        partHeader = '\\caukq\n';
-        fileSuffix = 'Phan-III';
-      }
-      else if (partNum === 4) {
-        partHeader = '\\cautl\n';
-        fileSuffix = 'Phan-IV';
-      }
-
-      if (partNum === 3 || (partNum === 4 && !sortedParts.includes(3))) {
-        combined += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n`;
-      }
-
-      combined += partHeader;
-
-      combined += partHeader;
-      combined += `\\Opensolutionfile{ans}[ans/ans\\currfilebase-${fileSuffix}]\n\n`;
-      combined += partQuestions.map(q => q.latex_content.trim()).join('\n\n') + '\n';
-      combined += `\\Closesolutionfile{ans}\n\n`;
-    }
-
-    combined += `\\Closesolutionfile{ansbook}\n`;
-    combined += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`;
-
-    try {
-      const res = await fetch('/api/compile-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latex_content: combined, show_solutions: false }),
-      });
-      if (!res.ok) {
-        const json = await res.json();
-        alert('❌ Biên dịch thất bại:\n' + (json.details || json.error));
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-    } catch (err) {
-      alert('Lỗi: ' + (err instanceof Error ? err.message : 'Unknown'));
-    } finally {
-      setCompilingPdf(false);
-    }
-  };
 
   // Export created exam as a ZIP containing main.tex, khaibaochung.tex, ma_tran_de_thi_toanN.tex and sty packages
   const handleExportTex = async () => {
@@ -1001,14 +914,7 @@ export default function AiExamPage() {
                   >
                     📥 Xuất LaTeX (.tex)
                   </button>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={handleCompilePdf}
-                    disabled={compilingPdf || questions.length === 0}
-                    style={{ background: 'var(--color-primary-600)', color: 'white', border: 'none' }}
-                  >
-                    {compilingPdf ? '⏳ Đang xuất...' : '📄 Xuất PDF'}
-                  </button>
+
                 </div>
               </div>
 
@@ -1291,23 +1197,7 @@ export default function AiExamPage() {
         </div>
       </div>
 
-      {/* PDF Modal */}
-      {pdfUrl && (
-        <div className={styles.pdfModal}>
-          <div className={styles.pdfModalInner}>
-            <div className={styles.pdfModalHeader}>
-              <span className={styles.pdfModalTitle}>📄 {result?.exam_info?.title || 'Đề thi'}</span>
-              <button
-                className={styles.pdfModalClose}
-                onClick={() => { URL.revokeObjectURL(pdfUrl); setPdfUrl(null) }}
-              >
-                ✕
-              </button>
-            </div>
-            <iframe src={pdfUrl} className={styles.pdfIframe} title="PDF Preview" />
-          </div>
-        </div>
-      )}
+
 
       {/* Export LaTeX Modal – 6 header fields */}
       {showExportModal && (

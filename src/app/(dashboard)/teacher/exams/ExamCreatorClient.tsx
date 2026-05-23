@@ -114,9 +114,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const [customDifficulty, setCustomDifficulty] = useState<string>('H')
   const [customVariant, setCustomVariant] = useState<string>('')
 
-  // Export / PDF
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-  const [compilingPdf, setCompilingPdf] = useState(false)
+  // Export
   const [showExportModal, setShowExportModal] = useState(false)
   const [examCodes, setExamCodes] = useState<string[]>([''])
   const [headerLabels, setHeaderLabels] = useState<string[]>([
@@ -510,75 +508,6 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     }
   }
 
-  const handleCompilePdf = async () => {
-    if (questions.length === 0) return;
-    setCompilingPdf(true);
-    if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null); }
-
-    const groupedForPdf = questions.reduce((acc, q) => {
-      const key = q.phan ?? 1;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(q);
-      return acc;
-    }, {} as Record<number, ExamQuestion[]>);
-
-    let combined = '';
-    const currentCode = examCodes[activeExamIndex] || generateExamCode();
-    
-    combined += `% Đề thi Toán\n\\def\\made{${currentCode}}\n\\begin{name}\n`;
-    for (const label of headerLabels) combined += `\t{${label}}\n`;
-    combined += `\\end{name}\n\n\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n\n`;
-
-    const sortedParts = Object.keys(groupedForPdf).map(Number).sort((a, b) => a - b);
-    
-    for (const partNum of sortedParts) {
-      const partQuestions = groupedForPdf[partNum];
-      if (partQuestions.length === 0) continue;
-
-      let partHeader = '\\caulc\n';
-      let fileSuffix = `Phan-${partNum}`;
-      
-      if (partNum === 1) { partHeader = '\\caulc\n'; fileSuffix = 'Phan-I'; }
-      else if (partNum === 2) { partHeader = '\\cauds\n'; fileSuffix = 'Phan-II'; }
-      else if (partNum === 3) {
-        partHeader = '\\caukq\n';
-        fileSuffix = 'Phan-III';
-      }
-      else if (partNum === 4) {
-        partHeader = '\\cautl\n';
-        fileSuffix = 'Phan-IV';
-      }
-
-      if (partNum === 3 || (partNum === 4 && !sortedParts.includes(3))) {
-        combined += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n`;
-      }
-
-      combined += partHeader + `\\Opensolutionfile{ans}[ans/ans\\currfilebase-${fileSuffix}]\n\n`;
-      combined += partQuestions.map(q => q.latex_content.trim()).join('\n\n') + '\n';
-      combined += `\\Closesolutionfile{ans}\n\n`;
-    }
-
-    combined += `\\Closesolutionfile{ansbook}\n\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`;
-
-    try {
-      const res = await fetch('/api/compile-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latex_content: combined, show_solutions: false }),
-      });
-      if (!res.ok) {
-        const json = await res.json();
-        alert('❌ Lỗi biên dịch: ' + (json.details || json.error));
-        return;
-      }
-      const blob = await res.blob();
-      setPdfUrl(URL.createObjectURL(blob));
-    } catch (err) {
-      alert('Lỗi: ' + (err instanceof Error ? err.message : 'Unknown'));
-    } finally {
-      setCompilingPdf(false);
-    }
-  };
 
   const handleExportTex = async () => {
     if (questions.length === 0) return;
@@ -1038,14 +967,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                 >
                   📥 Xuất LaTeX
                 </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleCompilePdf}
-                  disabled={compilingPdf || questions.length === 0}
-                  style={{ fontWeight: 600, padding: '8px 16px' }}
-                >
-                  {compilingPdf ? '⏳ Đang xuất PDF...' : '📄 Xuất PDF'}
-                </button>
+
               </div>
             </div>
 
@@ -1240,18 +1162,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       </div>
 
       {/* ─── MODALS ───────────────────────────────────────────────────────────── */}
-      {/* PDF Modal */}
-      {pdfUrl && (
-        <div className={styles.pdfModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div className={styles.pdfModalInner} style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 1000, height: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className={styles.pdfModalHeader} style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-              <span className={styles.pdfModalTitle} style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>📄 {configTitle}</span>
-              <button className={styles.pdfModalClose} onClick={() => { URL.revokeObjectURL(pdfUrl); setPdfUrl(null) }} style={{ width: 32, height: 32, borderRadius: '8px', border: 'none', background: '#e2e8f0', color: '#475569', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-            </div>
-            <iframe src={pdfUrl} className={styles.pdfIframe} title="PDF Preview" style={{ flex: 1, border: 'none', width: '100%' }} />
-          </div>
-        </div>
-      )}
+
 
       {/* Export LaTeX Modal */}
       {showExportModal && (
