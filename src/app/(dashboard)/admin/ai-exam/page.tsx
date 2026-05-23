@@ -858,7 +858,7 @@ export default function AiExamPage() {
                 <option value="gemini-flash-latest">Gemini Flash Latest</option>
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               </select>
-              <div className={styles.settingsLabel} style={{ color: '#be185d', marginTop: '12px' }}>API Key (Tùy chọn)</div>
+              <div className={styles.settingsLabel} style={{ color: '#be185d', marginTop: '12px' }}>API Key (không bắt buộc)</div>
               <input 
                 type="password"
                 className={styles.selectBox}
@@ -873,6 +873,9 @@ export default function AiExamPage() {
                   marginTop: '8px'
                 }}
               />
+              <div style={{ fontSize: '12px', color: '#be185d', marginTop: '8px', lineHeight: '1.4' }}>
+                Không bắt buộc, trang web có sẵn API key hoặc bạn có thể tự nhập API key cá nhân của mình (dùng trong trường hợp sever quá tải)
+              </div>
             </div>
 
 
