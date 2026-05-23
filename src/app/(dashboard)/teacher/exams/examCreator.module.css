@@ -88,15 +88,16 @@
 .filterRow {
   display: flex;
   align-items: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 10px;
+  flex-wrap: nowrap;
 }
 
 .filterGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 150px;
+  gap: 4px;
+  flex: 1;
+  min-width: 80px;
 }
 
 .filterLabel {
@@ -108,16 +109,20 @@
 }
 
 .filterSelect {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   background: var(--color-bg);
   color: var(--color-text-primary);
-  font-size: 14px;
+  font-size: 13px;
   font-family: inherit;
   outline: none;
   cursor: pointer;
   transition: border-color 0.15s;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 100%;
 }
 
 .filterSelect:focus {
