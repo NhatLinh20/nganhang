@@ -15,18 +15,13 @@ const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI
 
 // DANH SÁCH API KEY (Thêm nhiều key vào đây để vượt qua giới hạn 1000 câu/ngày)
 const API_KEYS = [
-  'AIzaSyB5yxjvjjsJ7LnBpOBqFJLvFy3O23ZVyWY',
-  'AIzaSyCGz0zsYQEM0SR-jwVQWuXvNhUTGcqzk2I',
-  'AIzaSyDUiuUcuUawBQkx9eub26ZJy3u57e6HFTI',
-  'AIzaSyDhNdeXm8mJ38-m37yvJ-UMssb-maN4D-E',
-  'AIzaSyAcsfTG31mlWCSFKLqDnLnYPMuATp-65tY',
-  'AIzaSyBKgnWCTxDIK0CC_Za6a5daBF3qAqRBCJY',
-  'AIzaSyDwgYu6YaMqes9eWUKnxwJWQtxgM2E-h2M',
-  'AIzaSyDK1x-IiWLf-EVCDEzQoQyvfHt5gN59o6o',
-  'AIzaSyARyt2-YOb2L8V5VLfkhgOBBdFCnntpUDo',
-  'AIzaSyADTa4IMo-rYSvQNEts_C5Zrd5HnE4mebQ',
-  'AIzaSyCLtMt9Gik6FoPW8Y6rImHf9vxX0IpFUd0',
-  'AIzaSyAzyRkrr3nOCk1khVVBP_DuHGFCy6-vFDk'
+  'AIzaSyCV_3KMflEtdCvk8y9jQQZWuHW4EbOWk_E',
+  'AIzaSyARBVS7hjrQpSa-04Tfv1GbTFEwX5qy110',
+  'AIzaSyABDcbIGsbt9FlbfvC1KcIffaXN4_BM92k',
+  'AIzaSyDqNXZQ_Pz2CNCMCK50JNu87AmQYIa1eU4',
+  'AIzaSyDtp40k2-XPWxdTm7kqJHQWYDQrKdECgCI',
+  'AIzaSyCyRWWkjyKxn441dB_SvSjdpEqpcyfCxUY',
+  'AIzaSyCGTQ0rvkjTgT2L7ulGMrNzAB9FEp06Tio'
 ]
 
 let currentKeyIndex = 0

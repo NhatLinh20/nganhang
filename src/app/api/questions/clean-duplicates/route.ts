@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         .from('questions')
         .select('id, category_code, latex_content, created_at')
         .order('created_at', { ascending: true }) // Oldest first
+        .order('id', { ascending: true }) // Stable sort to prevent skipping rows
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
       if (error) {
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
         .from('questions')
         .select('id, latex_content, created_at')
         .order('created_at', { ascending: true })
+        .order('id', { ascending: true }) // Stable sort
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
       if (error) {
