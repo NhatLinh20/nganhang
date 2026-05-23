@@ -25,8 +25,7 @@ const navItems = [
     items: [
       { href: '/teacher/exams', icon: '📝', label: 'Tạo đề thi' },
       { href: '/teacher/shuffle', icon: '🔀', label: 'Trộn đề' },
-      { href: '/teacher/export', icon: '📄', label: 'Xuất file LaTeX / PDF' },
-      { href: '/admin/ai-exam', icon: '🤖', label: 'AI chọn câu theo ma trận' },
+      { href: '/admin/ai-exam', icon: '🤖', label: 'AI tạo đề' },
     ],
   },
 ]
