@@ -24,8 +24,10 @@ async function hasEmbeddings(): Promise<boolean> {
 
 
 // ── Gọi Gemini Embedding qua SDK ─────────────────────────────────────────────
-async function getEmbedding(text: string): Promise<number[]> {
-  const result = await embeddingModel.embedContent({
+async function getEmbedding(text: string, apiKey?: string): Promise<number[]> {
+  const activeGenAI = apiKey ? new GoogleGenerativeAI(apiKey) : genAI
+  const activeEmbeddingModel = activeGenAI.getGenerativeModel({ model: 'gemini-embedding-001' })
+  const result = await activeEmbeddingModel.embedContent({
     content: { parts: [{ text }], role: 'user' },
     taskType: 'RETRIEVAL_QUERY' as any,
     outputDimensionality: 768,
@@ -199,8 +201,11 @@ export async function POST(req: NextRequest) {
     const examCountStr = formData.get('exam_count') as string | null
     const examCount = Math.max(1, Math.min(10, parseInt(examCountStr || '1') || 1))
 
+    const customApiKey = formData.get('custom_api_key') as string | null
+    const activeGenAI = customApiKey ? new GoogleGenerativeAI(customApiKey) : genAI
+
     // ── Bước 1: Gọi Gemini Chat để parse ma trận ──────────────────────────
-    const chatModel = genAI.getGenerativeModel({
+    const chatModel = activeGenAI.getGenerativeModel({
       model: aiModelName,
       generationConfig: {
         responseMimeType: 'application/json',
@@ -296,7 +301,7 @@ export async function POST(req: NextRequest) {
         if (useVector && row.query_text) {
           // ── Semantic search qua pgvector ──────────────────────────────────
           try {
-            const embedding = await getEmbedding(row.query_text)
+            const embedding = await getEmbedding(row.query_text, customApiKey || undefined)
             const vectorStr = `[${embedding.join(',')}]`
 
             let { data, error } = await supabase.rpc('match_questions', {

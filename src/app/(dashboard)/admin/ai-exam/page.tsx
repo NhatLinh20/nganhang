@@ -140,6 +140,7 @@ export default function AiExamPage() {
   // AI Settings state
   const [aiModel, setAiModel] = useState('gemini-flash-latest')
   const [temperature, setTemperature] = useState('0.7')
+  const [customApiKey, setCustomApiKey] = useState('')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -276,6 +277,9 @@ export default function AiExamPage() {
       formData.append('model', aiModel)
       formData.append('temperature', temperature)
       formData.append('exam_count', String(examCount))
+      if (customApiKey.trim()) {
+        formData.append('custom_api_key', customApiKey.trim())
+      }
 
       setLoadingStep(2)
       const res = await fetch('/api/ai/create-exam', {
@@ -667,29 +671,26 @@ export default function AiExamPage() {
       <Header
         title="AI Tạo Đề Thi"
         subtitle="Dùng Gemini AI để tạo đề thi từ yêu cầu văn bản hoặc ảnh ma trận"
+        actions={
+          <button
+            onClick={handleReset}
+            className={styles.resetBtn}
+            title="Làm mới trang (Xóa toàn bộ dữ liệu đang làm việc)"
+          >
+            🧹 Làm mới
+          </button>
+        }
       />
 
       <div className={styles.layout}>
         {/* ═══ LEFT PANEL ═══ */}
         <div className={styles.leftPanel}>
-          <div className={styles.panelHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-            <div>
-              <p className={styles.panelTitle}>✨ Tạo ma trận đề thi</p>
-              <p className={styles.panelSubtitle}>Nhập yêu cầu bằng văn bản hoặc upload ảnh ma trận</p>
-            </div>
-            <button
-              onClick={handleReset}
-              className={styles.resetBtn}
-              title="Làm mới trang (Xóa toàn bộ dữ liệu đang làm việc)"
-            >
-              🧹 Làm mới
-            </button>
-          </div>
+
 
           <div className={styles.chatContainer}>
             {/* Number of Exams - Moved to top */}
-            <div style={{ padding: '12px 16px 0 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div className={styles.settingsLabel} style={{ margin: 0 }}>Số đề cần tạo:</div>
+            <div style={{ padding: '10px 14px', margin: '16px 16px 0 16px', display: 'flex', alignItems: 'center', gap: '12px', background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+              <div className={styles.settingsLabel} style={{ margin: 0, color: '#1e40af' }}>Số đề cần tạo:</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
                   type="number"
@@ -702,16 +703,17 @@ export default function AiExamPage() {
                   }}
                   style={{
                     width: '64px',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--color-border)',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid #93c5fd',
                     fontSize: '14px',
                     textAlign: 'center',
-                    background: 'var(--color-bg-primary)',
-                    color: 'var(--color-text-primary)',
+                    background: 'white',
+                    color: '#1e3a8a',
+                    fontWeight: 600,
                   }}
                 />
-                <span style={{ fontSize: '13px', color: 'var(--color-text-tertiary)' }}>đề (tối đa 4)</span>
+                <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>đề (tối đa 4)</span>
               </div>
             </div>
 
@@ -838,13 +840,39 @@ export default function AiExamPage() {
 
           {/* AI Settings (Mimicking Google AI Studio) */}
           <div className={styles.aiSettings}>
-            <div className={styles.settingsGroup}>
-              <div className={styles.settingsLabel}>Model Selection</div>
-              <select className={styles.selectBox} value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
+            <div className={styles.settingsGroup} style={{ background: '#fce7f3', border: '1px solid #fbcfe8', borderRadius: '8px', padding: '12px' }}>
+              <div className={styles.settingsLabel} style={{ color: '#be185d' }}>Model Selection</div>
+              <select 
+                className={styles.selectBox} 
+                value={aiModel} 
+                onChange={(e) => setAiModel(e.target.value)}
+                style={{ 
+                  background: 'white', 
+                  color: '#9d174d', 
+                  borderColor: '#f9a8d4', 
+                  fontWeight: 500,
+                  marginTop: '8px'
+                }}
+              >
                 <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-flash-latest">Gemini Flash Latest</option>
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               </select>
+              <div className={styles.settingsLabel} style={{ color: '#be185d', marginTop: '12px' }}>API Key (Tùy chọn)</div>
+              <input 
+                type="password"
+                className={styles.selectBox}
+                placeholder="Nhập API Key của bạn..."
+                value={customApiKey}
+                onChange={(e) => setCustomApiKey(e.target.value)}
+                style={{ 
+                  background: 'white', 
+                  color: '#9d174d', 
+                  borderColor: '#f9a8d4', 
+                  fontWeight: 400,
+                  marginTop: '8px'
+                }}
+              />
             </div>
 
 
