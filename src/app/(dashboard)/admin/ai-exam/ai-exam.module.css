@@ -156,7 +156,8 @@
   color: var(--color-text-primary);
   font-family: inherit;
   outline: none;
-  min-height: 70px;
+  min-height: 150px;
+  height: 150px;
   padding: 0;
   box-sizing: border-box;
 }

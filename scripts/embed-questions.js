@@ -24,7 +24,9 @@ const API_KEYS = [
   'AIzaSyDwgYu6YaMqes9eWUKnxwJWQtxgM2E-h2M',
   'AIzaSyDK1x-IiWLf-EVCDEzQoQyvfHt5gN59o6o',
   'AIzaSyARyt2-YOb2L8V5VLfkhgOBBdFCnntpUDo',
-  'AIzaSyADTa4IMo-rYSvQNEts_C5Zrd5HnE4mebQ'
+  'AIzaSyADTa4IMo-rYSvQNEts_C5Zrd5HnE4mebQ',
+  'AIzaSyCLtMt9Gik6FoPW8Y6rImHf9vxX0IpFUd0',
+  'AIzaSyAzyRkrr3nOCk1khVVBP_DuHGFCy6-vFDk'
 ]
 
 let currentKeyIndex = 0
