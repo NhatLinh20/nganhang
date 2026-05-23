@@ -40,7 +40,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
       if (section.section === 'Đề thi') {
         return {
           ...section,
-          items: section.items.filter(item => item.href === '/admin/ai-exam')
+          items: section.items.filter(item => item.href === '/admin/ai-exam' || item.href === '/teacher/exams')
         }
       }
       if (section.section === 'Quản lý') {
