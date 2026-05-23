@@ -670,7 +670,7 @@ export default function AiExamPage() {
     <div className={styles.page}>
       <Header
         title="AI Tạo Đề Thi"
-        subtitle="Dùng Gemini AI để tạo đề thi từ yêu cầu văn bản hoặc ảnh ma trận"
+        subtitle="Tạo đề từ ma trận, tạo đề tương tự từ đề có sẵn bằng file ảnh/PDF"
         actions={
           <button
             onClick={handleReset}
