@@ -193,6 +193,7 @@ export interface ParsedQuestion {
   source_project?: string
   source_exam?: string
   source_teacher?: string
+  is_active?: boolean
 }
 
 export interface ImportResult {
