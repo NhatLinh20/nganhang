@@ -224,3 +224,35 @@ export interface PaginatedResponse<T> {
   page: number
   limit: number
 }
+
+// ═══════════════════════════════════
+// EXAM CREATOR (Tạo đề thi thủ công)
+// ═══════════════════════════════════
+export interface ExamQuestionSelection {
+  grade: number
+  subject_area: string
+  chapter: number
+  lesson: number
+  variant: number
+  difficulty: Difficulty
+  question_type: QuestionType
+  count: number
+}
+
+export interface ExamGenerateRequest {
+  title: string
+  grade: number
+  duration_minutes?: number
+  num_exams: number
+  selections: ExamQuestionSelection[]
+}
+
+export interface VariantStatsRow {
+  lesson: number
+  lesson_name: string
+  variant: number
+  variant_name: string
+  question_type: QuestionType
+  counts: Record<Difficulty, number>
+  total: number
+}

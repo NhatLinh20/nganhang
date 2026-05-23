@@ -1,0 +1,749 @@
+/* src/app/(dashboard)/teacher/exams/examCreator.module.css */
+
+.page {
+  height: 100vh;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════
+   MAIN TABS
+   ═══════════════════════════════════════ */
+.mainTabs {
+  display: flex;
+  background: white;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.mainTab {
+  padding: 16px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-gray-500);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mainTab:hover:not(:disabled) {
+  color: var(--color-primary-600);
+  background: var(--color-primary-50);
+}
+
+.mainTabActive {
+  color: var(--color-primary-700);
+  border-bottom-color: var(--color-primary-600);
+}
+
+.mainTab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tabIcon {
+  font-size: 16px;
+}
+
+/* ═══════════════════════════════════════
+   VIEWS
+   ═══════════════════════════════════════ */
+.viewContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+/* ═══════════════════════════════════════
+   CONFIG VIEW (Full width)
+   ═══════════════════════════════════════ */
+.configView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Top bar: Filters & Summary */
+.configTopBar {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: white;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.filterLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.filterSelect:focus {
+  border-color: var(--color-primary-400);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+/* Summary Row */
+.summaryRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--color-border);
+  flex-wrap: wrap;
+}
+
+.summaryLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.summaryBadges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.summaryBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.summaryBadge.mc { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+.summaryBadge.tf { background: #fce7f3; color: #be185d; border-color: #fbcfe8; }
+.summaryBadge.sa { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.summaryBadge.es { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
+
+.summaryBadge.nb { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.summaryBadge.th { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+.summaryBadge.vd { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.summaryBadge.vdc { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+.summaryBadge.zero {
+  opacity: 0.4;
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.clearSelBtn {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: white;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+.clearSelBtn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+/* ═══════════════════════════════════════
+   STATS TABLE (Full width)
+   ═══════════════════════════════════════ */
+.statsSection {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--color-surface);
+}
+
+.statsEmpty {
+  padding: 80px 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 15px;
+}
+
+.statsEmptyIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.statsLoading {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.statsSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary-600);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.statsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.statsTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.statsTable thead th {
+  padding: 12px 16px;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.statsTable thead th:first-child {
+  text-align: left;
+}
+
+.statsTable thead th.centered {
+  text-align: center;
+}
+
+.statsRow {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+
+.statsRow:hover {
+  background: #f8fafc;
+}
+
+.statsRow.hasSelection {
+  background: #f0fdf4;
+}
+
+.statsRow.hasSelection:hover {
+  background: #dcfce7;
+}
+
+.lessonGroupHeader {
+  padding: 12px 16px 8px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  border-top: 2px solid #e2e8f0;
+}
+
+.lessonGroupHeaderText {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statsCell {
+  padding: 10px 16px;
+  vertical-align: middle;
+}
+
+.variantInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.variantName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-gray-900);
+}
+
+.variantSub {
+  font-size: 12px;
+  color: var(--color-gray-500);
+}
+
+/* Badge loại câu hỏi */
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.typeBadge.mc { background: #dbeafe; color: #1d4ed8; }
+.typeBadge.tf { background: #fce7f3; color: #be185d; }
+.typeBadge.sa { background: #fef3c7; color: #b45309; }
+.typeBadge.es { background: #f3e8ff; color: #7e22ce; }
+
+/* Count cell với input số */
+.countCell {
+  text-align: center;
+  min-width: 80px;
+}
+
+.countCellInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.countAvailable {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  width: 30px;
+  text-align: left;
+}
+
+.countAvailable.zero {
+  color: #cbd5e1;
+}
+
+.countInput {
+  width: 50px;
+  padding: 6px 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background: white;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s;
+  -moz-appearance: textfield;
+}
+
+.countInput::-webkit-outer-spin-button,
+.countInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.countInput:focus {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.countInput:disabled {
+  background: #f8fafc;
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.countInput.hasValue {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+/* ═══════════════════════════════════════
+   BOTTOM CONFIG BAR (Full width)
+   ═══════════════════════════════════════ */
+.configBottomBar {
+  padding: 16px 24px;
+  background: white;
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.configInputs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.configInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.configInputLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.configInput {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: white;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.configInput:focus {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.generateBtn {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.generateBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+}
+
+.generateBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.generateBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--color-gray-400);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ═══════════════════════════════════════
+   RESULT VIEW (Full width)
+   ═══════════════════════════════════════ */
+.resultView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+.resultToolbar {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.resultTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.resultStats {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.statBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.statBadge .count {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.statBadge .countWarn {
+  background: #fef3c7;
+  color: #b45309;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.resultActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Exam tabs */
+.examTabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px 0;
+  background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.examTab {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  margin-bottom: -2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.examTab:hover {
+  color: #0369a1;
+  background: rgba(255,255,255,0.5);
+}
+
+.examTabActive {
+  color: #0369a1;
+  background: white;
+  border-color: #e2e8f0;
+  border-bottom-color: white;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
+}
+
+.examTabBadge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.examTabBadgeActive {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.examTabBadgeInactive {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+/* Stats bar */
+.statsBar {
+  display: flex;
+  gap: 24px;
+  padding: 12px 24px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.statsBarLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statsBarGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statsBarDivider {
+  width: 1px;
+  height: 24px;
+  background: #cbd5e1;
+}
+
+.questionTableArea {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Warning banner */
+.warningBanner {
+  padding: 12px 24px;
+  background: #fffbeb;
+  border-bottom: 1px solid #fcd34d;
+  font-size: 13px;
+  color: #92400e;
+  flex-shrink: 0;
+}
+
+/* Table */
+.aiExamTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.aiExamTable th,
+.aiExamTable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.aiExamTable thead th {
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+/* Loaders & Empty */
+.loadingState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.loadingSpinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-primary-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loadingText {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.emptyIcon {
+  font-size: 64px;
+  opacity: 0.4;
+}
+
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.emptySubtitle {
+  font-size: 14px;
+  max-width: 400px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}

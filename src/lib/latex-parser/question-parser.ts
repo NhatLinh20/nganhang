@@ -65,6 +65,7 @@ export function parseQuestion(
       image_type,
       correct_answer,
       source_file: sourceFile,
+      is_active: true,
       ...sourceMeta,
     }
 
