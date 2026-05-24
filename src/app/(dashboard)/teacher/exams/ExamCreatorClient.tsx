@@ -1183,10 +1183,10 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                                       margin: 0, padding: '16px', background: 'white', border: '1px solid #cbd5e1', 
                                       borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap', fontFamily: 'monospace', 
                                       lineHeight: 1.6, color: '#1e293b',
-                                      WebkitUserSelect: userRole !== 'admin' ? 'none' : 'auto',
-                                      MozUserSelect: userRole !== 'admin' ? 'none' : 'auto',
-                                      msUserSelect: userRole !== 'admin' ? 'none' : 'auto',
-                                      userSelect: userRole !== 'admin' ? 'none' : 'auto'
+                                      WebkitUserSelect: userRole !== 'admin' ? 'none' : undefined,
+                                      MozUserSelect: userRole !== 'admin' ? 'none' : undefined,
+                                      msUserSelect: userRole !== 'admin' ? 'none' : undefined,
+                                      userSelect: userRole !== 'admin' ? 'none' : undefined
                                     }}
                                     onCopy={(e) => {
                                       if (userRole !== 'admin') {

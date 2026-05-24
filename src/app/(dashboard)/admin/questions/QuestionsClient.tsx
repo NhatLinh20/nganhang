@@ -731,10 +731,10 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                                   <pre 
                                     className={styles.latexCode}
                                     style={{ 
-                                      WebkitUserSelect: isAdmin ? 'auto' : 'none',
-                                      MozUserSelect: isAdmin ? 'auto' : 'none',
-                                      msUserSelect: isAdmin ? 'auto' : 'none',
-                                      userSelect: isAdmin ? 'auto' : 'none' 
+                                      WebkitUserSelect: isAdmin ? undefined : 'none',
+                                      MozUserSelect: isAdmin ? undefined : 'none',
+                                      msUserSelect: isAdmin ? undefined : 'none',
+                                      userSelect: isAdmin ? undefined : 'none' 
                                     }}
                                     onCopy={(e) => {
                                       if (!isAdmin) {
