@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useRouter } from 'next/navigation'
 import styles from './examCreator.module.css'
 import tableStyles from '../../admin/questions/questions.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
@@ -66,6 +67,7 @@ const generateUniqueExamCodes = (count: number): string[] => {
 }
 
 export default function ExamCreatorClient({ userRole }: { userRole: string }) {
+  const router = useRouter()
   // ─── MAIN LAYOUT STATE ──────────────────────────────────────────────────────
   const [mainTab, setMainTab] = useState<'config' | 'result'>('config')
 
@@ -120,7 +122,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const [headerLabels, setHeaderLabels] = useState<string[]>([
     'SỞ GDĐT ...',
     'TRƯỜNG THPT ...',
-    '(Đề gồm ... trang, ... câu)',
+    '(Đề chính thức)',
     'ĐỀ KIỂM TRA',
     'Môn: TOÁN',
     'Thời gian làm bài: 90 phút'
@@ -266,7 +268,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       setHeaderLabels([
         'SỞ GDĐT ...',
         'TRƯỜNG THPT ...',
-        '(Đề gồm ... trang, ... câu)',
+        '(Đề chính thức)',
         'ĐỀ KIỂM TRA',
         'Môn: TOÁN',
         'Thời gian làm bài: 90 phút'
@@ -1003,6 +1005,30 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   style={{ background: '#10b981', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px' }}
                 >
                   📥 Xuất LaTeX
+                </button>
+
+                <button
+                  className={styles.mainTab}
+                  onClick={() => {
+                    const currentAllExams = [...allExamsQuestions]
+                    if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions
+                    const sourceExams = currentAllExams.length > 0
+                      ? currentAllExams.map(qs => ({ questions: qs }))
+                      : [{ questions }]
+                    localStorage.setItem('shuffle-source-exams', JSON.stringify({
+                      sourceExams,
+                      headerLabels,
+                      configTitle,
+                      configDuration,
+                      filterGrade,
+                    }))
+                    localStorage.removeItem('shuffle-page-state')
+                    router.push('/teacher/shuffle')
+                  }}
+                  disabled={questions.length === 0}
+                  style={{ background: '#6366f1', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px', borderRadius: 6, cursor: questions.length > 0 ? 'pointer' : 'not-allowed', opacity: questions.length > 0 ? 1 : 0.5 }}
+                >
+                  🔀 Chuyển sang Trộn đề
                 </button>
 
               </div>

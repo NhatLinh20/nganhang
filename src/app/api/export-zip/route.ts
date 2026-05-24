@@ -445,7 +445,7 @@ function buildMaTranTex(
     : [
         'SỞ GDĐT ...',
         'TRƯỜNG THPT ...',
-        `(Đề gồm ... trang, ... câu)`,
+        `(Đề chính thức)`,
         title || 'ĐỀ KIỂM TRA',
         `Môn: TOÁN ${grade}`,
         `Thời gian làm bài: 90 phút (không kể thời gian phát đề)`

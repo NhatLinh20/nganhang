@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import styles from './ai-exam.module.css'
 import tableStyles from '../questions/questions.module.css'
@@ -95,6 +96,7 @@ const generateUniqueExamCodes = (count: number): string[] => {
 }
 
 export default function AiExamPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<'chat' | 'upload'>('chat')
   const [prompt, setPrompt] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -114,7 +116,7 @@ export default function AiExamPage() {
   const [headerLabels, setHeaderLabels] = useState<string[]>([
     'SỞ GDĐT ...',
     'TRƯỜNG THPT ...',
-    '(Đề gồm ... trang, ... câu)',
+    '(Đề chính thức)',
     'ĐỀ KIỂM TRA',
     'Môn: TOÁN',
     'Thời gian làm bài: 90 phút'
@@ -956,6 +958,30 @@ export default function AiExamPage() {
                     style={{ background: '#10b981', color: 'white', border: 'none' }}
                   >
                     📥 Xuất LaTeX (.tex)
+                  </button>
+
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => {
+                      const currentAllExams = [...allExamsQuestions]
+                      if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions
+                      const sourceExams = currentAllExams.length > 0
+                        ? currentAllExams.map(qs => ({ questions: qs }))
+                        : [{ questions }]
+                      localStorage.setItem('shuffle-source-exams', JSON.stringify({
+                        sourceExams,
+                        headerLabels,
+                        configTitle: result?.exam_info?.title || 'Đề thi mới',
+                        configDuration: result?.exam_info?.duration || 90,
+                        filterGrade: result?.exam_info?.grade || 12,
+                      }))
+                      localStorage.removeItem('shuffle-page-state')
+                      router.push('/teacher/shuffle')
+                    }}
+                    disabled={questions.length === 0}
+                    style={{ background: '#6366f1', color: 'white', border: 'none' }}
+                  >
+                    🔀 Chuyển sang Trộn đề
                   </button>
 
                 </div>
