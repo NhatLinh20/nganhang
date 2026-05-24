@@ -126,6 +126,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     'Thời gian làm bài: 90 phút'
   ])
 
+  const [excelOption, setExcelOption] = useState<string>('none')
+
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
   const [isLoaded, setIsLoaded] = useState(false)
   
@@ -154,6 +156,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         if (parsed.swappedOutIds) setSwappedOutIds(parsed.swappedOutIds)
         if (parsed.examCodes) setExamCodes(parsed.examCodes)
         if (parsed.headerLabels) setHeaderLabels(parsed.headerLabels)
+        if (parsed.excelOption) setExcelOption(parsed.excelOption)
       }
     } catch (e) {
       console.error('Failed to load manual exam state', e)
@@ -167,7 +170,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
       selections, configTitle, configDuration, configNumExams,
       hasGenerated, activeExamIndex, questions, allExamsQuestions,
-      examStats, warnings, swappedOutIds, examCodes, headerLabels
+      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption
     }
     try {
       localStorage.setItem('manual-exam-state', JSON.stringify(stateToSave))
@@ -178,7 +181,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     isLoaded, mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
     selections, configTitle, configDuration, configNumExams,
     hasGenerated, activeExamIndex, questions, allExamsQuestions,
-    examStats, warnings, swappedOutIds, examCodes, headerLabels
+    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption
   ])
 
   const fetchStats = useCallback(async () => {
@@ -268,6 +271,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         'Môn: TOÁN',
         'Thời gian làm bài: 90 phút'
       ])
+      setExcelOption('none')
     }
   }
 
@@ -545,9 +549,10 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       const payload: any = {
         title: configTitle || 'De_Thi',
         headerLabels,
-        examCodes,
+        examCodes: currentAllExams.length > 1 ? examCodes : undefined,
         duration: configDuration || 90,
         grade: filterGrade || 12,
+        excelOption: excelOption,
       };
 
       if (currentAllExams.length > 1) {
@@ -556,6 +561,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
             id: q.id,
             latex_content: q.latex_content,
             question_type: q.question_type,
+            correct_answer: q.correct_answer ?? '',
             phan: q.phan,
           })),
         }));
@@ -564,6 +570,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
           id: q.id,
           latex_content: q.latex_content,
           question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '',
           phan: q.phan,
         }));
       }
@@ -1224,9 +1231,23 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       {showExportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 720, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
+                  <select 
+                    value={excelOption} 
+                    onChange={e => setExcelOption(e.target.value)}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, outline: 'none', background: '#f8fafc', minWidth: 200 }}
+                  >
+                    <option value="none">Không xuất bảng đáp án</option>
+                    <option value="all">Xuất tất cả các loại bảng</option>
+                    <option value="azota">Xuất bảng Azota</option>
+                    <option value="tnmaker">Xuất bảng TNMaker</option>
+                    <option value="olm">Xuất bảng OLM</option>
+                  </select>
+                </div>
               </div>
               <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>

@@ -121,6 +121,8 @@ export default function AiExamPage() {
   ])
   const [examCodes, setExamCodes] = useState<string[]>([''])
 
+  const [excelOption, setExcelOption] = useState<string>('none')
+
   // Multi-exam states
   const [examCount, setExamCount] = useState(1)
   const [activeExamIndex, setActiveExamIndex] = useState(0)
@@ -189,6 +191,7 @@ export default function AiExamPage() {
           }
         }
         if (parsed.temperature !== undefined) setTemperature(parsed.temperature)
+        if (parsed.excelOption) setExcelOption(parsed.excelOption)
       }
     } catch (e) {
       console.error('Failed to load state', e)
@@ -213,7 +216,8 @@ export default function AiExamPage() {
       temperature,
       examCount,
       activeExamIndex,
-      allExamsQuestions
+      allExamsQuestions,
+      excelOption
     }
     try {
       localStorage.setItem('ai-exam-state', JSON.stringify(stateToSave))
@@ -532,6 +536,7 @@ export default function AiExamPage() {
         examCodes: examCodes,
         duration: result?.exam_info?.duration || 90,
         grade: result?.exam_info?.grade || 12,
+        excelOption: excelOption,
       };
 
       if (currentAllExams.length > 1) {
@@ -541,6 +546,7 @@ export default function AiExamPage() {
             id: q.id,
             latex_content: q.latex_content,
             question_type: q.question_type,
+            correct_answer: q.correct_answer ?? '',
             phan: q.phan,
           })),
         }));
@@ -550,6 +556,7 @@ export default function AiExamPage() {
           id: q.id,
           latex_content: q.latex_content,
           question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '',
           phan: q.phan,
         }));
       }
@@ -1276,17 +1283,34 @@ export default function AiExamPage() {
             border: '1px solid #e2e8f0', color: '#0f172a',
             maxHeight: '90vh', overflowY: 'auto',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
                 <h3 style={{ fontSize: '20px', fontWeight: 700, margin: 0, color: '#0f172a' }}>📝 Nội dung tiêu đề đề thi</h3>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>Chỉnh sửa 6 dòng nội dung hiển thị ở phần đầu đề thi trước khi xuất file LaTeX</p>
               </div>
-              <button
-                onClick={() => setShowExportModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
-              >
-                ✕
-              </button>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
+                  <select 
+                    value={excelOption} 
+                    onChange={e => setExcelOption(e.target.value)}
+                    style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#f8fafc', minWidth: '180px' }}
+                  >
+                    <option value="none">Không xuất bảng đáp án</option>
+                    <option value="all">Xuất tất cả các loại bảng</option>
+                    <option value="azota">Xuất bảng Azota</option>
+                    <option value="tnmaker">Xuất bảng TNMaker</option>
+                    <option value="olm">Xuất bảng OLM</option>
+                  </select>
+                </div>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Two-column layout matching the exam header */}
