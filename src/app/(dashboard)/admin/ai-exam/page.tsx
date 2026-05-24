@@ -497,15 +497,29 @@ export default function AiExamPage() {
     const currentAllExams = [...allExamsQuestions];
     if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
 
-    // --- GIỚI HẠN GIÁO VIÊN: TỐI ĐA 30 CÂU/ĐỀ ---
+    // --- GIỚI HẠN GIÁO VIÊN: TỐI ĐA 30 CÂU/ĐỀ VÀ TỪNG PHẦN ---
     if (userRole !== 'admin') {
-      const isOverLimit = currentAllExams.length > 0
-        ? currentAllExams.some(qs => qs.length > 30)
-        : questions.length > 30;
+      const examsToCheck = currentAllExams.length > 0 ? currentAllExams : [questions];
+      
+      for (let i = 0; i < examsToCheck.length; i++) {
+        const qs = examsToCheck[i];
         
-      if (isOverLimit) {
-        alert('Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
-        return;
+        // Giới hạn tổng
+        if (qs.length > 30) {
+          alert('Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
+          return;
+        }
+
+        // Giới hạn từng phần
+        const mcCount = qs.filter(q => q.question_type === 'multiple_choice').length;
+        const tfCount = qs.filter(q => q.question_type === 'true_false').length;
+        const saCount = qs.filter(q => q.question_type === 'short_answer').length;
+        const esCount = qs.filter(q => q.question_type === 'essay').length;
+
+        if (mcCount > 25 || tfCount > 4 || saCount > 6 || esCount > 6) {
+          alert(`Tài khoản giáo viên bị giới hạn số câu ở đề số ${i+1}:\n- Trắc nghiệm: tối đa 25 câu (đang có ${mcCount})\n- Đúng/Sai: tối đa 4 câu (đang có ${tfCount})\n- Trả lời ngắn: tối đa 6 câu (đang có ${saCount})\n- Tự luận: tối đa 6 câu (đang có ${esCount})\n\nVui lòng giảm bớt câu hỏi để tiếp tục.`);
+          return;
+        }
       }
     }
 
