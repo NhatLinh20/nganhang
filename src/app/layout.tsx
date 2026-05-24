@@ -1,5 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from 'next'
+import { createClient } from '@/lib/supabase/server'
+import SessionGuardian from '@/components/SessionGuardian'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -11,14 +13,25 @@ export const metadata: Metadata = {
   keywords: ['ngân hàng câu hỏi', 'toán THPT', 'tạo đề thi', 'luyện thi'],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  const userId = session?.user?.id
+  const activeSessionId = session?.access_token?.slice(-20)
+
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body>
+        {userId && activeSessionId && (
+          <SessionGuardian userId={userId} sessionId={activeSessionId} />
+        )}
+        {children}
+      </body>
     </html>
   )
 }

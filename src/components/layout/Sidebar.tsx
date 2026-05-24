@@ -3,6 +3,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { logout } from '@/app/actions/auth'
 import styles from './Sidebar.module.css'
 
 interface SidebarProps {
@@ -100,6 +101,11 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
             {userRole === 'admin' ? 'Quản trị viên' : userRole === 'teacher' ? 'Giáo viên' : 'Học sinh'}
           </div>
         </div>
+        <form action={logout}>
+          <button type="submit" className={styles.logoutBtn} title="Đăng xuất">
+            🚪
+          </button>
+        </form>
       </div>
     </aside>
   )
