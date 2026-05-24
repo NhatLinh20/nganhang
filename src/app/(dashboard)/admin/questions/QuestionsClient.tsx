@@ -728,7 +728,33 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                                     spellCheck={false}
                                   />
                                 ) : (
-                                  <pre className={styles.latexCode}>{q.latex_content}</pre>
+                                  <pre 
+                                    className={styles.latexCode}
+                                    style={{ 
+                                      WebkitUserSelect: isAdmin ? 'auto' : 'none',
+                                      MozUserSelect: isAdmin ? 'auto' : 'none',
+                                      msUserSelect: isAdmin ? 'auto' : 'none',
+                                      userSelect: isAdmin ? 'auto' : 'none' 
+                                    }}
+                                    onCopy={(e) => {
+                                      if (!isAdmin) {
+                                        e.preventDefault()
+                                        alert('Tính năng copy mã nguồn chỉ dành cho quản trị viên.')
+                                      }
+                                    }}
+                                    onContextMenu={(e) => {
+                                      if (!isAdmin) {
+                                        e.preventDefault()
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (!isAdmin && (e.ctrlKey || e.metaKey) && e.key === 'c') {
+                                        e.preventDefault()
+                                      }
+                                    }}
+                                  >
+                                    {q.latex_content}
+                                  </pre>
                                 )}
                               </div>
                             </td>

@@ -515,6 +515,18 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     const currentAllExams = [...allExamsQuestions];
     if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
     
+    // --- GIỚI HẠN GIÁO VIÊN: TỐI ĐA 30 CÂU/ĐỀ ---
+    if (userRole !== 'admin') {
+      const isOverLimit = currentAllExams.length > 0
+        ? currentAllExams.some(qs => qs.length > 30)
+        : questions.length > 30;
+        
+      if (isOverLimit) {
+        alert('Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
+        return;
+      }
+    }
+
     try {
       const payload: any = {
         title: configTitle || 'De_Thi',
@@ -655,9 +667,13 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
             <div className={styles.configInputGroup} style={{ width: 100, position: 'relative' }}>
               <input 
                 type="number" 
-                min={1} max={20}
+                min={1} max={userRole !== 'admin' ? 4 : 20}
                 value={configNumExams}
-                onChange={e => setConfigNumExams(parseInt(e.target.value) || 1)}
+                onChange={e => {
+                  let val = parseInt(e.target.value) || 1;
+                  if (userRole !== 'admin' && val > 4) val = 4;
+                  setConfigNumExams(val);
+                }}
                 className={styles.configInput}
                 style={{ padding: '8px 12px', paddingRight: '28px' }}
                 title="Số lượng đề"

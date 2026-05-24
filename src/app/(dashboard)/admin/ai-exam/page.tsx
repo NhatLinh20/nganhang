@@ -5,6 +5,7 @@ import styles from './ai-exam.module.css'
 import tableStyles from '../questions/questions.module.css'
 import { VARIANT_NAMES, CHAPTER_NAMES, LESSON_NAMES } from '@/lib/curriculum-labels'
 import { CURRICULUM } from '../questions/QuestionsClient'
+import { createClient } from '@/lib/supabase/client'
 
 interface ExamQuestion {
   id: string
@@ -137,13 +138,23 @@ export default function AiExamPage() {
   const [customVariant, setCustomVariant] = useState<string>('')
   
   // AI Settings state
-  const [aiModel, setAiModel] = useState('gemini-flash-latest')
+  const [aiModel, setAiModel] = useState('gemini-3.5-flash')
   const [temperature, setTemperature] = useState('0.7')
   const [customApiKey, setCustomApiKey] = useState('')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [isLoaded, setIsLoaded] = useState(false)
+  const [userRole, setUserRole] = useState('')
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      setUserRole(data?.user?.user_metadata?.role || '')
+    }
+    fetchUser()
+  }, [])
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -172,7 +183,7 @@ export default function AiExamPage() {
         if (parsed.allExamsQuestions !== undefined) setAllExamsQuestions(parsed.allExamsQuestions)
         if (parsed.aiModel) {
           if (parsed.aiModel.includes('pro')) {
-            setAiModel('gemini-flash-latest')
+            setAiModel('gemini-3.5-flash')
           } else {
             setAiModel(parsed.aiModel)
           }
@@ -482,13 +493,23 @@ export default function AiExamPage() {
   // Export created exam as a ZIP containing main.tex, khaibaochung.tex, ma_tran_de_thi_toanN.tex and sty packages
   const handleExportTex = async () => {
     if (questions.length === 0) return;
-    const title = result?.exam_info?.title || 'Đề thi mới';
 
-    // Sync current active exam before export
     const currentAllExams = [...allExamsQuestions];
-    if (currentAllExams.length > 0) {
-      currentAllExams[activeExamIndex] = questions;
+    if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
+
+    // --- GIỚI HẠN GIÁO VIÊN: TỐI ĐA 30 CÂU/ĐỀ ---
+    if (userRole !== 'admin') {
+      const isOverLimit = currentAllExams.length > 0
+        ? currentAllExams.some(qs => qs.length > 30)
+        : questions.length > 30;
+        
+      if (isOverLimit) {
+        alert('Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
+        return;
+      }
     }
+
+    const title = result?.exam_info?.title || 'Đề thi mới';
     
     try {
       const bodyPayload: Record<string, unknown> = {
@@ -603,11 +624,12 @@ export default function AiExamPage() {
                 <input
                   type="number"
                   min={1}
-                  max={4}
+                  max={userRole !== 'admin' ? 4 : 20}
                   value={examCount}
                   onChange={(e) => {
-                    const v = Math.max(1, Math.min(4, parseInt(e.target.value) || 1))
-                    setExamCount(v)
+                    let v = parseInt(e.target.value) || 1
+                    if (userRole !== 'admin' && v > 4) v = 4
+                    setExamCount(Math.max(1, v))
                   }}
                   style={{
                     width: '64px',
@@ -621,7 +643,7 @@ export default function AiExamPage() {
                     fontWeight: 600,
                   }}
                 />
-                <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>đề (tối đa 4)</span>
+                <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>đề (tối đa {userRole !== 'admin' ? 4 : 20})</span>
               </div>
             </div>
 
@@ -1177,7 +1199,35 @@ export default function AiExamPage() {
                                           Raw LaTeX — {q.category_code} • {TYPE_LABELS[q.question_type]}
                                         </span>
                                       </div>
-                                      <pre className={tableStyles.latexCode} style={{ margin: 0, padding: '12px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: '#334155' }}>
+                                      <pre 
+                                        className={tableStyles.latexCode} 
+                                        onCopy={(e) => {
+                                          if (userRole !== 'admin') {
+                                            e.preventDefault()
+                                            alert('Tính năng copy mã nguồn chỉ dành cho quản trị viên.')
+                                          }
+                                        }}
+                                        onContextMenu={(e) => {
+                                          if (userRole !== 'admin') {
+                                            e.preventDefault()
+                                          }
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (userRole !== 'admin' && (e.ctrlKey || e.metaKey) && e.key === 'c') {
+                                            e.preventDefault()
+                                          }
+                                        }}
+                                        style={{ 
+                                          margin: 0, padding: '12px', background: 'white', 
+                                          border: '1px solid #cbd5e1', borderRadius: '6px', 
+                                          fontSize: '13px', whiteSpace: 'pre-wrap', 
+                                          fontFamily: 'monospace', color: '#334155',
+                                          WebkitUserSelect: userRole !== 'admin' ? 'none' : 'auto',
+                                          MozUserSelect: userRole !== 'admin' ? 'none' : 'auto',
+                                          msUserSelect: userRole !== 'admin' ? 'none' : 'auto',
+                                          userSelect: userRole !== 'admin' ? 'none' : 'auto'
+                                        }}
+                                      >
                                         {q.latex_content}
                                       </pre>
                                     </div>
