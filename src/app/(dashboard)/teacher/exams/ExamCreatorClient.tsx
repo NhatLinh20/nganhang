@@ -1231,23 +1231,9 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       {showExportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 720, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
-                  <select 
-                    value={excelOption} 
-                    onChange={e => setExcelOption(e.target.value)}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, outline: 'none', background: '#f8fafc', minWidth: 200 }}
-                  >
-                    <option value="none">Không xuất bảng đáp án</option>
-                    <option value="all">Xuất tất cả các loại bảng</option>
-                    <option value="azota">Xuất bảng Azota</option>
-                    <option value="tnmaker">Xuất bảng TNMaker</option>
-                    <option value="olm">Xuất bảng OLM</option>
-                  </select>
-                </div>
               </div>
               <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>
@@ -1333,9 +1319,25 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
-              <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
+                <select 
+                  value={excelOption} 
+                  onChange={e => setExcelOption(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, outline: 'none', background: '#f8fafc', minWidth: 200 }}
+                >
+                  <option value="none">Không xuất bảng đáp án</option>
+                  <option value="all">Xuất tất cả các loại bảng</option>
+                  <option value="azota">Xuất bảng Azota</option>
+                  <option value="tnmaker">Xuất bảng TNMaker</option>
+                  <option value="olm">Xuất bảng OLM</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
+                <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+              </div>
             </div>
           </div>
         </div>

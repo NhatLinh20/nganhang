@@ -115,9 +115,9 @@ export default function AiExamPage() {
     'SỞ GDĐT ...',
     'TRƯỜNG THPT ...',
     '(Đề gồm ... trang, ... câu)',
-    'ĐỀ KIỂM TRA HỌC KỲ',
-    'Môn: TOÁN 12',
-    'Thời gian làm bài: 90 phút (không kể thời gian phát đề)'
+    'ĐỀ KIỂM TRA',
+    'Môn: TOÁN',
+    'Thời gian làm bài: 90 phút'
   ])
   const [examCodes, setExamCodes] = useState<string[]>([''])
 
@@ -1278,113 +1278,43 @@ export default function AiExamPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
         }}>
           <div style={{
-            background: 'white', borderRadius: '16px', width: '100%', maxWidth: '680px',
-            padding: '28px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            background: 'white', borderRadius: '16px', width: '100%', maxWidth: '720px',
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
             border: '1px solid #e2e8f0', color: '#0f172a',
             maxHeight: '90vh', overflowY: 'auto',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ fontSize: '20px', fontWeight: 700, margin: 0, color: '#0f172a' }}>📝 Nội dung tiêu đề đề thi</h3>
-                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>Chỉnh sửa 6 dòng nội dung hiển thị ở phần đầu đề thi trước khi xuất file LaTeX</p>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, margin: 0, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
-                  <select 
-                    value={excelOption} 
-                    onChange={e => setExcelOption(e.target.value)}
-                    style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#f8fafc', minWidth: '180px' }}
-                  >
-                    <option value="none">Không xuất bảng đáp án</option>
-                    <option value="all">Xuất tất cả các loại bảng</option>
-                    <option value="azota">Xuất bảng Azota</option>
-                    <option value="tnmaker">Xuất bảng TNMaker</option>
-                    <option value="olm">Xuất bảng OLM</option>
-                  </select>
-                </div>
-                <button
-                  onClick={() => setShowExportModal(false)}
-                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}
-                >
-                  ✕
-                </button>
-              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}
+              >
+                ✕
+              </button>
             </div>
 
             {/* Two-column layout matching the exam header */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px',
-              marginBottom: '20px',
-            }}>
-              {/* Left column */}
-              <div style={{
-                background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '16px',
-              }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#991b1b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>🔴 Cột trái</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div style={{ background: '#fef2f2', padding: 16, borderRadius: 12, border: '1px solid #fecaca' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT TRÁI</div>
                 {[0, 1, 2].map(i => (
-                  <div key={i} style={{ marginBottom: i < 2 ? '10px' : 0 }}>
-                    <label style={{
-                      display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px',
-                      color: i === 0 ? '#dc2626' : i === 1 ? '#2563eb' : '#475569',
-                    }}>
-                      {i === 0 ? 'Dòng 1 (đỏ, in hoa, đậm)' : i === 1 ? 'Dòng 2 (xanh, đậm)' : 'Dòng 3 (nghiêng)'}
-                    </label>
-                    <input
-                      type="text"
-                      value={headerLabels[i]}
-                      onChange={e => {
-                        const newLabels = [...headerLabels]
-                        newLabels[i] = e.target.value
-                        setHeaderLabels(newLabels)
-                      }}
-                      style={{
-                        width: '100%', padding: '8px 12px', borderRadius: '8px',
-                        border: '1px solid #d1d5db', fontSize: '14px',
-                        background: 'white', color: '#0f172a',
-                        fontWeight: i === 0 ? 700 : i === 1 ? 600 : 400,
-                        fontStyle: i === 2 ? 'italic' : 'normal',
-                        ...(i === 0 ? { color: '#dc2626', textTransform: 'uppercase' as const } : {}),
-                        ...(i === 1 ? { color: '#2563eb' } : {}),
-                      }}
-                      placeholder={i === 0 ? 'VD: SỞ GDĐT AN GIANG' : i === 1 ? 'VD: TRƯỜNG THPT ...' : 'VD: (Đề gồm ... trang, ... câu)'}
-                    />
+                  <div key={i} style={{ marginBottom: 8 }}>
+                    <input type="text" value={headerLabels[i]} onChange={e => {
+                      const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
+                    }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #fca5a5', fontSize: 13, outline: 'none' }} />
                   </div>
                 ))}
               </div>
-
-              {/* Right column */}
-              <div style={{
-                background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '16px',
-              }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>🔵 Cột phải</div>
+              <div style={{ background: '#eff6ff', padding: 16, borderRadius: 12, border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT PHẢI</div>
                 {[3, 4, 5].map(i => (
-                  <div key={i} style={{ marginBottom: i < 5 ? '10px' : 0 }}>
-                    <label style={{
-                      display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px',
-                      color: i === 3 ? '#0f172a' : i === 4 ? '#0f172a' : '#475569',
-                    }}>
-                      {i === 3 ? 'Dòng 4 (in hoa, đậm)' : i === 4 ? 'Dòng 5 (đậm)' : 'Dòng 6 (nghiêng)'}
-                    </label>
-                    <input
-                      type="text"
-                      value={headerLabels[i]}
-                      onChange={e => {
-                        const newLabels = [...headerLabels]
-                        newLabels[i] = e.target.value
-                        setHeaderLabels(newLabels)
-                      }}
-                      style={{
-                        width: '100%', padding: '8px 12px', borderRadius: '8px',
-                        border: '1px solid #d1d5db', fontSize: '14px',
-                        background: 'white', color: '#0f172a',
-                        fontWeight: i <= 4 ? 700 : 400,
-                        fontStyle: i === 5 ? 'italic' : 'normal',
-                        ...(i === 3 ? { textTransform: 'uppercase' as const } : {}),
-                      }}
-                      placeholder={i === 3 ? 'VD: ĐỀ KIỂM TRA HỌC KỲ' : i === 4 ? 'VD: Môn: TOÁN 12' : 'VD: Thời gian làm bài: 90 phút ...'}
-                    />
+                  <div key={i} style={{ marginBottom: 8 }}>
+                    <input type="text" value={headerLabels[i]} onChange={e => {
+                      const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
+                    }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #93c5fd', fontSize: 13, outline: 'none' }} />
                   </div>
                 ))}
               </div>
@@ -1393,9 +1323,9 @@ export default function AiExamPage() {
             {/* Preview */}
             <div style={{
               background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px',
-              padding: '16px', marginBottom: '20px',
+              padding: '12px', marginBottom: '16px',
             }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '10px', textTransform: 'uppercase' }}>👁 Xem trước tiêu đề đề thi</div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>👁 Xem trước tiêu đề đề thi</div>
               <div style={{ display: 'flex', gap: '0' }}>
                 {/* Left preview */}
                 <div style={{ flex: '0 0 40%', textAlign: 'center', padding: '8px' }}>
@@ -1419,8 +1349,8 @@ export default function AiExamPage() {
 
             {/* Exam Codes */}
             <div style={{
-              background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px',
-              padding: '16px', marginBottom: '20px',
+              background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px',
+              padding: '16px', marginBottom: '16px',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.03em' }}>🔢 Mã đề thi</div>
@@ -1476,28 +1406,44 @@ export default function AiExamPage() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                onClick={() => setShowExportModal(false)}
-                style={{
-                  padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
-                  background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: '14px', fontWeight: 500
-                }}
-              >
-                Hủy bỏ
-              </button>
-              <button
-                onClick={() => { setShowExportModal(false); handleExportTex(); }}
-                style={{
-                  padding: '10px 24px', borderRadius: '8px', border: 'none',
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white',
-                  cursor: 'pointer', fontSize: '14px', fontWeight: 700,
-                  boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
-                  transition: 'all 0.2s',
-                }}
-              >
-                📥 Xuất file .tex
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
+                <select 
+                  value={excelOption} 
+                  onChange={e => setExcelOption(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#f8fafc', minWidth: '180px' }}
+                >
+                  <option value="none">Không xuất bảng đáp án</option>
+                  <option value="all">Xuất tất cả các loại bảng</option>
+                  <option value="azota">Xuất bảng Azota</option>
+                  <option value="tnmaker">Xuất bảng TNMaker</option>
+                  <option value="olm">Xuất bảng OLM</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  style={{
+                    padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                    background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: '14px', fontWeight: 500
+                  }}
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={() => { setShowExportModal(false); handleExportTex(); }}
+                  style={{
+                    padding: '10px 24px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white',
+                    cursor: 'pointer', fontSize: '14px', fontWeight: 700,
+                    boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  📥 Xuất file .tex
+                </button>
+              </div>
             </div>
           </div>
         </div>
