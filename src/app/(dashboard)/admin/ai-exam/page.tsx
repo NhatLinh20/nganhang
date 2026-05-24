@@ -1243,10 +1243,10 @@ export default function AiExamPage() {
                                           border: '1px solid #cbd5e1', borderRadius: '6px', 
                                           fontSize: '13px', whiteSpace: 'pre-wrap', 
                                           fontFamily: 'monospace', color: '#334155',
-                                          WebkitUserSelect: userRole !== 'admin' ? 'none' : 'auto',
-                                          MozUserSelect: userRole !== 'admin' ? 'none' : 'auto',
-                                          msUserSelect: userRole !== 'admin' ? 'none' : 'auto',
-                                          userSelect: userRole !== 'admin' ? 'none' : 'auto'
+                                          WebkitUserSelect: userRole !== 'admin' ? 'none' : undefined,
+                                          MozUserSelect: userRole !== 'admin' ? 'none' : undefined,
+                                          msUserSelect: userRole !== 'admin' ? 'none' : undefined,
+                                          userSelect: userRole !== 'admin' ? 'none' : undefined
                                         }}
                                       >
                                         {q.latex_content}
