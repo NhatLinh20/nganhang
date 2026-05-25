@@ -66,7 +66,7 @@ export async function getUsers(status: 'pending' | 'approved'): Promise<{ data?:
 
   // Để đơn giản, ta sẽ mock provider là 'email' hoặc 'google' dựa trên metadata (nếu cần thiết,
   // nhưng thực tế public.users không có auth provider. Tạm thời ta giả định từ avatar_url hoặc metadata nếu có).
-  const mappedData = data.map(user => ({
+  const mappedData = data.map((user: any) => ({
     ...user,
     provider: user.avatar_url?.includes('googleusercontent') ? 'google' : 'email'
   }))
