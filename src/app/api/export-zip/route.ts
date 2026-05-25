@@ -470,7 +470,7 @@ function buildMaTranTex(
       if (s.bold) labelText = `\\textbf{${labelText}}`
       if (s.color) labelText = `\\textcolor{${s.color}}{${labelText}}`
     } else if (li === 3) {
-      labelText = `\\textit{${labelText}}`
+      labelText = `\\textit{(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)}`
     }
     tex += `\t{${labelText}}\n`
   }

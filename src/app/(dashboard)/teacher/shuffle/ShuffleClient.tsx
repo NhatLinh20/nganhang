@@ -180,7 +180,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   // Export
   const [showExportModal, setShowExportModal] = useState(false)
   const [headerLabels, setHeaderLabels] = useState<string[]>([
-    'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)',
+    'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
     'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
   ])
   const [headerStyles, setHeaderStyles] = useState<{ bold: boolean; italic: boolean; underline: boolean; color: string }[]>(
@@ -259,7 +259,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       setShuffleAnswers(true)
       setExcelOption('none')
       setHeaderLabels([
-        'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)',
+        'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
         'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
       ])
       setHeaderStyles(Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' })))

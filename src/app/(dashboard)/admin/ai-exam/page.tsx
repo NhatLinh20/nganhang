@@ -117,7 +117,7 @@ export default function AiExamPage() {
     'SỞ GDĐT ...',
     'TRƯỜNG THPT ...',
     'Đề chính thức',
-    '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)',
+    '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
     'ĐỀ KIỂM TRA',
     'Môn: TOÁN',
     'Thời gian làm bài: 90 phút',
