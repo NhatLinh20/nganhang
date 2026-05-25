@@ -2,45 +2,67 @@
 // Trang đăng nhập hiện đại — hỗ trợ Google OAuth + Email/Password
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { login, loginWithGoogle } from '@/app/actions/auth'
+import React, { useState } from 'react'
+import { login } from '@/app/actions/auth'
+import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import styles from './login.module.css'
 
 export default function LoginPage() {
-  const searchParams = useSearchParams()
-  const [error, setError] = useState(
-    searchParams.get('reason') === 'session_replaced'
-      ? 'Phiên đăng nhập đã bị thay thế bởi thiết bị khác.'
-      : searchParams.get('error') === 'auth_failed'
-        ? 'Đăng nhập thất bại. Vui lòng thử lại.'
-        : ''
-  )
-  const [isPending, startTransition] = useTransition()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
-  const handleLogin = async (formData: FormData) => {
-    setError('')
-    startTransition(async () => {
-      const result = await login(formData)
-      if (result?.error) {
-        setError(result.error)
-      }
-    })
-  }
-
+  // Hàm xử lý Google login hoàn toàn ở Client Side
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true)
     setError('')
     try {
-      const result = await loginWithGoogle()
-      if (result?.error) {
-        setError(result.error)
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+      
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      const origin = siteUrl ? siteUrl.replace(/\/$/, '') : window.location.origin
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${origin}/api/auth/callback`,
+        },
+      })
+      
+      if (error) {
+        setError(error.message)
         setIsGoogleLoading(false)
       }
-    } catch {
+    } catch (err: any) {
+      setError(err.message || 'Lỗi không xác định')
       setIsGoogleLoading(false)
+    }
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError('')
+    
+    const formData = new FormData()
+    formData.append('email', email)
+    formData.append('password', password)
+
+    try {
+      const result = await login(formData)
+      if (result?.error) {
+        setError(result.error)
+      }
+    } catch {
+      setError('Đăng nhập thất bại. Vui lòng thử lại.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
