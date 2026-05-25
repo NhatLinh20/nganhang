@@ -468,6 +468,8 @@ function buildMaTranTex(
       if (s.italic) labelText = `\\textit{${labelText}}`
       if (s.bold) labelText = `\\textbf{${labelText}}`
       if (s.color) labelText = `\\textcolor{${s.color}}{${labelText}}`
+    } else if (li === 3) {
+      labelText = `\\textit{${labelText}}`
     }
     tex += `\t{${labelText}}\n`
   }

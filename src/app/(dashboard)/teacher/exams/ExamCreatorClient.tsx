@@ -1326,7 +1326,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                           outline: isSelected ? '2px solid #3b82f6' : 'none', outlineOffset: 1,
                           background: isSelected ? '#eff6ff' : 'transparent', transition: 'all 0.15s',
                           fontSize: i === 0 ? '13px' : '12px',
-                          fontWeight: s.bold ? 700 : 400, fontStyle: s.italic ? 'italic' : 'normal',
+                          fontWeight: s.bold ? 700 : 400, fontStyle: isLocked ? 'italic' : (s.italic ? 'italic' : 'normal'),
                           textDecoration: s.underline ? 'underline' : 'none', color: isLocked ? '#9ca3af' : (s.color || 'inherit'),
                         }}
                         onMouseEnter={e => { if (!isLocked && !isSelected) (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
