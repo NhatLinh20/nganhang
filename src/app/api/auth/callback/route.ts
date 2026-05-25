@@ -27,13 +27,35 @@ export async function GET(request: NextRequest) {
 
   const user = data.user
 
-  // Kiểm tra is_approved cho teacher
+  // Kiểm tra is_approved cho teacher (và auto-sync nếu thiếu profile do lỗi trigger)
   const supabaseAdmin = createAdminClient()
-  const { data: profile } = await supabaseAdmin
+  let { data: profile } = await supabaseAdmin
     .from('users')
     .select('role, is_approved')
     .eq('id', user.id)
     .single()
+
+  if (!profile) {
+    // Tự động tạo profile nếu chưa có (ví dụ: đăng nhập Google trước khi có trigger)
+    const newRole = user.user_metadata?.role || 'teacher'
+    const newApproved = newRole === 'admin'
+    
+    const { data: newProfile } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || 'Người dùng',
+        role: newRole,
+        is_approved: newApproved,
+      })
+      .select('role, is_approved')
+      .single()
+      
+    if (newProfile) {
+      profile = newProfile
+    }
+  }
 
   if (profile?.role === 'teacher' && !profile?.is_approved) {
     // Teacher chưa được duyệt → đẩy về pending

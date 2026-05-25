@@ -32,13 +32,34 @@ export async function login(formData: FormData): Promise<{ error?: string }> {
 
   const user = data.user
 
-  // Kiểm tra is_approved từ bảng users
+  // Kiểm tra is_approved từ bảng users (và auto-sync nếu thiếu)
   const supabaseAdmin = createAdminClient()
-  const { data: profile } = await supabaseAdmin
+  let { data: profile } = await supabaseAdmin
     .from('users')
     .select('role, is_approved')
     .eq('id', user.id)
     .single()
+
+  if (!profile) {
+    const newRole = user.user_metadata?.role || 'teacher'
+    const newApproved = newRole === 'admin'
+    
+    const { data: newProfile } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || 'Người dùng',
+        role: newRole,
+        is_approved: newApproved,
+      })
+      .select('role, is_approved')
+      .single()
+      
+    if (newProfile) {
+      profile = newProfile
+    }
+  }
 
   if (profile?.role === 'teacher' && !profile?.is_approved) {
     // Đăng xuất trước khi reject
