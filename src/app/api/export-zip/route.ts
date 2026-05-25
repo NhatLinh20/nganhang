@@ -440,15 +440,17 @@ function buildMaTranTex(
 
   let tex = ''
 
-  const labels = headerLabels && headerLabels.length === 6
+  const labels = headerLabels && headerLabels.length === 8
     ? headerLabels
     : [
         'SỞ GDĐT ...',
         'TRƯỜNG THPT ...',
-        `(Đề chính thức)`,
+        'Đề chính thức',
+        `(Đề thi gồm có \\zpageref{\\made-lastpage} trang)`,
         title || 'ĐỀ KIỂM TRA',
         `Môn: TOÁN ${grade}`,
-        `Thời gian làm bài: 90 phút (không kể thời gian phát đề)`
+        `Thời gian làm bài: 90 phút`,
+        `(Không kể thời gian phát đề)`
       ]
 
   tex += `% Đề thi Toán lớp ${grade}\n`
@@ -498,7 +500,9 @@ function buildMaTranTex(
   }
 
   tex += `\\Closesolutionfile{ansbook}\n`
+  tex += `\\begin{center}\n\t\\textbf{--------------- HẾT ---------------}\n\\end{center}\n`
   tex += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
+  tex += `\\zlabel{\\made-lastpage}\n`
 
   return tex
 }
@@ -521,7 +525,7 @@ export async function POST(request: NextRequest) {
 
     const displayTitle = title || 'ĐỀ THI TRẮC NGHIỆM'
     const displayGrade = grade || 12
-    const validHeaderLabels = headerLabels && Array.isArray(headerLabels) && headerLabels.length === 6
+    const validHeaderLabels = headerLabels && Array.isArray(headerLabels) && headerLabels.length === 8
       ? headerLabels
       : undefined
     const validExamCodes = examCodes && Array.isArray(examCodes) ? examCodes : []

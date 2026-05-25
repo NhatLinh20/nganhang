@@ -122,10 +122,12 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const [headerLabels, setHeaderLabels] = useState<string[]>([
     'SỞ GDĐT ...',
     'TRƯỜNG THPT ...',
-    '(Đề chính thức)',
+    'Đề chính thức',
+    '(Đề thi gồm có ... trang)',
     'ĐỀ KIỂM TRA',
     'Môn: TOÁN',
-    'Thời gian làm bài: 90 phút'
+    'Thời gian làm bài: 90 phút',
+    '(Không kể thời gian phát đề)'
   ])
 
   const [excelOption, setExcelOption] = useState<string>('none')
@@ -268,10 +270,12 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       setHeaderLabels([
         'SỞ GDĐT ...',
         'TRƯỜNG THPT ...',
-        '(Đề chính thức)',
+        'Đề chính thức',
+        '(Đề thi gồm có ... trang)',
         'ĐỀ KIỂM TRA',
         'Môn: TOÁN',
-        'Thời gian làm bài: 90 phút'
+        'Thời gian làm bài: 90 phút',
+        '(Không kể thời gian phát đề)'
       ])
       setExcelOption('none')
     }
@@ -1267,7 +1271,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div style={{ background: '#fef2f2', padding: 16, borderRadius: 12, border: '1px solid #fecaca' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT TRÁI</div>
-                {[0, 1, 2].map(i => (
+                {[0, 1, 2, 3].map(i => (
                   <div key={i} style={{ marginBottom: 8 }}>
                     <input type="text" value={headerLabels[i]} onChange={e => {
                       const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
@@ -1277,7 +1281,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
               </div>
               <div style={{ background: '#eff6ff', padding: 16, borderRadius: 12, border: '1px solid #bfdbfe' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT PHẢI</div>
-                {[3, 4, 5].map(i => (
+                {[4, 5, 6, 7].map(i => (
                   <div key={i} style={{ marginBottom: 8 }}>
                     <input type="text" value={headerLabels[i]} onChange={e => {
                       const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
@@ -1294,15 +1298,17 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
             }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>👁 Xem trước tiêu đề đề thi</div>
               <div style={{ display: 'flex', gap: '0' }}>
-                <div style={{ flex: '0 0 40%', textAlign: 'center', padding: '4px' }}>
-                  <div style={{ color: '#dc2626', fontWeight: 700, fontSize: '13px', textTransform: 'uppercase' }}>{headerLabels[0] || '...'}</div>
-                  <div style={{ color: '#2563eb', fontWeight: 600, fontSize: '12px' }}>{headerLabels[1] || '...'}</div>
+                <div style={{ flex: '0 0 45%', textAlign: 'center', padding: '4px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '13px' }}>{headerLabels[0] || '...'}</div>
+                  <div style={{ fontWeight: 600, fontSize: '12px' }}>{headerLabels[1] || '...'}</div>
                   <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[2] || '...'}</div>
+                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[3] || '...'}</div>
                 </div>
-                <div style={{ flex: '0 0 60%', textAlign: 'center', padding: '4px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '13px', textTransform: 'uppercase' }}>{headerLabels[3] || '...'}</div>
-                  <div style={{ fontWeight: 600, fontSize: '12px' }}>{headerLabels[4] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[5] || '...'}</div>
+                <div style={{ flex: '0 0 55%', textAlign: 'center', padding: '4px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '13px', textTransform: 'uppercase' }}>{headerLabels[4] || '...'}</div>
+                  <div style={{ fontWeight: 600, fontSize: '12px' }}>{headerLabels[5] || '...'}</div>
+                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[6] || '...'}</div>
+                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[7] || '...'}</div>
                 </div>
               </div>
               <div style={{ borderTop: '1px dashed #cbd5e1', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>

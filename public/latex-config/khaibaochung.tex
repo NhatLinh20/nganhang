@@ -1,4 +1,6 @@
 \usepackage{amsmath,amssymb,mathrsfs,fancyhdr,enumerate,multirow,makecell,currfile,venndiagram,fontawesome,pifont}
+\usepackage{zref-lastpage}
+\usepackage{zref-user}
 \usepackage{mathpazo}
 \usepackage{tikz-3dplot,tikz,tkz-tab,tabvar,tkz-euclide}
 \usetikzlibrary{arrows,calc,intersections,angles,snakes,quotes,backgrounds,shapes.geometric,patterns, shapes.symbols}
@@ -137,20 +139,22 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \def\made{1234}
 \newcounter{demsode}[chapter]
 \setcounter{demsode}{1}
-\newenvironment{name}[6]{
+\newenvironment{name}[8]{
 	\setcounter{page}{1}
 	\noindent
-	\begin{minipage}[]{0.4\textwidth}
+	\begin{minipage}[]{0.45\textwidth}
 		\centering
-		{\large\color{red}\bfseries\MakeUppercase{#1}}\\
-		{\bfseries\color{blue}{#2}}\\
-		\textit{#3}
+		{#1}\\
+		{#2}\\
+		{#3}\\
+		{#4}
 	\end{minipage}
-	\begin{minipage}[]{0.6\textwidth}
-		\color{black}	\centering
-		{\large\bfseries\selectfont\MakeUppercase {#4}}\\
-		{\bfseries\color{black}{#5}}\\
-		\textit{#6}
+	\begin{minipage}[]{0.55\textwidth}
+		\centering
+		{#5}\\
+		{#6}\\
+		{#7}\\
+		{#8}
 	\end{minipage}
 	\\[1mm]
 	\tikz \draw[double] (0,0)--(\textwidth,0);\\
@@ -254,7 +258,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 % Số trang:
 % LE = trang chẵn bên trái
 % RO = trang lẻ bên phải
-\fancyfoot[LE,RO]{Trang \thepage \,--\, mã đề \made}
+\fancyfoot[LE,RO]{Trang \thepage/\zpageref{\made-lastpage} \,--\, Mã đề \made}
 % Quan trọng: sửa style plain
 \fancypagestyle{plain}{
 %	\fancyhf{}
