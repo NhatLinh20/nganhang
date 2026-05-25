@@ -183,6 +183,10 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
     'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)',
     'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
   ])
+  const [headerStyles, setHeaderStyles] = useState<{ bold: boolean; italic: boolean; underline: boolean; color: string }[]>(
+    Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' }))
+  )
+  const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
   const [excelOption, setExcelOption] = useState<string>('none')
 
   // ─── Load source data from localStorage ─────────────────────────────────────
@@ -256,6 +260,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)',
         'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
       ])
+      setHeaderStyles(Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' })))
     }
   }
 
@@ -378,6 +383,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       const payload: Record<string, unknown> = {
         title: sourceData?.configTitle || 'Đề thi trộn',
         headerLabels,
+        headerStyles,
         examCodes: shuffledExams.map(e => e.code),
         duration: sourceData?.configDuration || 90,
         grade: sourceData?.filterGrade || 12,
@@ -712,21 +718,69 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
               <div style={{ background: '#fef2f2', padding: 16, borderRadius: 12, border: '1px solid #fecaca' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT TRÁI</div>
                 {[0, 1, 2, 3].map(i => (
-                  <div key={i} style={{ marginBottom: 8 }}>
+                  <div key={i} style={{ marginBottom: 10 }}>
                     <input type="text" value={i === 3 ? '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)' : headerLabels[i]} readOnly={i === 3} onChange={e => {
                       if (i === 3) return
                       const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
                     }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${i === 3 ? '#d1d5db' : '#fca5a5'}`, fontSize: 13, outline: 'none', background: i === 3 ? '#f3f4f6' : 'white', color: i === 3 ? '#6b7280' : 'inherit', cursor: i === 3 ? 'not-allowed' : 'text' }} title={i === 3 ? 'Tự động đếm số trang khi biên dịch LaTeX' : undefined} />
+                    {i !== 3 && (
+                      <div style={{ display: 'flex', gap: 4, marginTop: 4, alignItems: 'center' }}>
+                        {(['bold', 'italic', 'underline'] as const).map(prop => (
+                          <button key={prop} type="button" onClick={() => {
+                            const ns = [...headerStyles]; ns[i] = { ...ns[i], [prop]: !ns[i][prop] }; setHeaderStyles(ns)
+                          }} style={{
+                            width: 26, height: 26, borderRadius: 4, border: `1.5px solid ${headerStyles[i][prop] ? '#3b82f6' : '#d1d5db'}`,
+                            background: headerStyles[i][prop] ? '#dbeafe' : '#f9fafb', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: prop === 'bold' ? 700 : 400, fontStyle: prop === 'italic' ? 'italic' : 'normal',
+                            textDecoration: prop === 'underline' ? 'underline' : 'none', color: headerStyles[i][prop] ? '#1d4ed8' : '#6b7280',
+                          }}>
+                            {prop === 'bold' ? 'B' : prop === 'italic' ? 'I' : 'U'}
+                          </button>
+                        ))}
+                        <select value={headerStyles[i].color} onChange={e => {
+                          const ns = [...headerStyles]; ns[i] = { ...ns[i], color: e.target.value }; setHeaderStyles(ns)
+                        }} style={{
+                          height: 26, padding: '0 4px', borderRadius: 4, border: '1.5px solid #d1d5db', fontSize: 11, cursor: 'pointer',
+                          background: headerStyles[i].color ? headerStyles[i].color : '#f9fafb', color: headerStyles[i].color ? 'white' : '#6b7280',
+                        }}>
+                          <option value="">Màu</option>
+                          {LATEX_COLORS.filter(c => c).map(c => <option key={c} value={c} style={{ background: c, color: 'white' }}>{c}</option>)}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
               <div style={{ background: '#eff6ff', padding: 16, borderRadius: 12, border: '1px solid #bfdbfe' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT PHẢI</div>
                 {[4, 5, 6, 7].map(i => (
-                  <div key={i} style={{ marginBottom: 8 }}>
+                  <div key={i} style={{ marginBottom: 10 }}>
                     <input type="text" value={headerLabels[i]} onChange={e => {
                       const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
                     }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #93c5fd', fontSize: 13, outline: 'none' }} />
+                    <div style={{ display: 'flex', gap: 4, marginTop: 4, alignItems: 'center' }}>
+                      {(['bold', 'italic', 'underline'] as const).map(prop => (
+                        <button key={prop} type="button" onClick={() => {
+                          const ns = [...headerStyles]; ns[i] = { ...ns[i], [prop]: !ns[i][prop] }; setHeaderStyles(ns)
+                        }} style={{
+                          width: 26, height: 26, borderRadius: 4, border: `1.5px solid ${headerStyles[i][prop] ? '#3b82f6' : '#d1d5db'}`,
+                          background: headerStyles[i][prop] ? '#dbeafe' : '#f9fafb', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: prop === 'bold' ? 700 : 400, fontStyle: prop === 'italic' ? 'italic' : 'normal',
+                          textDecoration: prop === 'underline' ? 'underline' : 'none', color: headerStyles[i][prop] ? '#1d4ed8' : '#6b7280',
+                        }}>
+                          {prop === 'bold' ? 'B' : prop === 'italic' ? 'I' : 'U'}
+                        </button>
+                      ))}
+                      <select value={headerStyles[i].color} onChange={e => {
+                        const ns = [...headerStyles]; ns[i] = { ...ns[i], color: e.target.value }; setHeaderStyles(ns)
+                      }} style={{
+                        height: 26, padding: '0 4px', borderRadius: 4, border: '1.5px solid #d1d5db', fontSize: 11, cursor: 'pointer',
+                        background: headerStyles[i].color ? headerStyles[i].color : '#f9fafb', color: headerStyles[i].color ? 'white' : '#6b7280',
+                      }}>
+                        <option value="">Màu</option>
+                        {LATEX_COLORS.filter(c => c).map(c => <option key={c} value={c} style={{ background: c, color: 'white' }}>{c}</option>)}
+                      </select>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -740,16 +794,17 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>👁 Xem trước tiêu đề đề thi</div>
               <div style={{ display: 'flex', gap: '0' }}>
                 <div style={{ flex: '0 0 45%', textAlign: 'center', padding: '4px' }}>
-                  <div style={{ fontSize: '13px' }}>{headerLabels[0] || '...'}</div>
-                  <div style={{ fontSize: '12px' }}>{headerLabels[1] || '...'}</div>
-                  <div style={{ fontSize: '11px' }}>{headerLabels[2] || '...'}</div>
+                  {[0, 1, 2].map(i => {
+                    const s = headerStyles[i]
+                    return <div key={i} style={{ fontSize: i === 0 ? '13px' : i === 1 ? '12px' : '11px', fontWeight: s.bold ? 700 : 400, fontStyle: s.italic ? 'italic' : 'normal', textDecoration: s.underline ? 'underline' : 'none', color: s.color || 'inherit' }}>{headerLabels[i] || '...'}</div>
+                  })}
                   <div style={{ fontSize: '11px', color: '#9ca3af' }}>(Đề thi gồm có X trang)</div>
                 </div>
                 <div style={{ flex: '0 0 55%', textAlign: 'center', padding: '4px' }}>
-                  <div style={{ fontSize: '13px' }}>{headerLabels[4] || '...'}</div>
-                  <div style={{ fontSize: '12px' }}>{headerLabels[5] || '...'}</div>
-                  <div style={{ fontSize: '11px' }}>{headerLabels[6] || '...'}</div>
-                  <div style={{ fontSize: '11px' }}>{headerLabels[7] || '...'}</div>
+                  {[4, 5, 6, 7].map(i => {
+                    const s = headerStyles[i]
+                    return <div key={i} style={{ fontSize: i === 4 ? '13px' : i === 5 ? '12px' : '11px', fontWeight: s.bold ? 700 : 400, fontStyle: s.italic ? 'italic' : 'normal', textDecoration: s.underline ? 'underline' : 'none', color: s.color || 'inherit' }}>{headerLabels[i] || '...'}</div>
+                  })}
                 </div>
               </div>
               <div style={{ borderTop: '1px dashed #cbd5e1', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>

@@ -429,7 +429,8 @@ function buildMaTranTex(
   grade: number,
   examLabel?: string,
   headerLabels?: string[],
-  examCode?: string
+  examCode?: string,
+  headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[]
 ): string {
   const grouped: Record<number, ExamQuestion[]> = {}
   for (const q of questions) {
@@ -458,8 +459,17 @@ function buildMaTranTex(
     tex += `\\def\\made{${examCode}}\n`
   }
   tex += `\\begin{name}\n`
-  for (const label of labels) {
-    tex += `\t{${label}}\n`
+  for (let li = 0; li < labels.length; li++) {
+    let labelText = labels[li]
+    // Apply formatting from headerStyles (skip index 3 — fixed zpageref)
+    if (li !== 3 && headerStyles && headerStyles[li]) {
+      const s = headerStyles[li]
+      if (s.underline) labelText = `\\underline{${labelText}}`
+      if (s.italic) labelText = `\\textit{${labelText}}`
+      if (s.bold) labelText = `\\textbf{${labelText}}`
+      if (s.color) labelText = `\\textcolor{${s.color}}{${labelText}}`
+    }
+    tex += `\t{${labelText}}\n`
   }
   tex += `\\end{name}\n\n`
 
@@ -519,6 +529,7 @@ export async function POST(request: NextRequest) {
       questions?: ExamQuestion[]
       exams?: { questions: ExamQuestion[] }[]
       headerLabels?: string[]
+      headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[]
       examCodes?: string[]
       excelOption?: string
     }
@@ -527,6 +538,9 @@ export async function POST(request: NextRequest) {
     const displayGrade = grade || 12
     const validHeaderLabels = headerLabels && Array.isArray(headerLabels) && headerLabels.length === 8
       ? headerLabels
+      : undefined
+    const validHeaderStyles = headerStyles && Array.isArray(headerStyles) && headerStyles.length === 8
+      ? headerStyles
       : undefined
     const validExamCodes = examCodes && Array.isArray(examCodes) ? examCodes : []
 
@@ -576,7 +590,7 @@ export async function POST(request: NextRequest) {
 
     if (examSets.length === 1) {
       // ── Single exam ──
-      const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0])
+      const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0], validHeaderStyles)
       zip.addFile('ma_tran_de_thi_toan.tex', Buffer.from(maTranTex, 'utf-8'))
 
       const mainPath = path.join(configDir, 'main.tex')
@@ -587,7 +601,7 @@ export async function POST(request: NextRequest) {
       // ── Multiple exams ──
       for (let i = 0; i < examSets.length; i++) {
         const examLabel = `Đề ${i + 1}`
-        const maTranTex = buildMaTranTex(examSets[i], displayTitle, displayGrade, examLabel, validHeaderLabels, codes[i])
+        const maTranTex = buildMaTranTex(examSets[i], displayTitle, displayGrade, examLabel, validHeaderLabels, codes[i], validHeaderStyles)
         zip.addFile(`ma_tran_de_thi_toan${i + 1}.tex`, Buffer.from(maTranTex, 'utf-8'))
       }
 
