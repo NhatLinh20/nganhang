@@ -1300,16 +1300,16 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>👁 Xem trước tiêu đề đề thi</div>
               <div style={{ display: 'flex', gap: '0' }}>
                 <div style={{ flex: '0 0 45%', textAlign: 'center', padding: '4px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '13px' }}>{headerLabels[0] || '...'}</div>
-                  <div style={{ fontWeight: 600, fontSize: '12px' }}>{headerLabels[1] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[2] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#9ca3af' }}>(Đề thi gồm có X trang)</div>
+                  <div style={{ fontSize: '13px' }}>{headerLabels[0] || '...'}</div>
+                  <div style={{ fontSize: '12px' }}>{headerLabels[1] || '...'}</div>
+                  <div style={{ fontSize: '11px' }}>{headerLabels[2] || '...'}</div>
+                  <div style={{ fontSize: '11px', color: '#9ca3af' }}>(Đề thi gồm có X trang)</div>
                 </div>
                 <div style={{ flex: '0 0 55%', textAlign: 'center', padding: '4px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '13px', textTransform: 'uppercase' }}>{headerLabels[4] || '...'}</div>
-                  <div style={{ fontWeight: 600, fontSize: '12px' }}>{headerLabels[5] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[6] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[7] || '...'}</div>
+                  <div style={{ fontSize: '13px' }}>{headerLabels[4] || '...'}</div>
+                  <div style={{ fontSize: '12px' }}>{headerLabels[5] || '...'}</div>
+                  <div style={{ fontSize: '11px' }}>{headerLabels[6] || '...'}</div>
+                  <div style={{ fontSize: '11px' }}>{headerLabels[7] || '...'}</div>
                 </div>
               </div>
               <div style={{ borderTop: '1px dashed #cbd5e1', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>

@@ -1358,17 +1358,17 @@ export default function AiExamPage() {
               <div style={{ display: 'flex', gap: '0' }}>
                 {/* Left preview */}
                 <div style={{ flex: '0 0 45%', textAlign: 'center', padding: '8px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '14px' }}>{headerLabels[0] || '...'}</div>
-                  <div style={{ fontWeight: 600, fontSize: '13px' }}>{headerLabels[1] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '12px', color: '#475569' }}>{headerLabels[2] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '12px', color: '#9ca3af' }}>(Đề thi gồm có X trang)</div>
+                  <div style={{ fontSize: '14px' }}>{headerLabels[0] || '...'}</div>
+                  <div style={{ fontSize: '13px' }}>{headerLabels[1] || '...'}</div>
+                  <div style={{ fontSize: '12px' }}>{headerLabels[2] || '...'}</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>(Đề thi gồm có X trang)</div>
                 </div>
                 {/* Right preview */}
                 <div style={{ flex: '0 0 55%', textAlign: 'center', padding: '8px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '14px', textTransform: 'uppercase' }}>{headerLabels[4] || '...'}</div>
-                  <div style={{ fontWeight: 600, fontSize: '13px' }}>{headerLabels[5] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '12px', color: '#475569' }}>{headerLabels[6] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '12px', color: '#475569' }}>{headerLabels[7] || '...'}</div>
+                  <div style={{ fontSize: '14px' }}>{headerLabels[4] || '...'}</div>
+                  <div style={{ fontSize: '13px' }}>{headerLabels[5] || '...'}</div>
+                  <div style={{ fontSize: '12px' }}>{headerLabels[6] || '...'}</div>
+                  <div style={{ fontSize: '12px' }}>{headerLabels[7] || '...'}</div>
                 </div>
               </div>
               <div style={{ borderTop: '2px double #94a3b8', marginTop: '8px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b' }}>
