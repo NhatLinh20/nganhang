@@ -116,7 +116,7 @@ export default function LoginPage() {
               placeholder="nguyen@example.com"
               required
               autoComplete="email"
-              disabled={isPending}
+              disabled={isLoading}
             />
           </div>
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
               autoComplete="current-password"
-              disabled={isPending}
+              disabled={isLoading}
             />
           </div>
 
@@ -150,9 +150,9 @@ export default function LoginPage() {
             id="login-submit-btn"
             type="submit"
             className={`btn btn-primary btn-lg ${styles.submitBtn}`}
-            disabled={isPending}
+            disabled={isLoading}
           >
-            {isPending ? (
+            {isLoading ? (
               <>
                 <span className={styles.spinner} />
                 Đang đăng nhập...
