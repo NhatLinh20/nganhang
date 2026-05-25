@@ -95,11 +95,19 @@ export async function login(formData: FormData): Promise<{ error?: string }> {
 export async function loginWithGoogle(): Promise<{ error?: string; url?: string }> {
   const supabase = await createClient()
 
-  // Lấy origin (host) linh hoạt để hỗ trợ cả localhost và vercel
-  const headersList = await headers()
-  const host = headersList.get('host') || 'localhost:3000'
-  const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https')
-  const origin = `${protocol}://${host}`
+  // Lấy origin ưu tiên từ biến môi trường (Vercel)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  
+  let origin = 'http://localhost:3000'
+  if (siteUrl) {
+    // Đảm bảo không có dấu slash ở cuối
+    origin = siteUrl.replace(/\/$/, '')
+  } else {
+    const headersList = await headers()
+    const host = headersList.get('host') || 'localhost:3000'
+    const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https')
+    origin = `${protocol}://${host}`
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',

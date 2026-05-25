@@ -76,5 +76,15 @@ export async function GET(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') || 'unknown'
   logLoginInternal(user.id, ip, userAgent).catch(() => {})
 
-  return NextResponse.redirect(`${origin}${next}`)
+  const response = NextResponse.redirect(`${origin}${next}`)
+  
+  // Đảm bảo cookies được gắn vào response (Next.js 15 Route Handler fix)
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+  const allCookies = cookieStore.getAll()
+  for (const cookie of allCookies) {
+    response.cookies.set(cookie.name, cookie.value)
+  }
+
+  return response
 }

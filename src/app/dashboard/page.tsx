@@ -30,6 +30,27 @@ export default async function DashboardPage() {
     redirect('/student/dashboard')
   }
 
-  // Fallback nếu chưa có role
-  redirect('/login')
+  // Fallback nếu chưa có role (có thể do lỗi đồng bộ database)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem', textAlign: 'center', fontFamily: 'sans-serif' }}>
+      <div style={{ fontSize: '48px', marginBottom: '1rem' }}>⚠️</div>
+      <h1 style={{ marginBottom: '1rem', color: '#dc2626' }}>Lỗi đồng bộ tài khoản</h1>
+      <p style={{ maxWidth: '400px', lineHeight: '1.6', marginBottom: '2rem', color: '#4b5563' }}>
+        Tài khoản của bạn chưa được đồng bộ vào hệ thống. Nguyên nhân thường do bạn đã đăng ký email này bằng phương thức Mật khẩu trước đó, 
+        nên không thể dùng Google để tạo tài khoản mới đè lên.
+        <br /><br />
+        Vui lòng quay lại và <strong>đăng nhập bằng Email/Mật khẩu</strong>, hoặc liên hệ Admin để xóa tài khoản cũ.
+      </p>
+      <form action={async () => {
+        'use server'
+        const supabase = await createClient()
+        await supabase.auth.signOut()
+        redirect('/login')
+      }}>
+        <button type="submit" style={{ padding: '10px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
+          Quay lại trang Đăng nhập
+        </button>
+      </form>
+    </div>
+  )
 }
