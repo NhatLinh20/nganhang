@@ -40,13 +40,28 @@ export default function LoginPage() {
     }
   }
 
-  // Email login qua Server Action — đọc dữ liệu trực tiếp từ form DOM
-  const handleLogin = async (formData: FormData) => {
+  // Email login qua Server Action
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setIsLoading(true)
     setError('')
 
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    if (!email || !password) {
+       setError('Vui lòng nhập email và mật khẩu.')
+       setIsLoading(false)
+       return
+    }
+
     try {
-      const result = await login(formData)
+      const newFormData = new FormData()
+      newFormData.append('email', email)
+      newFormData.append('password', password)
+      
+      const result = await login(newFormData)
       if (result?.error) {
         setError(result.error)
       }
@@ -95,8 +110,8 @@ export default function LoginPage() {
           <span className={styles.dividerText}>hoặc đăng nhập bằng email</span>
         </div>
 
-        {/* Email/Password Form — dùng action để React tự truyền FormData */}
-        <form action={handleLogin} className={styles.form}>
+        {/* Email/Password Form */}
+        <form onSubmit={handleLogin} className={styles.form}>
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">Email</label>
             <input
