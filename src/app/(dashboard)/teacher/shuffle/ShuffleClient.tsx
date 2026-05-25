@@ -180,7 +180,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   // Export
   const [showExportModal, setShowExportModal] = useState(false)
   const [headerLabels, setHeaderLabels] = useState<string[]>([
-    'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có ... trang)',
+    'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)',
     'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
   ])
   const [excelOption, setExcelOption] = useState<string>('none')
@@ -253,7 +253,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       setShuffleAnswers(true)
       setExcelOption('none')
       setHeaderLabels([
-        'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có ... trang)',
+        'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)',
         'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
       ])
     }
@@ -713,9 +713,10 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 12, letterSpacing: '0.05em' }}>CỘT TRÁI</div>
                 {[0, 1, 2, 3].map(i => (
                   <div key={i} style={{ marginBottom: 8 }}>
-                    <input type="text" value={headerLabels[i]} onChange={e => {
+                    <input type="text" value={i === 3 ? '(Đề thi gồm có \\zpageref{\\made-lastpage} trang)' : headerLabels[i]} readOnly={i === 3} onChange={e => {
+                      if (i === 3) return
                       const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n)
-                    }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #fca5a5', fontSize: 13, outline: 'none' }} />
+                    }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${i === 3 ? '#d1d5db' : '#fca5a5'}`, fontSize: 13, outline: 'none', background: i === 3 ? '#f3f4f6' : 'white', color: i === 3 ? '#6b7280' : 'inherit', cursor: i === 3 ? 'not-allowed' : 'text' }} title={i === 3 ? 'Tự động đếm số trang khi biên dịch LaTeX' : undefined} />
                   </div>
                 ))}
               </div>
@@ -742,7 +743,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                   <div style={{ fontWeight: 700, fontSize: '13px' }}>{headerLabels[0] || '...'}</div>
                   <div style={{ fontWeight: 600, fontSize: '12px' }}>{headerLabels[1] || '...'}</div>
                   <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[2] || '...'}</div>
-                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#475569' }}>{headerLabels[3] || '...'}</div>
+                  <div style={{ fontStyle: 'italic', fontSize: '11px', color: '#9ca3af' }}>(Đề thi gồm có X trang)</div>
                 </div>
                 <div style={{ flex: '0 0 55%', textAlign: 'center', padding: '4px' }}>
                   <div style={{ fontWeight: 700, fontSize: '13px', textTransform: 'uppercase' }}>{headerLabels[4] || '...'}</div>
