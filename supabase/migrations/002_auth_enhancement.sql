@@ -24,12 +24,12 @@ DECLARE
   new_role TEXT;
   new_approved BOOLEAN;
 BEGIN
-  new_role := COALESCE(NEW.raw_user_meta_data->>'role', 'teacher');
-  
-  -- Admin được auto-approve
-  IF new_role = 'admin' THEN
+  -- Cố định email admin, còn lại mặc định là teacher
+  IF NEW.email = 'nhatlinh.kg20@gmail.com' THEN
+    new_role := 'admin';
     new_approved := true;
   ELSE
+    new_role := 'teacher';
     new_approved := false;
   END IF;
 
@@ -37,7 +37,7 @@ BEGIN
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', 'Người dùng'),
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', 'Người dùng'),
     new_role,
     new_approved
   );

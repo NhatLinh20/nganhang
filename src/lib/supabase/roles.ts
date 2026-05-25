@@ -7,7 +7,7 @@ export interface UserProfile {
   id: string
   email: string
   full_name: string
-  role: 'admin' | 'teacher' | 'student'
+  role: 'admin' | 'teacher'
   is_approved: boolean
   is_active: boolean
   avatar_url: string | null

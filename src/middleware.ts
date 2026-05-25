@@ -81,7 +81,6 @@ export async function middleware(request: NextRequest) {
       if (role === 'admin') {
         return NextResponse.redirect(new URL('/admin/questions', request.url))
       }
-      // role student -> redirect to student dashboard (if it existed)
     }
 
     // Xử lý các route admin và teacher

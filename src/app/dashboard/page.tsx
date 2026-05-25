@@ -26,8 +26,6 @@ export default async function DashboardPage() {
     redirect('/admin/questions')
   } else if (role === 'teacher') {
     redirect('/admin/ai-exam') // Teacher mặc định vào trang AI tạo đề
-  } else if (role === 'student') {
-    redirect('/student/dashboard')
   }
 
   // Fallback nếu chưa có role (có thể do lỗi đồng bộ database)

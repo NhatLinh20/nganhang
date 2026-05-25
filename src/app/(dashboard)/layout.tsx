@@ -12,7 +12,20 @@ export default async function DashboardLayout({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
-  const role = (user?.user_metadata?.role as string) || ''
+  // Lấy role từ bảng users (nguồn chính xác nhất)
+  let role = 'student'
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+      
+    if (profile) {
+      role = profile.role
+    }
+  }
+
   const email = user?.email || ''
 
   return (

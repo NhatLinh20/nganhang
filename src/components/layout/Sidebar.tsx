@@ -52,8 +52,13 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
       }
       return null
     }
-    // Admin thấy tất cả
-    return section
+    if (userRole === 'admin') {
+      // Admin thấy tất cả
+      return section
+    }
+    
+    // Học sinh (student) hoặc các role khác không thấy menu admin/teacher
+    return null
   }).filter(Boolean) as typeof navItems
 
   return (
