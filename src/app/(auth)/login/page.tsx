@@ -9,13 +9,11 @@ import Link from 'next/link'
 import styles from './login.module.css'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
-  // Hàm xử lý Google login hoàn toàn ở Client Side
+  // Google login hoàn toàn ở Client Side — tránh lỗi PKCE cookie trên Vercel
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true)
     setError('')
@@ -24,17 +22,14 @@ export default function LoginPage() {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
-      
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-      const origin = siteUrl ? siteUrl.replace(/\/$/, '') : window.location.origin
-      
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${origin}/api/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback`,
         },
       })
-      
+
       if (error) {
         setError(error.message)
         setIsGoogleLoading(false)
@@ -45,14 +40,10 @@ export default function LoginPage() {
     }
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Email login qua Server Action — đọc dữ liệu trực tiếp từ form DOM
+  const handleLogin = async (formData: FormData) => {
     setIsLoading(true)
     setError('')
-    
-    const formData = new FormData()
-    formData.append('email', email)
-    formData.append('password', password)
 
     try {
       const result = await login(formData)
@@ -104,8 +95,8 @@ export default function LoginPage() {
           <span className={styles.dividerText}>hoặc đăng nhập bằng email</span>
         </div>
 
-        {/* Email/Password Form */}
-        <form onSubmit={handleLogin} className={styles.form}>
+        {/* Email/Password Form — dùng action để React tự truyền FormData */}
+        <form action={handleLogin} className={styles.form}>
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">Email</label>
             <input
