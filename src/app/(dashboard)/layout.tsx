@@ -1,5 +1,5 @@
 // src/app/(dashboard)/layout.tsx
-// Layout chung cho tất cả trang dashboard (Admin, Teacher, Student)
+// Layout chung cho tất cả trang dashboard (Admin, Teacher)
 
 import Sidebar from '@/components/layout/Sidebar'
 import { createClient } from '@/lib/supabase/server'
@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser()
   
   // Lấy role từ bảng users (nguồn chính xác nhất)
-  let role = 'student'
+  let role = 'teacher'
   if (user) {
     const { data: profile } = await supabase
       .from('users')
