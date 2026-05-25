@@ -6,13 +6,24 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { logLoginInternal } from '@/lib/auth-logger'
 import { NextRequest, NextResponse } from 'next/server'
 
+async function injectCookies(response: NextResponse) {
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+  const allCookies = cookieStore.getAll()
+  for (const cookie of allCookies) {
+    response.cookies.set(cookie.name, cookie.value)
+  }
+  return response
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_code`)
+    const response = NextResponse.redirect(`${origin}/login?error=missing_code`)
+    return await injectCookies(response)
   }
 
   const supabase = await createClient()
@@ -22,7 +33,8 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error('[OAuth Callback] Exchange code error:', error.message)
-    return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+    const response = NextResponse.redirect(`${origin}/login?error=auth_failed`)
+    return await injectCookies(response)
   }
 
   const user = data.user
@@ -59,7 +71,12 @@ export async function GET(request: NextRequest) {
 
   if (profile?.role === 'teacher' && !profile?.is_approved) {
     // Teacher chưa được duyệt → đẩy về pending
-    return NextResponse.redirect(`${origin}/pending`)
+    // Cập nhật active_session_id trước khi redirect
+    const sessionId = data.session?.access_token?.slice(-20) || crypto.randomUUID()
+    await supabaseAdmin.from('users').update({ active_session_id: sessionId }).eq('id', user.id)
+    
+    const response = NextResponse.redirect(`${origin}/pending`)
+    return await injectCookies(response)
   }
 
   // Cập nhật active_session_id
@@ -77,14 +94,5 @@ export async function GET(request: NextRequest) {
   logLoginInternal(user.id, ip, userAgent).catch(() => {})
 
   const response = NextResponse.redirect(`${origin}${next}`)
-  
-  // Đảm bảo cookies được gắn vào response (Next.js 15 Route Handler fix)
-  const { cookies } = await import('next/headers')
-  const cookieStore = await cookies()
-  const allCookies = cookieStore.getAll()
-  for (const cookie of allCookies) {
-    response.cookies.set(cookie.name, cookie.value)
-  }
-
-  return response
+  return await injectCookies(response)
 }
