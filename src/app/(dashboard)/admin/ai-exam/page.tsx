@@ -1480,48 +1480,63 @@ export default function AiExamPage() {
               )}
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
-                <select 
-                  value={excelOption} 
-                  onChange={e => setExcelOption(e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#f8fafc', minWidth: '180px' }}
-                >
-                  <option value="none">Không xuất bảng đáp án</option>
-                  <option value="all">Xuất tất cả các loại bảng</option>
-                  <option value="azota">Xuất bảng Azota</option>
-                  <option value="tnmaker">Xuất bảng TNMaker</option>
-                  <option value="olm">Xuất bảng OLM</option>
-                </select>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => setShowExportModal(false)}
+                      style={{
+                        padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                        background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: '14px', fontWeight: 500
+                      }}
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={() => { setShowExportModal(false); handleExportTex(); }}
+                      style={{
+                        padding: '10px 24px', borderRadius: '8px', border: 'none',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white',
+                        cursor: 'pointer', fontSize: '14px', fontWeight: 700,
+                        boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      📥 Xuất file .tex
+                    </button>
+                  </div>
+                </div>
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155' }}>
-                <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
-                <span>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
-              </label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => setShowExportModal(false)}
-                  style={{
-                    padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
-                    background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: '14px', fontWeight: 500
-                  }}
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  onClick={() => { setShowExportModal(false); handleExportTex(); }}
-                  style={{
-                    padding: '10px 24px', borderRadius: '8px', border: 'none',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white',
-                    cursor: 'pointer', fontSize: '14px', fontWeight: 700,
-                    boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  📥 Xuất file .tex
-                </button>
+
+              {/* ── RIGHT COLUMN (Options) ── */}
+              <div style={{ flex: '0 0 320px', background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tùy chọn xuất</h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Bảng đáp án Excel:</label>
+                  <select 
+                    value={excelOption} 
+                    onChange={e => setExcelOption(e.target.value)}
+                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: 'white' }}
+                  >
+                    <option value="none">Không xuất bảng đáp án</option>
+                    <option value="all">Xuất tất cả các loại bảng</option>
+                    <option value="azota">Xuất bảng Azota</option>
+                    <option value="tnmaker">Xuất bảng TNMaker</option>
+                    <option value="olm">Xuất bảng OLM</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
+                  </label>
+                </div>
+
+                {/* Placeholders for future options */}
+                <div style={{ flex: 1, border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, minHeight: '100px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Không gian chờ cập nhật...</span>
+                </div>
               </div>
             </div>
           </div>
