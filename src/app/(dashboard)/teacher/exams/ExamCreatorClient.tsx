@@ -134,8 +134,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   )
   const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
-
   const [excelOption, setExcelOption] = useState<string>('none')
+  const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
 
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
   const [isLoaded, setIsLoaded] = useState(false)
@@ -564,8 +564,9 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         headerStyles,
         examCodes: currentAllExams.length > 1 ? examCodes : undefined,
         duration: configDuration || 90,
-        grade: filterGrade || 12,
-        excelOption: excelOption,
+        grade: configGrade,
+        excelOption,
+        includeAnswerTable,
       };
 
       if (currentAllExams.length > 1) {
@@ -1426,6 +1427,10 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   <option value="olm">Xuất bảng OLM</option>
                 </select>
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#334155' }}>
+                <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                <span>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
+              </label>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
                 <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>

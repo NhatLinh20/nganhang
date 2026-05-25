@@ -129,8 +129,8 @@ export default function AiExamPage() {
   const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
   const [examCodes, setExamCodes] = useState<string[]>([''])
-
   const [excelOption, setExcelOption] = useState<string>('none')
+  const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
 
   // Multi-exam states
   const [examCount, setExamCount] = useState(1)
@@ -547,6 +547,7 @@ export default function AiExamPage() {
         duration: result?.exam_info?.duration || 90,
         grade: result?.exam_info?.grade || 12,
         excelOption: excelOption,
+        includeAnswerTable: includeAnswerTable,
       };
 
       if (currentAllExams.length > 1) {
@@ -1507,6 +1508,10 @@ export default function AiExamPage() {
                   <option value="olm">Xuất bảng OLM</option>
                 </select>
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155' }}>
+                <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                <span>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
+              </label>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
                   onClick={() => setShowExportModal(false)}

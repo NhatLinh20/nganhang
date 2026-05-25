@@ -430,7 +430,8 @@ function buildMaTranTex(
   examLabel?: string,
   headerLabels?: string[],
   examCode?: string,
-  headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[]
+  headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[],
+  includeAnswerTable: boolean = true
 ): string {
   const grouped: Record<number, ExamQuestion[]> = {}
   for (const q of questions) {
@@ -513,7 +514,11 @@ function buildMaTranTex(
 
   tex += `\\Closesolutionfile{ansbook}\n`
   tex += `\\begin{center}\n\t\\textbf{--------------- HẾT ---------------}\n\\end{center}\n`
-  tex += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
+  if (includeAnswerTable) {
+    tex += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
+  } else {
+    tex += `%\\begin{indapan}\n%\t{ans/ans\\currfilebase}\n%\\end{indapan}\n`
+  }
   tex += `\\zlabel{\\made-lastpage}\n`
 
   return tex
@@ -534,6 +539,7 @@ export async function POST(request: NextRequest) {
       headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[]
       examCodes?: string[]
       excelOption?: string
+      includeAnswerTable?: boolean
     }
 
     const displayTitle = title || 'ĐỀ THI TRẮC NGHIỆM'
@@ -592,7 +598,7 @@ export async function POST(request: NextRequest) {
 
     if (examSets.length === 1) {
       // ── Single exam ──
-      const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0], validHeaderStyles)
+      const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0], validHeaderStyles, includeAnswerTable !== false)
       zip.addFile('ma_tran_de_thi_toan.tex', Buffer.from(maTranTex, 'utf-8'))
 
       const mainPath = path.join(configDir, 'main.tex')
@@ -603,7 +609,7 @@ export async function POST(request: NextRequest) {
       // ── Multiple exams ──
       for (let i = 0; i < examSets.length; i++) {
         const examLabel = `Đề ${i + 1}`
-        const maTranTex = buildMaTranTex(examSets[i], displayTitle, displayGrade, examLabel, validHeaderLabels, codes[i], validHeaderStyles)
+        const maTranTex = buildMaTranTex(examSets[i], displayTitle, displayGrade, examLabel, validHeaderLabels, codes[i], validHeaderStyles, includeAnswerTable !== false)
         zip.addFile(`ma_tran_de_thi_toan${i + 1}.tex`, Buffer.from(maTranTex, 'utf-8'))
       }
 

@@ -189,6 +189,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
   const [excelOption, setExcelOption] = useState<string>('none')
+  const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
 
   // ─── Load source data from localStorage ─────────────────────────────────────
   useEffect(() => {
@@ -389,6 +390,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         duration: sourceData?.configDuration || 90,
         grade: sourceData?.filterGrade || 12,
         excelOption,
+        includeAnswerTable,
       }
 
       payload.exams = shuffledExams.map(e => ({
@@ -851,9 +853,15 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button onClick={() => setShowExportModal(false)} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Đóng</button>
-              <button onClick={() => { setShowExportModal(false); handleExportTex() }} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#334155' }}>
+                <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                <span>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
+              </label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button onClick={() => setShowExportModal(false)} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Đóng</button>
+                <button onClick={() => { setShowExportModal(false); handleExportTex() }} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+              </div>
             </div>
           </div>
         </div>
