@@ -64,10 +64,13 @@ export default function LoginPage() {
       const result = await login(newFormData)
       if (result?.error) {
         setError(result.error)
+        setIsLoading(false)
+      } else if (result?.success) {
+        // Redirect client-side để tránh lỗi NEXT_REDIRECT bị catch
+        window.location.href = '/dashboard'
       }
     } catch {
       setError('Đăng nhập thất bại. Vui lòng thử lại.')
-    } finally {
       setIsLoading(false)
     }
   }

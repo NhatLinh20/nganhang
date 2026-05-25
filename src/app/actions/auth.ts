@@ -11,7 +11,7 @@ import { headers } from 'next/headers'
 // ═══════════════════════════════════════════════════
 // ĐĂNG NHẬP bằng Email & Mật khẩu
 // ═══════════════════════════════════════════════════
-export async function login(formData: FormData): Promise<{ error?: string }> {
+export async function login(formData: FormData): Promise<{ error?: string; success?: boolean }> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -86,7 +86,7 @@ export async function login(formData: FormData): Promise<{ error?: string }> {
   // Fire and forget — không chờ kết quả
   logLoginInternal(user.id, ip, userAgent).catch(() => {})
 
-  redirect('/dashboard')
+  return { success: true }
 }
 
 // ═══════════════════════════════════════════════════
