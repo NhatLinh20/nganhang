@@ -522,7 +522,7 @@ function buildMaTranTex(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, duration, grade, questions, exams, headerLabels, examCodes, excelOption } = body as {
+    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOption } = body as {
       title?: string
       duration?: number
       grade?: number
