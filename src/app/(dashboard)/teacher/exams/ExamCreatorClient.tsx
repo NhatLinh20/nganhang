@@ -1214,27 +1214,6 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                                     <span>Nội dung LaTeX</span>
                                     <span style={{ color: '#cbd5e1' }}>|</span>
                                     <span className={tableStyles.categoryCode}>{q.category_code}</span>
-                                    {q.mo_ta && <span style={{ fontWeight: 400, color: '#64748b', fontSize: '13px' }}>— {q.mo_ta}</span>}
-                                  </div>
-                                  <pre 
-                                    style={{ 
-                                      margin: 0, padding: '16px', background: 'white', border: '1px solid #cbd5e1', 
-                                      borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap', fontFamily: 'monospace', 
-                                      lineHeight: 1.6, color: '#1e293b',
-                                      WebkitUserSelect: userRole !== 'admin' ? 'none' : undefined,
-                                      MozUserSelect: userRole !== 'admin' ? 'none' : undefined,
-                                      msUserSelect: userRole !== 'admin' ? 'none' : undefined,
-                                      userSelect: userRole !== 'admin' ? 'none' : undefined
-                                    }}
-                                    onCopy={(e) => {
-                                      if (userRole !== 'admin') {
-                                        e.preventDefault()
-                                        alert('Tính năng copy mã nguồn chỉ dành cho quản trị viên.')
-                                      }
-                                    }}
-                                    onContextMenu={(e) => {
-                                      if (userRole !== 'admin') {
-                                        e.preventDefault()
                                       }
                                     }}
                                     onKeyDown={(e) => {
@@ -1412,28 +1391,44 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
-                <select 
-                  value={excelOption} 
-                  onChange={e => setExcelOption(e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, outline: 'none', background: '#f8fafc', minWidth: 200 }}
-                >
-                  <option value="none">Không xuất bảng đáp án</option>
-                  <option value="all">Xuất tất cả các loại bảng</option>
-                  <option value="azota">Xuất bảng Azota</option>
-                  <option value="tnmaker">Xuất bảng TNMaker</option>
-                  <option value="olm">Xuất bảng OLM</option>
-                </select>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
+                    <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                  </div>
+                </div>
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#334155' }}>
-                <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
-                <span>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
-              </label>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
-                <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+
+              {/* ── RIGHT COLUMN (Options) ── */}
+              <div style={{ flex: '0 0 320px', background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tùy chọn xuất</h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Bảng đáp án Excel:</label>
+                  <select 
+                    value={excelOption} 
+                    onChange={e => setExcelOption(e.target.value)}
+                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: 'white' }}
+                  >
+                    <option value="none">Không xuất bảng đáp án</option>
+                    <option value="all">Xuất tất cả các loại bảng</option>
+                    <option value="azota">Xuất bảng Azota</option>
+                    <option value="tnmaker">Xuất bảng TNMaker</option>
+                    <option value="olm">Xuất bảng OLM</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
+                  </label>
+                </div>
+
+                {/* Placeholders for future options */}
+                <div style={{ flex: 1, border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, minHeight: '100px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Không gian chờ cập nhật...</span>
+                </div>
               </div>
             </div>
           </div>
