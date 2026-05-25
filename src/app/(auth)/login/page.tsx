@@ -105,7 +105,7 @@ export default function LoginPage() {
         </div>
 
         {/* Email/Password Form */}
-        <form action={handleLogin} className={styles.form}>
+        <form onSubmit={handleLogin} className={styles.form}>
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">Email</label>
             <input
