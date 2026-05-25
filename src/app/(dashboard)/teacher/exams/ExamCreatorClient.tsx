@@ -564,7 +564,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         headerStyles,
         examCodes: currentAllExams.length > 1 ? examCodes : undefined,
         duration: configDuration || 90,
-        grade: configGrade,
+        grade: filterGrade || 12,
         excelOption,
         includeAnswerTable,
       };
