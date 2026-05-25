@@ -1268,15 +1268,18 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       {/* Export LaTeX Modal */}
       {showExportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 720, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 960, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
               </div>
               <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>
-            
-            {/* ── Shared Formatting Toolbar ── */}
+
+            <div style={{ display: 'flex', gap: 24 }}>
+              {/* ── LEFT COLUMN (Main Content) ── */}
+              <div style={{ flex: '1 1 65%', display: 'flex', flexDirection: 'column' }}>
+                {/* ── Shared Formatting Toolbar ── */}
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
               <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginRight: 4 }}>Định dạng:</span>
               {(['bold', 'italic', 'underline'] as const).map(prop => (
