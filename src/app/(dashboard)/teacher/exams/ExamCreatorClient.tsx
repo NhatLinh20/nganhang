@@ -562,7 +562,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         title: configTitle || 'De_Thi',
         headerLabels,
         headerStyles,
-        examCodes: currentAllExams.length > 1 ? examCodes : undefined,
+        examCodes,
         duration: configDuration || 90,
         grade: filterGrade || 12,
         excelOption,
