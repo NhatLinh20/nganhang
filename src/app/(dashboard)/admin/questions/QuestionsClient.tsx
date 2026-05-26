@@ -131,7 +131,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
 
     let query = supabase
       .from('questions')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'estimated' })
       .order('created_at', { ascending: false })
 
     // Apply filters
