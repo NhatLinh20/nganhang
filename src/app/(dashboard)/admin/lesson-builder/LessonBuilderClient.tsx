@@ -88,6 +88,41 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     toastTimerRef.current = setTimeout(() => setToast(p => ({ ...p, visible: false })), type === 'error' ? 8000 : 4000)
   }, [])
 
+  // ── LocalStorage persistence ───────────────────────────────────────────────
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('lesson-builder-state')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.grade) setGrade(parsed.grade)
+        if (parsed.blocks) setBlocks(parsed.blocks)
+      }
+    } catch (e) {
+      console.error('Failed to load lesson builder state', e)
+    }
+    setIsLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isLoaded) return
+    try {
+      localStorage.setItem('lesson-builder-state', JSON.stringify({ grade, blocks }))
+    } catch (e) {
+      console.error('Failed to save lesson builder state', e)
+    }
+  }, [isLoaded, grade, blocks])
+
+  const handleReset = () => {
+    if (!window.confirm('Bạn có chắc chắn muốn làm mới? Toàn bộ cấu hình đang làm việc sẽ bị xóa.')) return
+    localStorage.removeItem('lesson-builder-state')
+    setGrade(12)
+    setBlocks([])
+    setModal(null)
+    showToast('info', 'Đã làm mới', 'Trang đã được reset về trạng thái ban đầu.')
+  }
+
   // ── Derived data for chapter/section selectors ─────────────────────────────
   const chaptersMap = CURRICULUM[grade]?.[selSubject] || {}
 
@@ -463,6 +498,20 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
                 <option value={11}>Lớp 11</option>
                 <option value={12}>Lớp 12</option>
               </select>
+              {blocks.length > 0 && (
+                <button
+                  onClick={handleReset}
+                  title="Làm mới (xóa toàn bộ)"
+                  style={{
+                    padding: '6px 10px', background: '#fef2f2', border: '1px solid #fca5a5',
+                    borderRadius: '6px', color: '#dc2626', fontSize: '12px', fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                  }}
+                >
+                  🧹 Làm mới
+                </button>
+              )}
             </div>
           </div>
 
