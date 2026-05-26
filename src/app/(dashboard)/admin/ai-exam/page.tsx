@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
+import { useState, useRef, useCallback, useEffect, Fragment, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import styles from './ai-exam.module.css'
@@ -158,6 +158,97 @@ export default function AiExamPage() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [userRole, setUserRole] = useState('')
 
+  // ═══ TOAST NOTIFICATION SYSTEM ═══
+  const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success' | 'info'; title: string; message: string; visible: boolean }>({
+    type: 'info', title: '', message: '', visible: false
+  })
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const translateError = useCallback((rawError: string): { title: string; message: string } => {
+    const err = rawError.toLowerCase()
+    
+    if (err.includes('503') || err.includes('service unavailable') || err.includes('high demand')) {
+      return {
+        title: 'Máy chủ AI đang quá tải',
+        message: 'Google Gemini đang có quá nhiều người sử dụng. Vui lòng đợi 1-2 phút rồi thử lại.'
+      }
+    }
+    if (err.includes('429') || err.includes('rate limit') || err.includes('quota')) {
+      return {
+        title: 'Vượt quá giới hạn sử dụng',
+        message: 'Bạn đã gửi quá nhiều yêu cầu trong thời gian ngắn. Vui lòng đợi vài phút rồi thử lại.'
+      }
+    }
+    if (err.includes('401') || err.includes('unauthorized') || err.includes('api key')) {
+      return {
+        title: 'Lỗi xác thực API',
+        message: 'API Key không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại API Key trong phần cài đặt.'
+      }
+    }
+    if (err.includes('400') || err.includes('invalid')) {
+      return {
+        title: 'Yêu cầu không hợp lệ',
+        message: 'Dữ liệu gửi lên không đúng định dạng. Vui lòng kiểm tra lại nội dung yêu cầu.'
+      }
+    }
+    if (err.includes('timeout') || err.includes('timed out') || err.includes('deadline')) {
+      return {
+        title: 'Hết thời gian chờ',
+        message: 'Yêu cầu mất quá lâu để xử lý. Vui lòng thử lại hoặc đơn giản hóa yêu cầu.'
+      }
+    }
+    if (err.includes('network') || err.includes('fetch') || err.includes('econnrefused') || err.includes('kết nối')) {
+      return {
+        title: 'Lỗi kết nối mạng',
+        message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối Internet và thử lại.'
+      }
+    }
+    if (err.includes('json') || err.includes('parse')) {
+      return {
+        title: 'AI trả về dữ liệu lỗi',
+        message: 'AI không thể phân tích yêu cầu của bạn. Vui lòng mô tả rõ ràng hơn hoặc thử lại.'
+      }
+    }
+    if (err.includes('không tìm thấy') || err.includes('404') || err.includes('not found')) {
+      return {
+        title: 'Không tìm thấy câu hỏi',
+        message: 'Ngân hàng câu hỏi không có câu phù hợp với yêu cầu. Vui lòng thử dạng bài hoặc mức độ khác.'
+      }
+    }
+    if (err.includes('đã hết câu hỏi')) {
+      return {
+        title: 'Hết câu hỏi thay thế',
+        message: 'Đã dùng hết câu hỏi cùng dạng trong ngân hàng. Không còn câu nào khác để thay thế.'
+      }
+    }
+    if (err.includes('500') || err.includes('internal server')) {
+      return {
+        title: 'Lỗi hệ thống',
+        message: 'Máy chủ gặp sự cố nội bộ. Vui lòng thử lại sau ít phút.'
+      }
+    }
+    // Fallback: giữ nguyên nội dung gốc nhưng dịch tiêu đề
+    return {
+      title: 'Đã xảy ra lỗi',
+      message: rawError
+    }
+  }, [])
+
+  const showToast = useCallback((type: 'error' | 'warning' | 'success' | 'info', rawMessage: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    
+    if (type === 'error' || type === 'warning') {
+      const { title, message } = translateError(rawMessage)
+      setToast({ type, title, message, visible: true })
+    } else {
+      setToast({ type, title: type === 'success' ? 'Thành công' : 'Thông báo', message: rawMessage, visible: true })
+    }
+    
+    toastTimerRef.current = setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }))
+    }, type === 'error' ? 8000 : 5000)
+  }, [translateError])
+
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient()
@@ -311,7 +402,7 @@ export default function AiExamPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert('❌ Lỗi: ' + (data.error || 'Không rõ lỗi'))
+        showToast('error', data.error || 'Không rõ lỗi')
         return
       }
 
@@ -333,7 +424,7 @@ export default function AiExamPage() {
         setExamCodes([generateExamCode()])
       }
     } catch (err) {
-      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+      showToast('error', 'Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
     } finally {
       setLoading(false)
       setLoadingStep(0)
@@ -389,7 +480,7 @@ export default function AiExamPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert('\u26a0\ufe0f ' + (data.error || 'Kh\u00f4ng th\u1ec3 thay th\u1ebf c\u00e2u h\u1ecfi.'))
+        showToast('warning', data.error || 'Không thể thay thế câu hỏi.')
         return
       }
 
@@ -402,7 +493,7 @@ export default function AiExamPage() {
       )
       setSwappedOutIds(prev => [...prev, question.id])
     } catch (err) {
-      alert('L\u1ed7i k\u1ebft n\u1ed1i: ' + (err instanceof Error ? err.message : 'Unknown'))
+      showToast('error', 'Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
     } finally {
       setSwappingId(null)
     }
@@ -436,7 +527,7 @@ export default function AiExamPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert('⚠️ ' + (data.error || 'Không tìm thấy câu hỏi phù hợp với bộ lọc.'))
+        showToast('warning', data.error || 'Không tìm thấy câu hỏi phù hợp với bộ lọc.')
         return
       }
 
@@ -449,7 +540,7 @@ export default function AiExamPage() {
         }
       ])
     } catch (err) {
-      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+      showToast('error', 'Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
     } finally {
       setSwappingId(null)
     }
@@ -482,7 +573,7 @@ export default function AiExamPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert('⚠️ ' + (data.error || 'Không tìm thấy câu hỏi phù hợp với bộ lọc.'))
+        showToast('warning', data.error || 'Không tìm thấy câu hỏi phù hợp với bộ lọc.')
         return
       }
 
@@ -495,7 +586,7 @@ export default function AiExamPage() {
       )
       setSwappedOutIds(prev => [...prev, targetQ.id])
     } catch (err) {
-      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+      showToast('error', 'Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
     } finally {
       setSwappingId(null)
     }
@@ -519,7 +610,7 @@ export default function AiExamPage() {
         
         // Giới hạn tổng
         if (qs.length > 30) {
-          alert('Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
+          showToast('warning', 'Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
           return;
         }
 
@@ -530,7 +621,7 @@ export default function AiExamPage() {
         const esCount = qs.filter(q => q.question_type === 'essay').length;
 
         if (mcCount > 25 || tfCount > 4 || saCount > 6 || esCount > 6) {
-          alert(`Tài khoản giáo viên bị giới hạn số câu ở đề số ${i+1}:\n- Trắc nghiệm: tối đa 25 câu (đang có ${mcCount})\n- Đúng/Sai: tối đa 4 câu (đang có ${tfCount})\n- Trả lời ngắn: tối đa 6 câu (đang có ${saCount})\n- Tự luận: tối đa 6 câu (đang có ${esCount})\n\nVui lòng giảm bớt câu hỏi để tiếp tục.`);
+          showToast('warning', `Đề số ${i+1} vượt giới hạn: TN ${mcCount}/25, Đ/S ${tfCount}/4, Ngắn ${saCount}/6, TL ${esCount}/6. Vui lòng giảm bớt câu hỏi.`);
           return;
         }
       }
@@ -580,7 +671,7 @@ export default function AiExamPage() {
 
       if (!res.ok) {
         const json = await res.json();
-        alert('❌ Xuất ZIP thất bại: ' + (json.error || 'Lỗi chưa xác định'));
+        showToast('error', 'Xuất ZIP thất bại: ' + (json.error || 'Lỗi chưa xác định'));
         return;
       }
 
@@ -603,7 +694,7 @@ export default function AiExamPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'));
+      showToast('error', 'Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'));
     }
   };
 
@@ -1260,7 +1351,7 @@ export default function AiExamPage() {
                                         onCopy={(e) => {
                                           if (userRole !== 'admin') {
                                             e.preventDefault()
-                                            alert('Tính năng copy mã nguồn chỉ dành cho quản trị viên.')
+                                            showToast('info', 'Tính năng copy mã nguồn chỉ dành cho quản trị viên.')
                                           }
                                         }}
                                         onContextMenu={(e) => {
@@ -1748,6 +1839,122 @@ export default function AiExamPage() {
           </div>
         </div>
       )}
+    </div>
+
+      {/* ═══ TOAST NOTIFICATION ═══ */}
+      {toast.visible && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 99999,
+            minWidth: '340px',
+            maxWidth: '480px',
+            borderRadius: '16px',
+            padding: '18px 22px',
+            display: 'flex',
+            gap: '14px',
+            alignItems: 'flex-start',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            boxShadow: toast.type === 'error'
+              ? '0 8px 32px rgba(220, 38, 38, 0.25), 0 0 0 1px rgba(220, 38, 38, 0.15)'
+              : toast.type === 'warning'
+              ? '0 8px 32px rgba(217, 119, 6, 0.25), 0 0 0 1px rgba(217, 119, 6, 0.15)'
+              : toast.type === 'success'
+              ? '0 8px 32px rgba(22, 163, 74, 0.25), 0 0 0 1px rgba(22, 163, 74, 0.15)'
+              : '0 8px 32px rgba(37, 99, 235, 0.25), 0 0 0 1px rgba(37, 99, 235, 0.15)',
+            background: toast.type === 'error'
+              ? 'linear-gradient(135deg, rgba(254, 242, 242, 0.95), rgba(254, 226, 226, 0.95))'
+              : toast.type === 'warning'
+              ? 'linear-gradient(135deg, rgba(255, 251, 235, 0.95), rgba(254, 243, 199, 0.95))'
+              : toast.type === 'success'
+              ? 'linear-gradient(135deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))'
+              : 'linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.95))',
+            animation: 'toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          {/* Icon */}
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            fontSize: '20px',
+            background: toast.type === 'error' ? 'rgba(220, 38, 38, 0.12)'
+              : toast.type === 'warning' ? 'rgba(217, 119, 6, 0.12)'
+              : toast.type === 'success' ? 'rgba(22, 163, 74, 0.12)'
+              : 'rgba(37, 99, 235, 0.12)',
+          }}>
+            {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : toast.type === 'success' ? '✅' : 'ℹ️'}
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontWeight: 700,
+              fontSize: '14px',
+              marginBottom: '4px',
+              color: toast.type === 'error' ? '#991b1b'
+                : toast.type === 'warning' ? '#92400e'
+                : toast.type === 'success' ? '#166534'
+                : '#1e40af',
+            }}>
+              {toast.title}
+            </div>
+            <div style={{
+              fontSize: '13px',
+              lineHeight: '1.5',
+              color: toast.type === 'error' ? '#b91c1c'
+                : toast.type === 'warning' ? '#a16207'
+                : toast.type === 'success' ? '#15803d'
+                : '#2563eb',
+              opacity: 0.9,
+            }}>
+              {toast.message}
+            </div>
+          </div>
+
+          {/* Close button */}
+          <button
+            onClick={() => setToast(prev => ({ ...prev, visible: false }))}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '18px',
+              lineHeight: 1,
+              padding: '2px',
+              color: toast.type === 'error' ? '#b91c1c'
+                : toast.type === 'warning' ? '#a16207'
+                : toast.type === 'success' ? '#15803d'
+                : '#2563eb',
+              opacity: 0.5,
+              flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Toast animation */}
+      <style jsx global>{`
+        @keyframes toastSlideIn {
+          from {
+            transform: translateX(120%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   )
 }
