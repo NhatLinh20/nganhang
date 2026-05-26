@@ -176,12 +176,13 @@ Các field bắt buộc trong mỗi object của matrix:
 - subject_area: "D" (Đại số), "H" (Hình học), "C" (Chuyên đề)
 - chapter: Chương của kiến thức dưới dạng số nguyên (Ví dụ: Nguyên hàm/Tích phân thuộc Lớp 12 Đại số Chương 4 -> chapter: 4; Oxyz thuộc Lớp 12 Hình học Chương 5 -> chapter: 5; Khảo sát hàm số thuộc Lớp 12 Đại số Chương 1 -> chapter: 1; Mũ và Logarit thuộc Lớp 11 Đại số Chương 6 -> chapter: 6).
 - lesson: Bài học cụ thể dưới dạng số nguyên (Ví dụ: Nguyên hàm -> lesson: 1; Tích phân -> lesson: 2; Ứng dụng tích phân -> lesson: 3; Phương trình mặt phẳng -> lesson: 2; Phương trình đường thẳng -> lesson: 3; Phương trình mặt cầu -> lesson: 1 hoặc 2 tùy theo bài học).
+- variant: Dạng bài cụ thể dưới dạng số nguyên hoặc null. Mỗi bài học (lesson) có thể có nhiều dạng bài (variant). Nếu yêu cầu chỉ định rõ dạng bài cụ thể (ví dụ: "dùng radian" trong PT lượng giác cơ bản → variant: 3, "dùng độ" → variant: 4), hãy ghi số variant. Nếu không rõ hoặc không cần chỉ định dạng bài cụ thể, để null.
 - difficulty: "N" (Nhận biết), "H" (Thông hiểu), "V" (Vận dụng), "C" (VD cao)
 - question_type: "multiple_choice", "true_false", "short_answer", "essay"
 - so_luong: Số lượng câu hỏi
 
 Format JSON bắt buộc (Không chứa text nào khác ngoài JSON này):
-{"exam_info":{"title":"...","grade":12,"duration":90},"matrix":[{"phan":1,"query_text":"Hàm số bậc 4 chiều biến thiên nhận biết lớp 12","grade":12,"subject_area":"D","chapter":1,"lesson":1,"difficulty":"N","question_type":"multiple_choice","so_luong":2}]}`
+{"exam_info":{"title":"...","grade":12,"duration":90},"matrix":[{"phan":1,"query_text":"Hàm số bậc 4 chiều biến thiên nhận biết lớp 12","grade":12,"subject_area":"D","chapter":1,"lesson":1,"variant":null,"difficulty":"N","question_type":"multiple_choice","so_luong":2}]}`
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
@@ -323,6 +324,7 @@ export async function POST(req: NextRequest) {
               filter_lesson: row.lesson ?? null,
               filter_difficulty: row.difficulty ?? null,
               filter_type: row.question_type ?? null,
+              filter_variant: row.variant ?? null,
             })
 
             if (error) throw error
@@ -340,6 +342,7 @@ export async function POST(req: NextRequest) {
                 filter_lesson: null,
                 filter_difficulty: row.difficulty ?? null,
                 filter_type: row.question_type ?? null,
+                filter_variant: null,
               })
               if (!relaxedRes.error && relaxedRes.data?.length) {
                 const relaxedData = relaxedRes.data.filter((q: { id: string }) => !globalUsedIds.has(q.id))
@@ -418,6 +421,7 @@ async function exactMatchFill(
   if (row.subject_area) query = query.eq('subject_area', row.subject_area)
   if (row.chapter != null) query = query.eq('chapter', row.chapter)
   if (row.lesson != null) query = query.eq('lesson', row.lesson)
+  if (row.variant != null) query = query.eq('variant', row.variant)
   if (row.difficulty) query = query.eq('difficulty', row.difficulty)
   if (row.question_type) query = query.eq('question_type', row.question_type)
 

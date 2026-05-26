@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
           filter_lesson: lesson ?? null,
           filter_difficulty: difficulty ?? null,
           filter_type: question_type,
+          filter_variant: variant ?? null,
         })
 
         if (!error && data?.length) {
