@@ -1839,7 +1839,6 @@ export default function AiExamPage() {
           </div>
         </div>
       )}
-    </div>
 
       {/* ═══ TOAST NOTIFICATION ═══ */}
       {toast.visible && (
@@ -1875,16 +1874,10 @@ export default function AiExamPage() {
             animation: 'toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
-          {/* Icon */}
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            fontSize: '20px',
+            width: '40px', height: '40px', borderRadius: '12px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, fontSize: '20px',
             background: toast.type === 'error' ? 'rgba(220, 38, 38, 0.12)'
               : toast.type === 'warning' ? 'rgba(217, 119, 6, 0.12)'
               : toast.type === 'success' ? 'rgba(22, 163, 74, 0.12)'
@@ -1892,49 +1885,27 @@ export default function AiExamPage() {
           }}>
             {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : toast.type === 'success' ? '✅' : 'ℹ️'}
           </div>
-
-          {/* Content */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontWeight: 700,
-              fontSize: '14px',
-              marginBottom: '4px',
-              color: toast.type === 'error' ? '#991b1b'
-                : toast.type === 'warning' ? '#92400e'
-                : toast.type === 'success' ? '#166534'
-                : '#1e40af',
+              fontWeight: 700, fontSize: '14px', marginBottom: '4px',
+              color: toast.type === 'error' ? '#991b1b' : toast.type === 'warning' ? '#92400e' : toast.type === 'success' ? '#166534' : '#1e40af',
             }}>
               {toast.title}
             </div>
             <div style={{
-              fontSize: '13px',
-              lineHeight: '1.5',
-              color: toast.type === 'error' ? '#b91c1c'
-                : toast.type === 'warning' ? '#a16207'
-                : toast.type === 'success' ? '#15803d'
-                : '#2563eb',
-              opacity: 0.9,
+              fontSize: '13px', lineHeight: '1.5', opacity: 0.9,
+              color: toast.type === 'error' ? '#b91c1c' : toast.type === 'warning' ? '#a16207' : toast.type === 'success' ? '#15803d' : '#2563eb',
             }}>
               {toast.message}
             </div>
           </div>
-
-          {/* Close button */}
           <button
             onClick={() => setToast(prev => ({ ...prev, visible: false }))}
             style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '18px',
-              lineHeight: 1,
-              padding: '2px',
-              color: toast.type === 'error' ? '#b91c1c'
-                : toast.type === 'warning' ? '#a16207'
-                : toast.type === 'success' ? '#15803d'
-                : '#2563eb',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '18px', lineHeight: 1, padding: '2px', flexShrink: 0,
+              color: toast.type === 'error' ? '#b91c1c' : toast.type === 'warning' ? '#a16207' : toast.type === 'success' ? '#15803d' : '#2563eb',
               opacity: 0.5,
-              flexShrink: 0,
             }}
           >
             ✕
@@ -1942,17 +1913,10 @@ export default function AiExamPage() {
         </div>
       )}
 
-      {/* Toast animation */}
-      <style jsx global>{`
+      <style>{`
         @keyframes toastSlideIn {
-          from {
-            transform: translateX(120%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+          from { transform: translateX(120%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
     </div>
