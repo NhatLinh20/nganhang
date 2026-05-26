@@ -672,32 +672,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
 
               {/* Footer with export */}
               <div className={styles.footerBar}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', margin: 0 }}>Bảng đáp án Excel:</label>
-                  <select
-                    value={excelOption}
-                    onChange={e => setExcelOption(e.target.value)}
-                    style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, outline: 'none', background: '#f8fafc', minWidth: 200 }}
-                  >
-                    <option value="none">Không xuất bảng đáp án</option>
-                    <option value="all">Xuất tất cả các loại bảng</option>
-                    <option value="azota">Xuất bảng Azota</option>
-                    <option value="tnmaker">Xuất bảng TNMaker</option>
-                    <option value="olm">Xuất bảng OLM</option>
-                  </select>
-                </div>
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 12, marginLeft: 'auto' }}>
                   <button
                     onClick={() => setShowExportModal(true)}
                     className={styles.exportBtn}
                   >
-                    📝 Tiêu đề đề thi
-                  </button>
-                  <button
-                    onClick={handleExportTex}
-                    className={styles.exportBtn}
-                  >
-                    📥 Xuất file .tex ({shuffledExams.length} mã đề)
+                    📥 Xuất file .tex
                   </button>
                 </div>
               </div>
