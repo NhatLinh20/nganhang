@@ -27,6 +27,7 @@ const navItems = [
       { href: '/teacher/exams', icon: '📝', label: 'Tạo đề thi' },
       { href: '/teacher/shuffle', icon: '🔀', label: 'Trộn đề' },
       { href: '/admin/ai-exam', icon: '🤖', label: 'AI tạo đề' },
+      { href: '/admin/lesson-builder', icon: '📖', label: 'Tạo bài học' },
     ],
   },
 ]
@@ -41,7 +42,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
       if (section.section === 'Đề thi') {
         return {
           ...section,
-          items: section.items.filter(item => item.href === '/admin/ai-exam' || item.href === '/teacher/exams' || item.href === '/teacher/shuffle')
+          items: section.items.filter(item => item.href === '/admin/ai-exam' || item.href === '/teacher/exams' || item.href === '/teacher/shuffle' || item.href === '/admin/lesson-builder')
         }
       }
       if (section.section === 'Quản lý') {
