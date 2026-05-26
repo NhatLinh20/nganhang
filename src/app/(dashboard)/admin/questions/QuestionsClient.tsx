@@ -129,49 +129,52 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     setLoading(true)
     const currentFetchId = ++fetchIdRef.current
 
-    const hasFilters = !!(
-      filter.grade || filter.subject_area || filter.chapter !== undefined || 
-      filter.lesson !== undefined || filter.variant !== undefined || 
-      filter.difficulty || filter.question_type || filter.has_image !== undefined || 
-      filter.category_code || debouncedSearch
-    )
+    // === 1. QUERY LẤY DỮ LIỆU (30 câu cho trang hiện tại) ===
+    let dataQuery = supabase
+      .from('questions')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-    const applyFilters = (q: any) => {
-      let f = q
-      if (filter.grade) f = f.eq('grade', filter.grade)
-      if (filter.subject_area) f = f.eq('subject_area', filter.subject_area)
-      if (filter.chapter !== undefined) f = f.eq('chapter', filter.chapter)
-      if (filter.lesson !== undefined) f = f.eq('lesson', filter.lesson)
-      if (filter.variant !== undefined) f = f.eq('variant', filter.variant)
-      if (filter.difficulty) f = f.eq('difficulty', filter.difficulty)
-      if (filter.question_type) f = f.eq('question_type', filter.question_type)
-      if (filter.has_image !== undefined) f = f.eq('has_image', filter.has_image)
-      if (filter.category_code) f = f.eq('category_code', filter.category_code)
-      if (debouncedSearch) f = f.ilike('category_code', `${debouncedSearch}%`)
-      return f
-    }
+    // Áp dụng bộ lọc
+    if (filter.grade) dataQuery = dataQuery.eq('grade', filter.grade)
+    if (filter.subject_area) dataQuery = dataQuery.eq('subject_area', filter.subject_area)
+    if (filter.chapter !== undefined) dataQuery = dataQuery.eq('chapter', filter.chapter)
+    if (filter.lesson !== undefined) dataQuery = dataQuery.eq('lesson', filter.lesson)
+    if (filter.variant !== undefined) dataQuery = dataQuery.eq('variant', filter.variant)
+    if (filter.difficulty) dataQuery = dataQuery.eq('difficulty', filter.difficulty)
+    if (filter.question_type) dataQuery = dataQuery.eq('question_type', filter.question_type)
+    if (filter.has_image !== undefined) dataQuery = dataQuery.eq('has_image', filter.has_image)
+    if (filter.category_code) dataQuery = dataQuery.eq('category_code', filter.category_code)
+    if (debouncedSearch) dataQuery = dataQuery.ilike('category_code', `${debouncedSearch}%`)
 
     const from = (page - 1) * PAGE_SIZE
-    
-    // Nếu load toàn bộ 37k câu (không có filter), sắp xếp theo created_at sẽ phải quét toàn bộ bảng gây timeout.
-    // Giải pháp: bỏ sắp xếp (hoặc dùng id) khi không có filter.
-    let dataQuery = applyFilters(supabase.from('questions').select('*'))
-    if (hasFilters) {
-      dataQuery = dataQuery.order('created_at', { ascending: false })
-    }
-    
     dataQuery = dataQuery.range(from, from + PAGE_SIZE - 1)
 
-    // Luôn dùng đếm chính xác (exact) vì query đếm giờ đã tách riêng, chạy rất nhanh và không bị timeout.
-    let countQuery = applyFilters(supabase.from('questions').select('*', { count: 'exact', head: true }))
+    // === 2. QUERY ĐẾM TỔNG (qua API route server-side, bypass RLS → cực nhanh) ===
+    const countParams = new URLSearchParams()
+    if (filter.grade) countParams.set('grade', String(filter.grade))
+    if (filter.subject_area) countParams.set('subject_area', filter.subject_area)
+    if (filter.chapter !== undefined) countParams.set('chapter', String(filter.chapter))
+    if (filter.lesson !== undefined) countParams.set('lesson', String(filter.lesson))
+    if (filter.variant !== undefined) countParams.set('variant', String(filter.variant))
+    if (filter.difficulty) countParams.set('difficulty', filter.difficulty)
+    if (filter.question_type) countParams.set('question_type', filter.question_type)
+    if (filter.has_image !== undefined) countParams.set('has_image', String(filter.has_image))
+    if (filter.category_code) countParams.set('category_code', filter.category_code)
+    if (debouncedSearch) countParams.set('search', debouncedSearch)
 
-    const [dataRes, countRes] = await Promise.all([dataQuery, countQuery])
+    const countUrl = `/api/questions/count${countParams.toString() ? '?' + countParams.toString() : ''}`
+
+    // Chạy song song: lấy dữ liệu + đếm tổng
+    const [dataRes, countRes] = await Promise.all([
+      dataQuery,
+      fetch(countUrl).then(r => r.json()).catch(() => ({ count: 0 }))
+    ])
 
     // Bỏ qua kết quả cũ nếu đã có request mới hơn
     if (currentFetchId !== fetchIdRef.current) return
 
     if (dataRes.error) console.error('Fetch data error:', dataRes.error)
-    if (countRes.error) console.error('Fetch count error:', countRes.error)
     
     setQuestions((dataRes.data as Question[]) || [])
     setTotal(countRes.count || 0)
