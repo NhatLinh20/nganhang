@@ -129,53 +129,32 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     setLoading(true)
     const currentFetchId = ++fetchIdRef.current
 
-    // === 1. QUERY LẤY DỮ LIỆU (30 câu cho trang hiện tại) ===
-    let dataQuery = supabase
-      .from('questions')
-      .select('*')
-      .order('created_at', { ascending: false })
+    // Build query params chung cho cả 2 API route
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    params.set('pageSize', String(PAGE_SIZE))
+    if (filter.grade) params.set('grade', String(filter.grade))
+    if (filter.subject_area) params.set('subject_area', filter.subject_area)
+    if (filter.chapter !== undefined) params.set('chapter', String(filter.chapter))
+    if (filter.lesson !== undefined) params.set('lesson', String(filter.lesson))
+    if (filter.variant !== undefined) params.set('variant', String(filter.variant))
+    if (filter.difficulty) params.set('difficulty', filter.difficulty)
+    if (filter.question_type) params.set('question_type', filter.question_type)
+    if (filter.has_image !== undefined) params.set('has_image', String(filter.has_image))
+    if (filter.category_code) params.set('category_code', filter.category_code)
+    if (debouncedSearch) params.set('search', debouncedSearch)
 
-    // Áp dụng bộ lọc
-    if (filter.grade) dataQuery = dataQuery.eq('grade', filter.grade)
-    if (filter.subject_area) dataQuery = dataQuery.eq('subject_area', filter.subject_area)
-    if (filter.chapter !== undefined) dataQuery = dataQuery.eq('chapter', filter.chapter)
-    if (filter.lesson !== undefined) dataQuery = dataQuery.eq('lesson', filter.lesson)
-    if (filter.variant !== undefined) dataQuery = dataQuery.eq('variant', filter.variant)
-    if (filter.difficulty) dataQuery = dataQuery.eq('difficulty', filter.difficulty)
-    if (filter.question_type) dataQuery = dataQuery.eq('question_type', filter.question_type)
-    if (filter.has_image !== undefined) dataQuery = dataQuery.eq('has_image', filter.has_image)
-    if (filter.category_code) dataQuery = dataQuery.eq('category_code', filter.category_code)
-    if (debouncedSearch) dataQuery = dataQuery.ilike('category_code', `${debouncedSearch}%`)
+    const qs = params.toString()
 
-    const from = (page - 1) * PAGE_SIZE
-    dataQuery = dataQuery.range(from, from + PAGE_SIZE - 1)
-
-    // === 2. QUERY ĐẾM TỔNG (qua API route server-side, bypass RLS → cực nhanh) ===
-    const countParams = new URLSearchParams()
-    if (filter.grade) countParams.set('grade', String(filter.grade))
-    if (filter.subject_area) countParams.set('subject_area', filter.subject_area)
-    if (filter.chapter !== undefined) countParams.set('chapter', String(filter.chapter))
-    if (filter.lesson !== undefined) countParams.set('lesson', String(filter.lesson))
-    if (filter.variant !== undefined) countParams.set('variant', String(filter.variant))
-    if (filter.difficulty) countParams.set('difficulty', filter.difficulty)
-    if (filter.question_type) countParams.set('question_type', filter.question_type)
-    if (filter.has_image !== undefined) countParams.set('has_image', String(filter.has_image))
-    if (filter.category_code) countParams.set('category_code', filter.category_code)
-    if (debouncedSearch) countParams.set('search', debouncedSearch)
-
-    const countUrl = `/api/questions/count${countParams.toString() ? '?' + countParams.toString() : ''}`
-
-    // Chạy song song: lấy dữ liệu + đếm tổng
+    // Chạy song song: lấy 30 câu hỏi + đếm tổng (cả 2 đều qua server, bypass RLS → cực nhanh)
     const [dataRes, countRes] = await Promise.all([
-      dataQuery,
-      fetch(countUrl).then(r => r.json()).catch(() => ({ count: 0 }))
+      fetch(`/api/questions?${qs}`).then(r => r.json()).catch(() => ({ data: [] })),
+      fetch(`/api/questions/count?${qs}`).then(r => r.json()).catch(() => ({ count: 0 }))
     ])
 
     // Bỏ qua kết quả cũ nếu đã có request mới hơn
     if (currentFetchId !== fetchIdRef.current) return
 
-    if (dataRes.error) console.error('Fetch data error:', dataRes.error)
-    
     setQuestions((dataRes.data as Question[]) || [])
     setTotal(countRes.count || 0)
     setLoading(false)
