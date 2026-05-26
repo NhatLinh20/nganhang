@@ -129,35 +129,38 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     setLoading(true)
     const currentFetchId = ++fetchIdRef.current
 
-    let query = supabase
-      .from('questions')
-      .select('*', { count: 'estimated' })
-      .order('created_at', { ascending: false })
+    const applyFilters = (q: any) => {
+      let f = q
+      if (filter.grade) f = f.eq('grade', filter.grade)
+      if (filter.subject_area) f = f.eq('subject_area', filter.subject_area)
+      if (filter.chapter !== undefined) f = f.eq('chapter', filter.chapter)
+      if (filter.lesson !== undefined) f = f.eq('lesson', filter.lesson)
+      if (filter.variant !== undefined) f = f.eq('variant', filter.variant)
+      if (filter.difficulty) f = f.eq('difficulty', filter.difficulty)
+      if (filter.question_type) f = f.eq('question_type', filter.question_type)
+      if (filter.has_image !== undefined) f = f.eq('has_image', filter.has_image)
+      if (filter.category_code) f = f.eq('category_code', filter.category_code)
+      if (debouncedSearch) f = f.ilike('category_code', `${debouncedSearch}%`)
+      return f
+    }
 
-    // Apply filters
-    if (filter.grade) query = query.eq('grade', filter.grade)
-    if (filter.subject_area) query = query.eq('subject_area', filter.subject_area)
-    if (filter.chapter !== undefined) query = query.eq('chapter', filter.chapter)
-    if (filter.lesson !== undefined) query = query.eq('lesson', filter.lesson)
-    if (filter.variant !== undefined) query = query.eq('variant', filter.variant)
-    if (filter.difficulty) query = query.eq('difficulty', filter.difficulty)
-    if (filter.question_type) query = query.eq('question_type', filter.question_type)
-    if (filter.has_image !== undefined) query = query.eq('has_image', filter.has_image)
-    if (filter.category_code) query = query.eq('category_code', filter.category_code)
-    if (debouncedSearch) query = query.ilike('category_code', `${debouncedSearch}%`)
-
-    // Pagination
     const from = (page - 1) * PAGE_SIZE
-    query = query.range(from, from + PAGE_SIZE - 1)
+    
+    let dataQuery = applyFilters(supabase.from('questions').select('*').order('created_at', { ascending: false }))
+    dataQuery = dataQuery.range(from, from + PAGE_SIZE - 1)
 
-    const { data, count, error } = await query
+    let countQuery = applyFilters(supabase.from('questions').select('*', { count: 'exact', head: true }))
+
+    const [dataRes, countRes] = await Promise.all([dataQuery, countQuery])
 
     // Bỏ qua kết quả cũ nếu đã có request mới hơn
     if (currentFetchId !== fetchIdRef.current) return
 
-    if (error) console.error('Fetch error:', error)
-    setQuestions((data as Question[]) || [])
-    setTotal(count || 0)
+    if (dataRes.error) console.error('Fetch data error:', dataRes.error)
+    if (countRes.error) console.error('Fetch count error:', countRes.error)
+    
+    setQuestions((dataRes.data as Question[]) || [])
+    setTotal(countRes.count || 0)
     setLoading(false)
   }, [filter, page, debouncedSearch])
 
