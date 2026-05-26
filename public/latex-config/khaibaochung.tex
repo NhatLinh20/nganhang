@@ -134,15 +134,15 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 	\noindent
 	\begin{minipage}[]{0.45\textwidth}
 		\centering
-		{#1}\\
-		{#2}\\
+		\MakeUppercase{#1}\\
+		\MakeUppercase{#2}\\
 		{#3}\\
 		{#4}
 	\end{minipage}
 	\begin{minipage}[]{0.55\textwidth}
 		\centering
-		{#5}\\
-		{#6}\\
+		\MakeUppercase{#5}\\
+		\MakeUppercase{#6}\\
 		{#7}\\
 		{#8}
 	\end{minipage}
@@ -152,7 +152,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 	\textit{Số báo danh:}\tikz \draw[dotted,very thin] (0,0)--(\textwidth/4.6,0);\quad
 	Mã đề: \fbox{\color{blue} \bf \large\fontfamily{anttlc}\selectfont \made}
 	%=====
-	\addcontentsline{toc}{section}{Đề \thedemsode. Đề KSCL năm học 2025-2026, #2, Môn Toán \khoi}
+	\addcontentsline{toc}{section}{Đề \thedemsode. \MakeUppercase{#5}, Môn Toán \khoi}
 	\addtocounter{demsode}{1}
 	\gdef\socaulc{12}
 	\gdef\socauds{4}
