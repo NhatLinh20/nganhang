@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect, Fragment } from 'react'
 import Header from '@/components/layout/Header'
 import styles from './lesson-builder.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
@@ -9,9 +9,14 @@ import { CURRICULUM } from '../questions/QuestionsClient'
 interface QuestionItem {
   id: string
   category_code: string
-  latex_content: string
+  grade: number
+  subject_area: string
+  chapter: number
+  lesson: number
+  variant: number
   difficulty: string
   question_type: string
+  latex_content: string
 }
 
 interface LessonBlock {
@@ -25,7 +30,17 @@ interface LessonBlock {
   questions?: QuestionItem[]
 }
 
-type ModalMode = null | 'addBlock' | 'selectChapter' | 'selectSection' | 'selectVariant' | 'pickQuestions'
+interface VariantStatsRow {
+  lesson: number
+  lesson_name: string
+  variant: number
+  variant_name: string
+  question_type: string
+  counts: Record<string, number>
+  total: number
+}
+
+type ModalMode = null | 'addBlock' | 'selectChapter' | 'selectSection' | 'questionPicker'
 
 let _blockIdCounter = 0
 function genId() { return `blk_${Date.now()}_${++_blockIdCounter}` }
@@ -36,6 +51,9 @@ const BLOCK_ICONS: Record<string, string> = {
 const BLOCK_LABELS: Record<string, string> = {
   chapter: 'Chương', section: 'Bài', theory: 'Lý thuyết', exercises: 'Bài tập', variant: 'Dạng'
 }
+const TYPE_LABELS: Record<string, string> = {
+  multiple_choice: 'TN', true_false: 'Đ/S', short_answer: 'Ngắn', essay: 'Tự luận'
+}
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function LessonBuilderClient({ userRole }: { userRole: string }) {
@@ -44,19 +62,25 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
   const [modal, setModal] = useState<ModalMode>(null)
   const [exporting, setExporting] = useState(false)
 
-  // Selector state
+  // Selector state for chapter/section modals
   const [selSubject, setSelSubject] = useState('D')
   const [selChapter, setSelChapter] = useState<number | ''>('')
   const [selLesson, setSelLesson] = useState<number | ''>('')
-  const [selVariant, setSelVariant] = useState<number | ''>('')
-  const [selDifficulty, setSelDifficulty] = useState('')
-  const [selCount, setSelCount] = useState(5)
-  const [selQuestions, setSelQuestions] = useState<QuestionItem[]>([])
-  const [loadingQuestions, setLoadingQuestions] = useState(false)
+
+  // ── Question Picker state (fullscreen stats table) ─────────────────────────
+  const [pickerSubject, setPickerSubject] = useState('D')
+  const [pickerChapter, setPickerChapter] = useState<number>(1)
+  const [pickerLesson, setPickerLesson] = useState('')
+  const [pickerVariant, setPickerVariant] = useState('')
+  const [pickerType, setPickerType] = useState('')
+  const [statsData, setStatsData] = useState<VariantStatsRow[]>([])
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [pickerSelections, setPickerSelections] = useState<Record<string, number>>({})
+  const [loadingFetch, setLoadingFetch] = useState(false)
 
   // Toast
   const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success' | 'info'; title: string; message: string; visible: boolean }>({ type: 'info', title: '', message: '', visible: false })
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const showToast = useCallback((type: 'error' | 'warning' | 'success' | 'info', title: string, message: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -64,14 +88,158 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     toastTimerRef.current = setTimeout(() => setToast(p => ({ ...p, visible: false })), type === 'error' ? 8000 : 4000)
   }, [])
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  // ── Derived data for chapter/section selectors ─────────────────────────────
   const chaptersMap = CURRICULUM[grade]?.[selSubject] || {}
-  const lessonsMap = selChapter !== '' ? (chaptersMap[selChapter] || {}) : {}
-  const variantsList = selChapter !== '' && selLesson !== '' ? (lessonsMap[selLesson as number] || []) : []
 
-  // Find last chapter/section context for auto-fill
+  // Find last chapter/section context
   const lastChapter = [...blocks].reverse().find(b => b.type === 'chapter')
   const lastSection = [...blocks].reverse().find(b => b.type === 'section')
+
+  // ── Picker derived data ────────────────────────────────────────────────────
+  const pickerChaptersMap = CURRICULUM[grade]?.[pickerSubject] || {}
+  const pickerAvailableChapters = Object.keys(pickerChaptersMap).map(Number)
+  const pickerAvailableLessons = pickerChapter && pickerChaptersMap[pickerChapter]
+    ? Object.keys(pickerChaptersMap[pickerChapter]).map(Number) : []
+  const pickerAvailableVariants = pickerChapter && pickerLesson && pickerChaptersMap[pickerChapter]?.[Number(pickerLesson)]
+    ? pickerChaptersMap[pickerChapter][Number(pickerLesson)] : []
+
+  // ── Fetch stats when picker opens or filters change ────────────────────────
+  const fetchStats = useCallback(async () => {
+    if (!pickerChapter) return
+    setLoadingStats(true)
+    try {
+      const res = await fetch(`/api/exams/stats?grade=${grade}&subject_area=${pickerSubject}&chapter=${pickerChapter}`)
+      const json = await res.json()
+      if (json.error) {
+        showToast('error', 'Lỗi', json.error)
+      } else {
+        setStatsData(json.data || [])
+      }
+    } catch {
+      showToast('error', 'Lỗi kết nối', 'Không thể tải dữ liệu thống kê.')
+    } finally {
+      setLoadingStats(false)
+    }
+  }, [grade, pickerSubject, pickerChapter, showToast])
+
+  useEffect(() => {
+    if (modal === 'questionPicker') {
+      fetchStats()
+    }
+  }, [modal, fetchStats])
+
+  // ── Picker selection summary ───────────────────────────────────────────────
+  const getPickerStats = useCallback(() => {
+    const stats = {
+      types: { multiple_choice: 0, true_false: 0, short_answer: 0, essay: 0 } as Record<string, number>,
+      diffs: { N: 0, H: 0, V: 0, C: 0 } as Record<string, number>,
+      total: 0,
+    }
+    Object.entries(pickerSelections).forEach(([key, count]) => {
+      const parts = key.split('|')
+      if (parts.length === 7 && count > 0) {
+        const [, , , , , t, d] = parts
+        stats.types[t] = (stats.types[t] || 0) + count
+        stats.diffs[d] = (stats.diffs[d] || 0) + count
+        stats.total += count
+      }
+    })
+    return stats
+  }, [pickerSelections])
+
+  const pickerStats = getPickerStats()
+
+  // ── Picker count change handler ────────────────────────────────────────────
+  const handlePickerCountChange = (lesson: number, variant: number, type: string, diff: string, value: string, max: number) => {
+    const num = parseInt(value)
+    const key = `${grade}|${pickerSubject}|${pickerChapter}|${lesson}|${variant}|${type}|${diff}`
+    setPickerSelections(prev => {
+      const next = { ...prev }
+      if (isNaN(num) || num <= 0) {
+        delete next[key]
+      } else {
+        next[key] = Math.min(num, max)
+      }
+      return next
+    })
+  }
+
+  // ── Add questions to lesson ────────────────────────────────────────────────
+  const handleAddQuestionsToLesson = async () => {
+    const selectionArray: { grade: number; subject_area: string; chapter: number; lesson: number; variant: number; difficulty: string; question_type: string; count: number }[] = []
+
+    Object.entries(pickerSelections).forEach(([key, count]) => {
+      if (count > 0) {
+        const parts = key.split('|')
+        if (parts.length === 7) {
+          const [g, s, c, l, v, t, d] = parts
+          selectionArray.push({
+            grade: parseInt(g), subject_area: s, chapter: parseInt(c),
+            lesson: parseInt(l), variant: parseInt(v),
+            question_type: t, difficulty: d, count,
+          })
+        }
+      }
+    })
+
+    if (selectionArray.length === 0) {
+      showToast('warning', 'Chưa chọn', 'Hãy nhập số lượng câu cần lấy trước.')
+      return
+    }
+
+    setLoadingFetch(true)
+    try {
+      const res = await fetch('/api/lesson-builder/fetch-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selections: selectionArray }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        showToast('error', 'Lỗi', data.error || 'Không thể lấy câu hỏi')
+        return
+      }
+
+      const questions: QuestionItem[] = data.questions || []
+      if (questions.length === 0) {
+        showToast('warning', 'Không có câu hỏi', 'Không tìm thấy câu hỏi phù hợp.')
+        return
+      }
+
+      // Group questions by (lesson, variant) → create variant blocks
+      const groups: Record<string, QuestionItem[]> = {}
+      for (const q of questions) {
+        const gKey = `${q.lesson}|${q.variant}`
+        if (!groups[gKey]) groups[gKey] = []
+        groups[gKey].push(q)
+      }
+
+      const newBlocks: LessonBlock[] = []
+      for (const [gKey, qs] of Object.entries(groups)) {
+        const [les, vari] = gKey.split('|').map(Number)
+        newBlocks.push({
+          id: genId(), type: 'variant', grade,
+          subjectArea: pickerSubject, chapter: pickerChapter,
+          lesson: les, variant: vari,
+          questions: qs,
+        })
+      }
+
+      setBlocks(prev => [...prev, ...newBlocks])
+      setPickerSelections({})
+      setModal(null)
+
+      if (data.warnings && data.warnings.length > 0) {
+        showToast('warning', 'Cảnh báo', data.warnings.join('\n'))
+      } else {
+        showToast('success', 'Đã thêm', `${questions.length} câu hỏi đã được thêm vào bài học.`)
+      }
+    } catch {
+      showToast('error', 'Lỗi kết nối', 'Không thể kết nối đến máy chủ.')
+    } finally {
+      setLoadingFetch(false)
+    }
+  }
 
   // ── Block management ───────────────────────────────────────────────────────
   const addBlock = useCallback((block: LessonBlock) => {
@@ -108,33 +276,27 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     setModal('selectSection')
   }
 
-  const openVariantSelect = () => {
+  const openQuestionPicker = () => {
     const sub = lastChapter?.subjectArea || 'D'
-    const ch = lastChapter?.chapter || ''
-    const les = lastSection?.lesson || ''
-    setSelSubject(sub)
-    setSelChapter(ch as number)
-    setSelLesson(les as number)
-    setSelVariant('')
-    setSelDifficulty('')
-    setSelCount(5)
-    setSelQuestions([])
-    setModal('selectVariant')
+    const ch = lastChapter?.chapter || 1
+    setPickerSubject(sub)
+    setPickerChapter(ch)
+    setPickerLesson('')
+    setPickerVariant('')
+    setPickerType('')
+    setPickerSelections({})
+    setModal('questionPicker')
   }
 
   // ── Confirm add block ──────────────────────────────────────────────────────
   const confirmChapter = () => {
     if (selChapter === '') return
-    addBlock({
-      id: genId(), type: 'chapter', grade, subjectArea: selSubject, chapter: selChapter as number,
-    })
+    addBlock({ id: genId(), type: 'chapter', grade, subjectArea: selSubject, chapter: selChapter as number })
   }
 
   const confirmSection = () => {
     if (selChapter === '' || selLesson === '') return
-    addBlock({
-      id: genId(), type: 'section', grade, subjectArea: selSubject, chapter: selChapter as number, lesson: selLesson as number,
-    })
+    addBlock({ id: genId(), type: 'section', grade, subjectArea: selSubject, chapter: selChapter as number, lesson: selLesson as number })
   }
 
   const addTheory = () => {
@@ -161,52 +323,6 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       chapter: lastChapter?.chapter || 1,
       lesson: lastSection.lesson,
     })
-  }
-
-  // ── Fetch questions for variant ────────────────────────────────────────────
-  const fetchQuestions = async () => {
-    if (selChapter === '' || selLesson === '') return
-    setLoadingQuestions(true)
-    try {
-      const params = new URLSearchParams({
-        grade: String(grade),
-        subject_area: selSubject,
-        chapter: String(selChapter),
-        lesson: String(selLesson),
-        limit: String(selCount),
-      })
-      if (selVariant !== '') params.set('variant', String(selVariant))
-      if (selDifficulty) params.set('difficulty', selDifficulty)
-
-      const res = await fetch(`/api/questions?${params}`)
-      const data = await res.json()
-      if (!res.ok) {
-        showToast('error', 'Lỗi', data.error || 'Không thể tải câu hỏi')
-        return
-      }
-      setSelQuestions(data.data || [])
-      if ((data.data || []).length === 0) {
-        showToast('info', 'Không có câu hỏi', 'Không tìm thấy câu hỏi phù hợp với bộ lọc.')
-      }
-    } catch {
-      showToast('error', 'Lỗi kết nối', 'Không thể kết nối đến máy chủ.')
-    } finally {
-      setLoadingQuestions(false)
-    }
-  }
-
-  const confirmVariant = () => {
-    if (selQuestions.length === 0) {
-      showToast('warning', 'Chưa có câu hỏi', 'Hãy lấy câu hỏi trước khi thêm dạng bài.')
-      return
-    }
-    addBlock({
-      id: genId(), type: 'variant', grade, subjectArea: selSubject,
-      chapter: selChapter as number, lesson: selLesson as number,
-      variant: selVariant as number || undefined,
-      questions: [...selQuestions],
-    })
-    setSelQuestions([])
   }
 
   // ── Generate LaTeX preview ─────────────────────────────────────────────────
@@ -243,22 +359,15 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
             : 'Tổng hợp'
           tex += `\\subsubsection{${varName}}\n`
           if (block.questions && block.questions.length > 0) {
-            tex += `\\begin{enumerate}\n`
             for (const q of block.questions) {
-              // Clean up LaTeX: remove \begin{ex}/\end{ex} wrappers if present
-              let content = q.latex_content.trim()
-              content = content.replace(/^\\begin\{ex\}[\s\S]*?(?=\\(?:choice|begin|textbf|text|$|[A-Z]))/, '')
-              content = content.replace(/\\end\{ex\}[\s\S]*$/, '')
-              content = content.trim()
-              tex += `\\item ${content}\n\n`
+              const content = q.latex_content.trim()
+              tex += `${content}\n\n`
             }
-            tex += `\\end{enumerate}\n\n`
           }
           break
         }
       }
     }
-
     return tex
   }, [blocks])
 
@@ -413,7 +522,7 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
                 <button className={styles.addMenuItem} onClick={() => { addExercises(); setModal(null) }}>
                   <span className={styles.addMenuIcon}>📋</span> Thêm Bài tập
                 </button>
-                <button className={styles.addMenuItem} onClick={openVariantSelect}>
+                <button className={styles.addMenuItem} onClick={openQuestionPicker}>
                   <span className={styles.addMenuIcon}>🎯</span> Thêm Dạng bài + Câu hỏi
                 </button>
                 <button className={styles.addMenuItem} onClick={() => setModal(null)} style={{ color: 'var(--color-text-muted)' }}>
@@ -425,7 +534,6 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
                 ＋ Thêm block
               </button>
             )}
-
             <button className={styles.exportBtn} onClick={handleExport} disabled={blocks.length === 0 || exporting}>
               {exporting ? '⏳ Đang xuất...' : '📥 Xuất file .tex'}
             </button>
@@ -544,107 +652,217 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
         </div>
       )}
 
-      {/* ═══ MODAL: Select Variant + Questions ═══ */}
-      {modal === 'selectVariant' && (
-        <div className={styles.modal} onClick={() => setModal(null)}>
-          <div className={styles.modalInner} onClick={e => e.stopPropagation()} style={{ maxWidth: '720px' }}>
-            <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>🎯 Thêm Dạng bài + Câu hỏi</span>
-              <button className={styles.modalClose} onClick={() => setModal(null)}>✕</button>
+      {/* ═══ FULLSCREEN QUESTION PICKER ═══ */}
+      {modal === 'questionPicker' && (
+        <div className={styles.pickerOverlay}>
+          <div className={styles.pickerContainer}>
+            {/* Header */}
+            <div className={styles.pickerHeader}>
+              <span className={styles.pickerTitle}>🎯 Chọn câu hỏi cho bài học</span>
+              <button className={styles.pickerCloseBtn} onClick={() => setModal(null)}>✕</button>
             </div>
-            <div className={styles.modalBody}>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Phân môn</span>
-                <select className={styles.modalSelect} value={selSubject} onChange={e => { setSelSubject(e.target.value); setSelChapter(''); setSelLesson(''); setSelVariant('') }}>
-                  <option value="D">Đại số (D)</option>
-                  <option value="H">Hình học (H)</option>
-                  <option value="C">Chuyên đề (C)</option>
+
+            {/* Filters */}
+            <div className={styles.pickerFilters}>
+              <div className={styles.pickerFilterGroup}>
+                <span className={styles.pickerFilterLabel}>Phân môn</span>
+                <select className={styles.pickerFilterSelect} value={pickerSubject} onChange={e => {
+                  setPickerSubject(e.target.value)
+                  const newMap = CURRICULUM[grade]?.[e.target.value] || {}
+                  const chs = Object.keys(newMap).map(Number)
+                  setPickerChapter(chs[0] || 1)
+                  setPickerLesson(''); setPickerVariant('')
+                }}>
+                  <option value="D">Đại số / XS</option>
+                  <option value="H">Hình học</option>
+                  <option value="C">Chuyên đề</option>
                 </select>
               </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Chương</span>
-                <select className={styles.modalSelect} value={selChapter} onChange={e => { setSelChapter(Number(e.target.value)); setSelLesson(''); setSelVariant('') }}>
-                  <option value="">— Chọn chương —</option>
-                  {Object.keys(CURRICULUM[grade]?.[selSubject] || {}).map(ch => (
+              <div className={styles.pickerFilterGroup}>
+                <span className={styles.pickerFilterLabel}>Chương</span>
+                <select className={styles.pickerFilterSelect} value={pickerChapter} onChange={e => {
+                  setPickerChapter(Number(e.target.value))
+                  setPickerLesson(''); setPickerVariant('')
+                }} style={{ minWidth: 220 }}>
+                  {pickerAvailableChapters.map(ch => (
                     <option key={ch} value={ch}>
-                      {CHAPTER_NAMES[grade]?.[selSubject]?.[Number(ch)] || `Chương ${ch}`}
+                      {CHAPTER_NAMES[grade]?.[pickerSubject]?.[ch] || `Chương ${ch}`}
                     </option>
+                  ))}
+                  {pickerAvailableChapters.length === 0 && <option value="">(Không có)</option>}
+                </select>
+              </div>
+              <div className={styles.pickerFilterGroup}>
+                <span className={styles.pickerFilterLabel}>Bài</span>
+                <select className={styles.pickerFilterSelect} value={pickerLesson} onChange={e => { setPickerLesson(e.target.value); setPickerVariant('') }}>
+                  <option value="">Tất cả</option>
+                  {pickerAvailableLessons.map(l => (
+                    <option key={l} value={l}>Bài {l}</option>
                   ))}
                 </select>
               </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Bài</span>
-                <select className={styles.modalSelect} value={selLesson} onChange={e => { setSelLesson(Number(e.target.value)); setSelVariant('') }}>
-                  <option value="">— Chọn bài —</option>
-                  {selChapter !== '' && Object.keys(chaptersMap[selChapter as number] || {}).map(les => (
-                    <option key={les} value={les}>
-                      {LESSON_NAMES[grade]?.[selSubject]?.[selChapter as number]?.[Number(les)] || `Bài ${les}`}
-                    </option>
+              <div className={styles.pickerFilterGroup}>
+                <span className={styles.pickerFilterLabel}>Dạng</span>
+                <select className={styles.pickerFilterSelect} value={pickerVariant} onChange={e => setPickerVariant(e.target.value)}>
+                  <option value="">Tất cả</option>
+                  {pickerAvailableVariants.map((v: number) => (
+                    <option key={v} value={v}>Dạng {v}</option>
                   ))}
                 </select>
               </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Dạng</span>
-                <select className={styles.modalSelect} value={selVariant} onChange={e => setSelVariant(e.target.value ? Number(e.target.value) : '')}>
-                  <option value="">— Tất cả dạng —</option>
-                  {variantsList.map((v: number) => (
-                    <option key={v} value={v}>
-                      {VARIANT_NAMES[grade]?.[selSubject]?.[selChapter as number]?.[selLesson as number]?.[v] || `Dạng ${v}`}
-                    </option>
-                  ))}
+              <div className={styles.pickerFilterGroup}>
+                <span className={styles.pickerFilterLabel}>Loại câu</span>
+                <select className={styles.pickerFilterSelect} value={pickerType} onChange={e => setPickerType(e.target.value)}>
+                  <option value="">Tất cả</option>
+                  <option value="multiple_choice">Trắc nghiệm</option>
+                  <option value="true_false">Đúng/Sai</option>
+                  <option value="short_answer">Trả lời ngắn</option>
+                  <option value="essay">Tự luận</option>
                 </select>
               </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Mức độ</span>
-                <select className={styles.modalSelect} value={selDifficulty} onChange={e => setSelDifficulty(e.target.value)}>
-                  <option value="">— Tất cả —</option>
-                  <option value="N">Nhận biết</option>
-                  <option value="H">Thông hiểu</option>
-                  <option value="V">Vận dụng</option>
-                  <option value="C">VD cao</option>
-                </select>
-              </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Số lượng</span>
-                <input
-                  type="number" min={1} max={50}
-                  className={styles.modalInput}
-                  value={selCount}
-                  onChange={e => setSelCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
-                />
-                <button
-                  className={styles.modalConfirmBtn}
-                  onClick={fetchQuestions}
-                  disabled={selChapter === '' || selLesson === '' || loadingQuestions}
-                  style={{ whiteSpace: 'nowrap' }}
-                >
-                  {loadingQuestions ? '⏳' : '🎲'} Lấy ngẫu nhiên
-                </button>
-              </div>
+            </div>
 
-              {/* Question results */}
-              {selQuestions.length > 0 && (
-                <div className={styles.questionList}>
-                  {selQuestions.map(q => (
-                    <div key={q.id} className={styles.questionItem}>
-                      <span className={styles.questionItemCode}>{q.category_code}</span>
-                      <span className={styles.questionItemPreview}>
-                        {q.latex_content.replace(/\\[a-zA-Z]+\{?/g, '').replace(/[{}\\]/g, '').slice(0, 60)}...
-                      </span>
-                      <button className={styles.questionItemRemove} onClick={() => setSelQuestions(p => p.filter(x => x.id !== q.id))}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {loadingQuestions && (
-                <div className={styles.loadingSpinner}>⏳ Đang tải câu hỏi...</div>
+            {/* Summary */}
+            <div className={styles.pickerSummary}>
+              <span className={styles.pickerSummaryLabel}>Đã chọn: {pickerStats.total} câu</span>
+              <div className={styles.pickerSummaryBadges}>
+                <span className={`${styles.pickerBadge} ${styles.mc} ${pickerStats.types.multiple_choice ? '' : styles.zero}`}>TN: {pickerStats.types.multiple_choice}</span>
+                <span className={`${styles.pickerBadge} ${styles.tf} ${pickerStats.types.true_false ? '' : styles.zero}`}>Đ/S: {pickerStats.types.true_false}</span>
+                <span className={`${styles.pickerBadge} ${styles.sa} ${pickerStats.types.short_answer ? '' : styles.zero}`}>Ngắn: {pickerStats.types.short_answer}</span>
+                <span className={`${styles.pickerBadge} ${styles.es} ${pickerStats.types.essay ? '' : styles.zero}`}>TL: {pickerStats.types.essay}</span>
+              </div>
+              <div className={styles.pickerSummarySep} />
+              <div className={styles.pickerSummaryBadges}>
+                <span className={`${styles.pickerBadge} ${styles.nb} ${pickerStats.diffs.N ? '' : styles.zero}`}>NB: {pickerStats.diffs.N}</span>
+                <span className={`${styles.pickerBadge} ${styles.th} ${pickerStats.diffs.H ? '' : styles.zero}`}>TH: {pickerStats.diffs.H}</span>
+                <span className={`${styles.pickerBadge} ${styles.vd} ${pickerStats.diffs.V ? '' : styles.zero}`}>VD: {pickerStats.diffs.V}</span>
+                <span className={`${styles.pickerBadge} ${styles.vdc} ${pickerStats.diffs.C ? '' : styles.zero}`}>VDC: {pickerStats.diffs.C}</span>
+              </div>
+              {pickerStats.total > 0 && (
+                <button className={styles.pickerClearBtn} onClick={() => setPickerSelections({})}>✕ Xóa tất cả</button>
               )}
             </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.modalCancelBtn} onClick={() => setModal(null)}>Hủy</button>
-              <button className={styles.modalConfirmBtn} onClick={confirmVariant} disabled={selQuestions.length === 0}>
-                Thêm {selQuestions.length} câu
+
+            {/* Stats Table */}
+            <div className={styles.pickerBody}>
+              {loadingStats ? (
+                <div className={styles.pickerLoading}>⏳ Đang tải dữ liệu ngân hàng...</div>
+              ) : statsData.length === 0 ? (
+                <div className={styles.pickerEmpty}>
+                  <div className={styles.pickerEmptyIcon}>📭</div>
+                  Không có câu hỏi nào trong chương này
+                </div>
+              ) : (
+                <table className={styles.pickerTable}>
+                  <thead>
+                    <tr>
+                      <th style={{ minWidth: 300 }}>Bài / Dạng</th>
+                      <th style={{ width: 80 }}>Loại</th>
+                      <th className={styles.centered} title="Nhận biết">NB</th>
+                      <th className={styles.centered} title="Thông hiểu">TH</th>
+                      <th className={styles.centered} title="Vận dụng">VD</th>
+                      <th className={styles.centered} title="Vận dụng cao">VDC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const filtered = statsData.filter(row => {
+                        if (pickerLesson && row.lesson !== Number(pickerLesson)) return false
+                        if (pickerVariant && row.variant !== Number(pickerVariant)) return false
+                        if (pickerType && row.question_type !== pickerType) return false
+                        return true
+                      })
+
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                              Không tìm thấy dữ liệu phù hợp với bộ lọc.
+                            </td>
+                          </tr>
+                        )
+                      }
+
+                      return filtered.map((row, idx) => {
+                        const isNewLesson = idx === 0 || row.lesson !== filtered[idx - 1].lesson
+                        const countN = row.counts.N || 0
+                        const countH = row.counts.H || 0
+                        const countV = row.counts.V || 0
+                        const countC = row.counts.C || 0
+
+                        const kBase = `${grade}|${pickerSubject}|${pickerChapter}|${row.lesson}|${row.variant}|${row.question_type}`
+                        const selN = pickerSelections[`${kBase}|N`] || 0
+                        const selH = pickerSelections[`${kBase}|H`] || 0
+                        const selV = pickerSelections[`${kBase}|V`] || 0
+                        const selC = pickerSelections[`${kBase}|C`] || 0
+                        const hasSel = selN > 0 || selH > 0 || selV > 0 || selC > 0
+
+                        return (
+                          <Fragment key={`${row.lesson}-${row.variant}-${row.question_type}`}>
+                            {isNewLesson && (
+                              <tr>
+                                <td colSpan={6} className={styles.lessonGroupHeader}>
+                                  <span className={styles.lessonGroupHeaderText}>{row.lesson_name}</span>
+                                </td>
+                              </tr>
+                            )}
+                            <tr className={`${styles.pickerRow} ${hasSel ? styles.hasSelection : ''}`}>
+                              <td className={styles.pickerCell}>
+                                <span className={styles.variantName}>
+                                  <span style={{ fontWeight: 700, color: '#0369a1', marginRight: '6px' }}>Dạng {row.variant}:</span>
+                                  {row.variant_name}
+                                </span>
+                              </td>
+                              <td className={styles.pickerCell}>
+                                <span className={`${styles.typeBadge} ${
+                                  row.question_type === 'multiple_choice' ? styles.mc :
+                                  row.question_type === 'true_false' ? styles.tf :
+                                  row.question_type === 'short_answer' ? styles.sa : styles.es
+                                }`}>
+                                  {TYPE_LABELS[row.question_type]}
+                                </span>
+                              </td>
+                              {[
+                                { key: 'N', max: countN, sel: selN },
+                                { key: 'H', max: countH, sel: selH },
+                                { key: 'V', max: countV, sel: selV },
+                                { key: 'C', max: countC, sel: selC },
+                              ].map(lvl => (
+                                <td key={lvl.key} className={`${styles.pickerCell} ${styles.countCell}`}>
+                                  <div className={styles.countCellInner}>
+                                    <input
+                                      type="number" min={0} max={lvl.max}
+                                      value={lvl.sel || ''}
+                                      placeholder="0"
+                                      disabled={lvl.max === 0}
+                                      className={`${styles.countInput} ${lvl.sel > 0 ? styles.hasValue : ''}`}
+                                      onChange={e => handlePickerCountChange(row.lesson, row.variant, row.question_type, lvl.key, e.target.value, lvl.max)}
+                                    />
+                                    <span className={`${styles.countAvailable} ${lvl.max === 0 ? styles.zero : ''}`}>
+                                      / {lvl.max}
+                                    </span>
+                                  </div>
+                                </td>
+                              ))}
+                            </tr>
+                          </Fragment>
+                        )
+                      })
+                    })()}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className={styles.pickerFooter}>
+              <button className={styles.pickerCancelBtn} onClick={() => setModal(null)}>Hủy</button>
+              <button
+                className={styles.pickerSubmitBtn}
+                onClick={handleAddQuestionsToLesson}
+                disabled={pickerStats.total === 0 || loadingFetch}
+              >
+                {loadingFetch ? '⏳ Đang tải...' : `📥 Thêm ${pickerStats.total} câu vào bài học`}
               </button>
             </div>
           </div>

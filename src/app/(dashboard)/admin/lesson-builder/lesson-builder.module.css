@@ -575,3 +575,387 @@
   font-size: 13px;
   gap: 8px;
 }
+
+/* ═══ FULLSCREEN QUESTION PICKER ═══ */
+.pickerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.pickerContainer {
+  background: var(--color-surface);
+  width: 100%;
+  max-width: 1100px;
+  margin: 24px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+.pickerHeader {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pickerTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pickerCloseBtn {
+  background: var(--color-bg);
+  border: none;
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.pickerCloseBtn:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* Filter Row */
+.pickerFilters {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pickerFilterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pickerFilterLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.pickerFilterSelect {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 120px;
+}
+
+.pickerFilterSelect:focus {
+  border-color: var(--color-primary-400);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Summary Row */
+.pickerSummary {
+  padding: 10px 24px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pickerSummaryLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.pickerSummaryBadges {
+  display: flex;
+  gap: 6px;
+}
+
+.pickerBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+
+.pickerBadge.mc { background: #dbeafe; color: #1d4ed8; }
+.pickerBadge.tf { background: #fef3c7; color: #b45309; }
+.pickerBadge.sa { background: #d1fae5; color: #059669; }
+.pickerBadge.es { background: #ede9fe; color: #7c3aed; }
+.pickerBadge.nb { background: #dbeafe; color: #1d4ed8; }
+.pickerBadge.th { background: #fef3c7; color: #b45309; }
+.pickerBadge.vd { background: #fce7f3; color: #be185d; }
+.pickerBadge.vdc { background: #fee2e2; color: #b91c1c; }
+.pickerBadge.zero { opacity: 0.35; }
+
+.pickerSummarySep {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border);
+}
+
+.pickerClearBtn {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #dc2626;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  margin-left: auto;
+  transition: all 0.15s;
+}
+
+.pickerClearBtn:hover {
+  background: #fee2e2;
+}
+
+/* Stats Table */
+.pickerBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pickerTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pickerTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-surface);
+}
+
+.pickerTable th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.pickerTable th.centered {
+  text-align: center;
+  width: 110px;
+}
+
+.lessonGroupHeader {
+  padding: 10px 14px !important;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lessonGroupHeaderText {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-text-secondary);
+}
+
+.pickerRow {
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.1s;
+}
+
+.pickerRow:hover {
+  background: rgba(99, 102, 241, 0.03);
+}
+
+.pickerRow.hasSelection {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.pickerCell {
+  padding: 8px 14px;
+  vertical-align: middle;
+}
+
+.variantName {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.typeBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.typeBadge.mc { background: #dbeafe; color: #1d4ed8; }
+.typeBadge.tf { background: #fef3c7; color: #b45309; }
+.typeBadge.sa { background: #d1fae5; color: #059669; }
+.typeBadge.es { background: #ede9fe; color: #7c3aed; }
+
+.countCell {
+  text-align: center;
+  padding: 6px 8px;
+}
+
+.countCellInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.countInput {
+  width: 42px;
+  padding: 5px 4px;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  outline: none;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.countInput:focus {
+  border-color: var(--color-primary-400);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.countInput:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.countInput.hasValue {
+  border-color: var(--color-primary-400);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--color-primary-700);
+}
+
+.countAvailable {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.countAvailable.zero {
+  opacity: 0.3;
+}
+
+/* Picker Footer */
+.pickerFooter {
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.pickerCancelBtn {
+  padding: 10px 20px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.pickerCancelBtn:hover {
+  background: var(--color-border);
+}
+
+.pickerSubmitBtn {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pickerSubmitBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.pickerSubmitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pickerEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--color-text-muted);
+  gap: 12px;
+}
+
+.pickerEmptyIcon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.pickerLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  gap: 10px;
+}
+
