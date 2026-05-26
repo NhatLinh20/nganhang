@@ -129,6 +129,13 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     setLoading(true)
     const currentFetchId = ++fetchIdRef.current
 
+    const hasFilters = !!(
+      filter.grade || filter.subject_area || filter.chapter !== undefined || 
+      filter.lesson !== undefined || filter.variant !== undefined || 
+      filter.difficulty || filter.question_type || filter.has_image !== undefined || 
+      filter.category_code || debouncedSearch
+    )
+
     const applyFilters = (q: any) => {
       let f = q
       if (filter.grade) f = f.eq('grade', filter.grade)
@@ -146,10 +153,17 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
 
     const from = (page - 1) * PAGE_SIZE
     
-    let dataQuery = applyFilters(supabase.from('questions').select('*').order('created_at', { ascending: false }))
+    // Nếu load toàn bộ 37k câu (không có filter), sắp xếp theo created_at sẽ phải quét toàn bộ bảng gây timeout.
+    // Giải pháp: bỏ sắp xếp (hoặc dùng id) khi không có filter.
+    let dataQuery = applyFilters(supabase.from('questions').select('*'))
+    if (hasFilters) {
+      dataQuery = dataQuery.order('created_at', { ascending: false })
+    }
+    
     dataQuery = dataQuery.range(from, from + PAGE_SIZE - 1)
 
-    let countQuery = applyFilters(supabase.from('questions').select('*', { count: 'exact', head: true }))
+    // Khi không có filter, đếm 37k câu cũng gây timeout, nên dùng estimated. Có filter thì đếm exact.
+    let countQuery = applyFilters(supabase.from('questions').select('*', { count: hasFilters ? 'exact' : 'estimated', head: true }))
 
     const [dataRes, countRes] = await Promise.all([dataQuery, countQuery])
 
