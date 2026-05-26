@@ -1247,7 +1247,7 @@ export default function AiExamPage() {
                               </tr>
                               {/* Expanded row - LaTeX preview */}
                               {expandedId === q.id && (
-                                <tr className={tableStyles.expandedRow}>
+                                <tr className={tableStyles.expandedRow} onClick={() => setExpandedId(null)} style={{ cursor: 'pointer' }}>
                                   <td colSpan={12} style={{ padding: 0 }}>
                                     <div className={tableStyles.expandedContent} style={{ padding: '16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                                       <div className={tableStyles.expandedHeader} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>

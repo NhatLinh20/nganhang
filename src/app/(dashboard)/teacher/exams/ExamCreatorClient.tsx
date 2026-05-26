@@ -1207,7 +1207,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                             </td>
                           </tr>
                           {expandedId === q.id && (
-                            <tr>
+                            <tr onClick={() => setExpandedId(null)} style={{ cursor: 'pointer' }}>
                               <td colSpan={12} style={{ padding: 0 }}>
                                 <div style={{ padding: '20px 24px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
                                   <div style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
