@@ -162,8 +162,8 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     
     dataQuery = dataQuery.range(from, from + PAGE_SIZE - 1)
 
-    // Khi không có filter, đếm 37k câu cũng gây timeout, nên dùng estimated. Có filter thì đếm exact.
-    let countQuery = applyFilters(supabase.from('questions').select('*', { count: hasFilters ? 'exact' : 'estimated', head: true }))
+    // Luôn dùng đếm chính xác (exact) vì query đếm giờ đã tách riêng, chạy rất nhanh và không bị timeout.
+    let countQuery = applyFilters(supabase.from('questions').select('*', { count: 'exact', head: true }))
 
     const [dataRes, countRes] = await Promise.all([dataQuery, countQuery])
 
