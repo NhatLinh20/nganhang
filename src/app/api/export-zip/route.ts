@@ -462,6 +462,11 @@ function buildMaTranTex(
   tex += `\\begin{name}\n`
   for (let li = 0; li < labels.length; li++) {
     let labelText = labels[li]
+    // If the label is empty/blank, output {\,} and skip styling
+    if (li !== 3 && labelText.trim() === '') {
+      tex += `\t{\\,}\n`
+      continue
+    }
     // Apply formatting from headerStyles (skip index 3 — fixed zpageref)
     if (li !== 3 && headerStyles && headerStyles[li]) {
       const s = headerStyles[li]
