@@ -6,7 +6,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import AdmZip from 'adm-zip'
 import { createAdminClient } from '@/lib/supabase/server'
-import { CHAPTER_NAMES, LESSON_NAMES } from '@/lib/curriculum-labels'
+import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 
 interface QuestionRow {
   id: string
@@ -37,6 +37,9 @@ const TYPE_COMMENTS: Record<string, string> = {
   essay: '%%%-------------Tự luận-------------',
 }
 
+// Allow up to 60s for large exports (10k+ questions)
+export const maxDuration = 60
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -52,6 +55,7 @@ export async function GET(request: NextRequest) {
 
     // ── Fetch ALL questions matching filters (paginated) ─────────────────────
     const allData: QuestionRow[] = []
+    const seenIds = new Set<string>()
     let page = 0
     const PAGE_SIZE = 1000
 
@@ -59,10 +63,7 @@ export async function GET(request: NextRequest) {
       let query = supabase
         .from('questions')
         .select('id, grade, subject_area, chapter, lesson, variant, difficulty, question_type, latex_content, category_code')
-        .order('subject_area', { ascending: true })
-        .order('chapter', { ascending: true })
-        .order('lesson', { ascending: true })
-        .order('variant', { ascending: true })
+        .order('id', { ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
       if (gradeParam) query = query.eq('grade', parseInt(gradeParam))
@@ -81,7 +82,14 @@ export async function GET(request: NextRequest) {
       }
 
       if (!data || data.length === 0) break
-      allData.push(...(data as QuestionRow[]))
+
+      for (const row of data as QuestionRow[]) {
+        if (!seenIds.has(row.id)) {
+          seenIds.add(row.id)
+          allData.push(row)
+        }
+      }
+
       if (data.length < PAGE_SIZE) break
       page++
     }
@@ -90,21 +98,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Không có câu hỏi nào phù hợp với bộ lọc.' }, { status: 400 })
     }
 
+    console.log(`[export-bank] Fetched ${allData.length} questions in ${page + 1} pages`)
+
     const grade = gradeParam ? parseInt(gradeParam) : allData[0].grade
 
-    // ── Group questions: subject → chapter → lesson → type → difficulty ──────
-    // Structure: { "D|1": { "1": { "multiple_choice": { "N": [...], "H": [...] } } } }
+    // ── Group: subject→chapter → lesson → variant → type → difficulty ─────────
     type ChapterKey = string // "subject|chapter"
-    type LessonMap = Record<number, Record<string, Record<string, QuestionRow[]>>>
+    // lesson → variant → question_type → difficulty → questions[]
+    type VariantMap = Record<number, Record<string, Record<string, QuestionRow[]>>>
+    type LessonMap = Record<number, VariantMap>
     const grouped: Record<ChapterKey, LessonMap> = {}
 
     for (const q of allData) {
       const chKey = `${q.subject_area}|${q.chapter}`
       if (!grouped[chKey]) grouped[chKey] = {}
       if (!grouped[chKey][q.lesson]) grouped[chKey][q.lesson] = {}
-      if (!grouped[chKey][q.lesson][q.question_type]) grouped[chKey][q.lesson][q.question_type] = {}
-      if (!grouped[chKey][q.lesson][q.question_type][q.difficulty]) grouped[chKey][q.lesson][q.question_type][q.difficulty] = []
-      grouped[chKey][q.lesson][q.question_type][q.difficulty].push(q)
+      if (!grouped[chKey][q.lesson][q.variant]) grouped[chKey][q.lesson][q.variant] = {}
+      if (!grouped[chKey][q.lesson][q.variant][q.question_type]) grouped[chKey][q.lesson][q.variant][q.question_type] = {}
+      if (!grouped[chKey][q.lesson][q.variant][q.question_type][q.difficulty]) grouped[chKey][q.lesson][q.variant][q.question_type][q.difficulty] = []
+      grouped[chKey][q.lesson][q.variant][q.question_type][q.difficulty].push(q)
     }
 
     // ── Sort chapter keys: by subject (D→H→C) then chapter number ───────────
@@ -163,29 +175,39 @@ export async function GET(request: NextRequest) {
         let lessonTex = '\\newpage\n'
         lessonTex += `\\section{${lessonName}}\n`
 
-        const typesInLesson = lessons[les]
-        const sortedTypes = Object.keys(typesInLesson).sort((a, b) => (TYPE_ORDER[a] ?? 9) - (TYPE_ORDER[b] ?? 9))
+        const variantsInLesson = lessons[les]
+        const sortedVariants = Object.keys(variantsInLesson).map(Number).sort((a, b) => a - b)
 
-        for (const qType of sortedTypes) {
-          const comment = TYPE_COMMENTS[qType] || `%%%-------------${qType}-------------`
-          const command = TYPE_COMMANDS[qType] || ''
+        for (const vari of sortedVariants) {
+          // Get variant name from VARIANT_NAMES
+          const variantName = (VARIANT_NAMES as any)?.[String(grade)]?.[sub]?.[String(ch)]?.[String(les)]?.[String(vari)]
+            || `Dạng ${vari}`
+          lessonTex += `\\subsubsection{${variantName}}\n`
 
-          lessonTex += `${comment}\n`
-          lessonTex += `${command}\n`
+          const typesInVariant = variantsInLesson[vari]
+          const sortedTypes = Object.keys(typesInVariant).sort((a, b) => (TYPE_ORDER[a] ?? 9) - (TYPE_ORDER[b] ?? 9))
 
-          const diffsInType = typesInLesson[qType]
-          const sortedDiffs = Object.keys(diffsInType).sort((a, b) => (DIFF_ORDER[a] ?? 9) - (DIFF_ORDER[b] ?? 9))
+          for (const qType of sortedTypes) {
+            const comment = TYPE_COMMENTS[qType] || `%%%-------------${qType}-------------`
+            const command = TYPE_COMMANDS[qType] || ''
 
-          for (const diff of sortedDiffs) {
-            const questions = diffsInType[diff]
-            if (questions.length === 0) continue
+            lessonTex += `${comment}\n`
+            lessonTex += `${command}\n`
 
-            const diffLabel = DIFF_LABELS[diff] || diff
-            lessonTex += `\\begin{center}\n\\textbf{${diffLabel}}\n\\end{center}\n`
+            const diffsInType = typesInVariant[qType]
+            const sortedDiffs = Object.keys(diffsInType).sort((a, b) => (DIFF_ORDER[a] ?? 9) - (DIFF_ORDER[b] ?? 9))
 
-            for (const q of questions) {
-              const content = q.latex_content.trim()
-              lessonTex += `${content}\n\n`
+            for (const diff of sortedDiffs) {
+              const questions = diffsInType[diff]
+              if (questions.length === 0) continue
+
+              const diffLabel = DIFF_LABELS[diff] || diff
+              lessonTex += `\\begin{center}\n\\textbf{${diffLabel}}\n\\end{center}\n`
+
+              for (const q of questions) {
+                const content = q.latex_content.trim()
+                lessonTex += `${content}\n\n`
+              }
             }
           }
         }
