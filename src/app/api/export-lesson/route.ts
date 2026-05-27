@@ -32,12 +32,18 @@ function buildLessonTex(blocks: LessonBlock[], grade: number): string {
   for (const block of blocks) {
     switch (block.type) {
       case 'chapter': {
-        const name = CHAPTER_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter] || `Chương ${block.chapter}`
-        tex += `\\chapter{${name}}\n\n`
+        const rawName = CHAPTER_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter] || `Chương ${block.chapter}`
+        // Strip "Ch.1 " or "CĐ1 " prefix — LaTeX will auto-number via \setcounter
+        const name = rawName.replace(/^Ch\.\d+\s*/, '').replace(/^CĐ\d+\s*/, '')
+        tex += `\\setcounter{chapter}{${block.chapter - 1}}\n`
+        tex += `\\chapter{${name}}\n`
         break
       }
       case 'section': {
-        const name = LESSON_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter]?.[block.lesson!] || `Bài ${block.lesson}`
+        const rawName = LESSON_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter]?.[block.lesson!] || `Bài ${block.lesson}`
+        // Strip "§1 " prefix — LaTeX will auto-number via \setcounter
+        const name = rawName.replace(/^§\d+\s*/, '')
+        tex += `\\setcounter{section}{${(block.lesson || 1) - 1}}\n`
         tex += `\\section{${name}}\n\n`
         break
       }
