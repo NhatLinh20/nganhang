@@ -106,6 +106,9 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
   const [showDupModal, setShowDupModal] = useState(false)
   const [deletingDups, setDeletingDups] = useState(false)
 
+  // State for bank export
+  const [exportingBank, setExportingBank] = useState(false)
+
 
 
   // Debounce search input — chờ gõ xong 300ms mới query
@@ -335,15 +338,79 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     }
   }
 
+  // ── Export bank handler ──────────────────────────────────────────────────────
+  const handleExportBank = async () => {
+    if (exportingBank) return
+    setExportingBank(true)
+    try {
+      const params = new URLSearchParams()
+      if (filter.grade) params.set('grade', String(filter.grade))
+      if (filter.subject_area) params.set('subject_area', filter.subject_area)
+      if (filter.chapter !== undefined) params.set('chapter', String(filter.chapter))
+      if (filter.lesson !== undefined) params.set('lesson', String(filter.lesson))
+      if (filter.variant !== undefined) params.set('variant', String(filter.variant))
+      if (filter.difficulty) params.set('difficulty', filter.difficulty)
+      if (filter.question_type) params.set('question_type', filter.question_type)
+
+      const res = await fetch(`/api/questions/export-bank?${params}`)
+      if (!res.ok) {
+        const json = await res.json()
+        alert('❌ Xuất thất bại: ' + (json.error || 'Lỗi'))
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      // Extract filename from Content-Disposition or use default
+      const disposition = res.headers.get('Content-Disposition')
+      const filenameMatch = disposition?.match(/filename="(.+?)"/) 
+      link.download = filenameMatch?.[1] || 'ngan_hang.zip'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+    } finally {
+      setExportingBank(false)
+    }
+  }
+
   return (
     <>
       <Header
         title="Ngân hàng câu hỏi"
         subtitle={`${total.toLocaleString()} câu hỏi`}
         actions={
-          <Link href="/admin/import" className="btn btn-primary">
-            📥 Import file .tex
-          </Link>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Link href="/admin/import" className="btn btn-primary">
+              📥 Import file .tex
+            </Link>
+            <button
+              onClick={handleExportBank}
+              disabled={exportingBank || total === 0}
+              className="btn btn-primary"
+              style={{
+                background: exportingBank ? '#94a3b8' : '#059669',
+                cursor: exportingBank || total === 0 ? 'not-allowed' : 'pointer',
+                opacity: total === 0 ? 0.5 : 1,
+                border: 'none',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {exportingBank ? '⏳ Đang xuất...' : `📤 Xuất ${total.toLocaleString()} câu`}
+            </button>
+          </div>
         }
       />
 
