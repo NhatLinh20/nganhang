@@ -18,7 +18,6 @@ interface QuestionRow {
   difficulty: string
   question_type: string
   latex_content: string
-  category_code: string
 }
 
 const DIFF_ORDER: Record<string, number> = { N: 0, H: 1, V: 2, C: 3 }
@@ -36,9 +35,47 @@ const TYPE_COMMENTS: Record<string, string> = {
   short_answer: '%%%-------------Trả lời ngắn-------------',
   essay: '%%%-------------Tự luận-------------',
 }
+const SUBJECT_ORDER: Record<string, number> = { D: 0, H: 1, C: 2 }
+const SUBJECT_LABELS: Record<string, string> = { D: 'ĐẠI SỐ', H: 'HÌNH HỌC', C: 'CHUYÊN ĐỀ' }
 
 // Allow up to 60s for large exports (10k+ questions)
 export const maxDuration = 60
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Build data filename: 2D1_1 = grade12, subject D, chapter 1, lesson 1 */
+function buildFileName(grade: number, sub: string, ch: number, les: number): string {
+  return `${grade % 10}${sub}${ch}_${les}`
+}
+
+/** Get chapter display name from CHAPTER_NAMES, stripping prefix */
+function getChapterName(grade: number, sub: string, ch: number): string {
+  const raw = CHAPTER_NAMES[grade]?.[sub]?.[ch]
+  if (!raw) return `Chương ${ch}`
+  return raw.replace(/^Ch\.\d+\s*/, '').replace(/^CĐ\d+\s*/, '')
+}
+
+/** Get lesson display name from LESSON_NAMES, stripping prefix */
+function getLessonName(grade: number, sub: string, ch: number, les: number): string {
+  const raw = LESSON_NAMES[grade]?.[sub]?.[ch]?.[les]
+  if (!raw) return `Bài ${les}`
+  return raw.replace(/^§\d+\s*/, '')
+}
+
+/** Get variant display name from VARIANT_NAMES */
+function getVariantName(grade: number, sub: string, ch: number, les: number, vari: number): string {
+  return (VARIANT_NAMES as any)?.[String(grade)]?.[sub]?.[String(ch)]?.[String(les)]?.[String(vari)]
+    || `Dạng ${vari}`
+}
+
+// ── Types for grouped data ───────────────────────────────────────────────────
+// Grouped[subject][chapter][lesson][variant][question_type][difficulty] = QuestionRow[]
+type DiffMap = Record<string, QuestionRow[]>
+type TypeMap = Record<string, DiffMap>
+type VariantMap = Record<number, TypeMap>
+type LessonMap = Record<number, VariantMap>
+type ChapterMap = Record<number, LessonMap>
+type SubjectMap = Record<string, ChapterMap>
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // ── Fetch ALL questions matching filters (paginated) ─────────────────────
+    // ── 1. Fetch ALL questions matching filters (paginated by id) ────────────
     const allData: QuestionRow[] = []
     const seenIds = new Set<string>()
     let page = 0
@@ -62,7 +99,7 @@ export async function GET(request: NextRequest) {
     while (true) {
       let query = supabase
         .from('questions')
-        .select('id, grade, subject_area, chapter, lesson, variant, difficulty, question_type, latex_content, category_code')
+        .select('id, grade, subject_area, chapter, lesson, variant, difficulty, question_type, latex_content')
         .order('id', { ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
@@ -98,56 +135,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Không có câu hỏi nào phù hợp với bộ lọc.' }, { status: 400 })
     }
 
-    console.log(`[export-bank] Fetched ${allData.length} questions in ${page + 1} pages`)
-
     const grade = gradeParam ? parseInt(gradeParam) : allData[0].grade
+    console.log(`[export-bank] Fetched ${allData.length} unique questions in ${page + 1} page(s)`)
 
-    // ── Group: subject→chapter → lesson → variant → type → difficulty ─────────
-    type ChapterKey = string // "subject|chapter"
-    // lesson → variant → question_type → difficulty → questions[]
-    type VariantMap = Record<number, Record<string, Record<string, QuestionRow[]>>>
-    type LessonMap = Record<number, VariantMap>
-    const grouped: Record<ChapterKey, LessonMap> = {}
+    // ── 2. Group: subject → chapter → lesson → variant → type → difficulty ──
+    const grouped: SubjectMap = {}
 
     for (const q of allData) {
-      const chKey = `${q.subject_area}|${q.chapter}`
-      if (!grouped[chKey]) grouped[chKey] = {}
-      if (!grouped[chKey][q.lesson]) grouped[chKey][q.lesson] = {}
-      if (!grouped[chKey][q.lesson][q.variant]) grouped[chKey][q.lesson][q.variant] = {}
-      if (!grouped[chKey][q.lesson][q.variant][q.question_type]) grouped[chKey][q.lesson][q.variant][q.question_type] = {}
-      if (!grouped[chKey][q.lesson][q.variant][q.question_type][q.difficulty]) grouped[chKey][q.lesson][q.variant][q.question_type][q.difficulty] = []
-      grouped[chKey][q.lesson][q.variant][q.question_type][q.difficulty].push(q)
+      const s = q.subject_area
+      const c = q.chapter
+      const l = q.lesson
+      const v = q.variant
+      const t = q.question_type
+      const d = q.difficulty
+
+      if (!grouped[s]) grouped[s] = {}
+      if (!grouped[s][c]) grouped[s][c] = {}
+      if (!grouped[s][c][l]) grouped[s][c][l] = {}
+      if (!grouped[s][c][l][v]) grouped[s][c][l][v] = {}
+      if (!grouped[s][c][l][v][t]) grouped[s][c][l][v][t] = {}
+      if (!grouped[s][c][l][v][t][d]) grouped[s][c][l][v][t][d] = []
+      grouped[s][c][l][v][t][d].push(q)
     }
 
-    // ── Sort chapter keys: by subject (D→H→C) then chapter number ───────────
-    const subjectOrder: Record<string, number> = { D: 0, H: 1, C: 2 }
-    const sortedChapterKeys = Object.keys(grouped).sort((a, b) => {
-      const [sA, cA] = a.split('|')
-      const [sB, cB] = b.split('|')
-      if (sA !== sB) return (subjectOrder[sA] ?? 9) - (subjectOrder[sB] ?? 9)
-      return parseInt(cA) - parseInt(cB)
-    })
+    // ── 3. Sort subjects: D → H → C ─────────────────────────────────────────
+    const sortedSubjects = Object.keys(grouped).sort(
+      (a, b) => (SUBJECT_ORDER[a] ?? 9) - (SUBJECT_ORDER[b] ?? 9)
+    )
 
-    // ── Generate data/ChuongX-baiY.tex files ────────────────────────────────
+    // ── 4. Build ZIP ─────────────────────────────────────────────────────────
     const zip = new AdmZip()
 
-    // Add shared config files
+    // Add shared config files from public/latex-config
     const configDir = path.join(process.cwd(), 'public', 'latex-config')
     const sharedFiles = ['khaibaochung.tex', 'ex_test.sty', 'ex_tkz-euclide.sty', 'tkz-linknodes.sty', 'tkz-tab-vn.sty']
     for (const filename of sharedFiles) {
-      const filePath = path.join(configDir, filename)
-      if (fs.existsSync(filePath)) {
-        zip.addFile(filename, fs.readFileSync(filePath))
-      }
+      const fp = path.join(configDir, filename)
+      if (fs.existsSync(fp)) zip.addFile(filename, fs.readFileSync(fp))
     }
 
-    // Create ans/ directory
+    // Empty directories
     zip.addFile('ans/', Buffer.alloc(0))
-
-    // Create data/ directory
     zip.addFile('data/', Buffer.alloc(0))
 
-    // Build main.tex content and data files
+    // ── 5. Generate main.tex + data files ────────────────────────────────────
     let mainTex = '\\documentclass[12pt,a4paper,twoside]{book}\n'
     mainTex += '\\input{khaibaochung}\n'
     mainTex += '%\\exitdapso %ẩn đs\n'
@@ -155,86 +186,78 @@ export async function GET(request: NextRequest) {
     mainTex += '%\\tatdongcham %tắt dòng chấm\n'
     mainTex += '\\begin{document}\n'
 
-    const SUBJECT_SECTION_LABELS: Record<string, string> = { D: 'ĐẠI SỐ / XÁC SUẤT', H: 'HÌNH HỌC', C: 'CHUYÊN ĐỀ' }
-    let lastSubject = ''
+    for (const sub of sortedSubjects) {
+      const chapters = grouped[sub]
+      const sortedChapters = Object.keys(chapters).map(Number).sort((a, b) => a - b)
 
-    for (const chKey of sortedChapterKeys) {
-      const [sub, chStr] = chKey.split('|')
-      const ch = parseInt(chStr)
-      const chapterName = CHAPTER_NAMES[grade]?.[sub]?.[ch]?.replace(/^Ch\.\d+\s*/, '').replace(/^CĐ\d+\s*/, '') || `Chương ${ch}`
+      // Subject separator
+      mainTex += `\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+      mainTex += `%%%  ${SUBJECT_LABELS[sub] || sub}\n`
+      mainTex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
 
-      // Add subject area separator when subject changes
-      if (sub !== lastSubject) {
-        mainTex += `\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
-        mainTex += `%%%  ${SUBJECT_SECTION_LABELS[sub] || sub}\n`
-        mainTex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
-        lastSubject = sub
-      }
+      for (const ch of sortedChapters) {
+        const chName = getChapterName(grade, sub, ch)
+        mainTex += `%%%%%-------Chương ${ch}--------%%%%%%%\n`
+        mainTex += `\\newpage\\chapter{${chName}}\n`
 
-      mainTex += `%%%%%-------Chương ${ch}--------%%%%%%%\n`
-      mainTex += `\\newpage\\chapter{${chapterName}}\n`
+        const lessons = chapters[ch]
+        const sortedLessons = Object.keys(lessons).map(Number).sort((a, b) => a - b)
 
-      const lessons = grouped[chKey]
-      const sortedLessons = Object.keys(lessons).map(Number).sort((a, b) => a - b)
+        for (const les of sortedLessons) {
+          const fileName = buildFileName(grade, sub, ch, les)
+          mainTex += `\\input{data/${fileName}}\n`
 
-      for (const les of sortedLessons) {
-        // Include subject prefix to avoid file naming collision (e.g. D-Chuong1 vs H-Chuong1)
-        const dataFileName = `${sub}-Chuong${ch}-bai${les}`
-        mainTex += `\\input{data/${dataFileName}}\n`
+          // ── Generate data file for this lesson ───────────────────────────────
+          const lesName = getLessonName(grade, sub, ch, les)
+          let tex = '\\newpage\n'
+          tex += `\\section{${lesName}}\n`
 
-        // ── Generate lesson file content ──────────────────────────────────────
-        const lessonName = LESSON_NAMES[grade]?.[sub]?.[ch]?.[les]?.replace(/^§\d+\s*/, '') || `Bài ${les}`
-        let lessonTex = '\\newpage\n'
-        lessonTex += `\\section{${lessonName}}\n`
+          const variants = lessons[les]
+          const sortedVariants = Object.keys(variants).map(Number).sort((a, b) => a - b)
 
-        const variantsInLesson = lessons[les]
-        const sortedVariants = Object.keys(variantsInLesson).map(Number).sort((a, b) => a - b)
+          for (const vari of sortedVariants) {
+            const variName = getVariantName(grade, sub, ch, les, vari)
+            tex += `\\subsubsection{${variName}}\n`
 
-        for (const vari of sortedVariants) {
-          // Get variant name from VARIANT_NAMES
-          const variantName = (VARIANT_NAMES as any)?.[String(grade)]?.[sub]?.[String(ch)]?.[String(les)]?.[String(vari)]
-            || `Dạng ${vari}`
-          lessonTex += `\\subsubsection{${variantName}}\n`
+            const types = variants[vari]
+            const sortedTypes = Object.keys(types).sort(
+              (a, b) => (TYPE_ORDER[a] ?? 9) - (TYPE_ORDER[b] ?? 9)
+            )
 
-          const typesInVariant = variantsInLesson[vari]
-          const sortedTypes = Object.keys(typesInVariant).sort((a, b) => (TYPE_ORDER[a] ?? 9) - (TYPE_ORDER[b] ?? 9))
+            for (const qType of sortedTypes) {
+              tex += `${TYPE_COMMENTS[qType] || `%%%---${qType}---`}\n`
+              tex += `${TYPE_COMMANDS[qType] || ''}\n`
 
-          for (const qType of sortedTypes) {
-            const comment = TYPE_COMMENTS[qType] || `%%%-------------${qType}-------------`
-            const command = TYPE_COMMANDS[qType] || ''
+              const diffs = types[qType]
+              const sortedDiffs = Object.keys(diffs).sort(
+                (a, b) => (DIFF_ORDER[a] ?? 9) - (DIFF_ORDER[b] ?? 9)
+              )
 
-            lessonTex += `${comment}\n`
-            lessonTex += `${command}\n`
+              for (const diff of sortedDiffs) {
+                const questions = diffs[diff]
+                if (!questions.length) continue
 
-            const diffsInType = typesInVariant[qType]
-            const sortedDiffs = Object.keys(diffsInType).sort((a, b) => (DIFF_ORDER[a] ?? 9) - (DIFF_ORDER[b] ?? 9))
+                tex += `\\begin{center}\n\\textbf{${DIFF_LABELS[diff] || diff}}\n\\end{center}\n`
 
-            for (const diff of sortedDiffs) {
-              const questions = diffsInType[diff]
-              if (questions.length === 0) continue
-
-              const diffLabel = DIFF_LABELS[diff] || diff
-              lessonTex += `\\begin{center}\n\\textbf{${diffLabel}}\n\\end{center}\n`
-
-              for (const q of questions) {
-                const content = q.latex_content.trim()
-                lessonTex += `${content}\n\n`
+                for (const q of questions) {
+                  tex += `${q.latex_content.trim()}\n\n`
+                }
               }
             }
           }
-        }
 
-        zip.addFile(`data/${dataFileName}.tex`, Buffer.from(lessonTex, 'utf-8'))
+          zip.addFile(`data/${fileName}.tex`, Buffer.from(tex, 'utf-8'))
+        }
       }
     }
 
     mainTex += '\\end{document}\n'
     zip.addFile('main.tex', Buffer.from(mainTex, 'utf-8'))
 
-    // ── Build ZIP filename ───────────────────────────────────────────────────
+    // ── 6. Build ZIP filename ────────────────────────────────────────────────
     let zipName = `ngan_hang_lop${grade}`
     if (subjectArea) zipName += `_${subjectArea}`
-    if (chapterParam) zipName += `_chuong${chapterParam}`
+    if (chapterParam) zipName += `_ch${chapterParam}`
     if (lessonParam) zipName += `_bai${lessonParam}`
     zipName += '.zip'
 
