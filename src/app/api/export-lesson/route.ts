@@ -33,12 +33,12 @@ function buildLessonTex(blocks: LessonBlock[], grade: number): string {
     switch (block.type) {
       case 'chapter': {
         const name = CHAPTER_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter] || `Chương ${block.chapter}`
-        tex += `\\chapter{${name.replace(/^Ch\\.\\d+\\s*/, '')}}\n\n`
+        tex += `\\chapter{${name}}\n\n`
         break
       }
       case 'section': {
         const name = LESSON_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter]?.[block.lesson!] || `Bài ${block.lesson}`
-        tex += `\\section{${name.replace(/^§\\d+\\s*/, '')}}\n\n`
+        tex += `\\section{${name}}\n\n`
         break
       }
       case 'theory': {
@@ -57,15 +57,9 @@ function buildLessonTex(blocks: LessonBlock[], grade: number): string {
           : 'Tổng hợp'
         tex += `\\subsubsection{${varName}}\n`
         if (block.questions && block.questions.length > 0) {
-          tex += `\\begin{enumerate}\n`
           for (const q of block.questions) {
-            let content = q.latex_content.trim()
-            content = content.replace(/^\\begin\\{ex\\}[\\s\\S]*?(?=\\\\(?:choice|begin|textbf|text|$|[A-Z]))/, '')
-            content = content.replace(/\\end\\{ex\\}[\\s\\S]*$/, '')
-            content = content.trim()
-            tex += `\\item ${content}\n\n`
+            tex += `${q.latex_content.trim()}\n\n`
           }
-          tex += `\\end{enumerate}\n\n`
         }
         break
       }
