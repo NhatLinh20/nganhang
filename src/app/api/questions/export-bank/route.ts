@@ -155,10 +155,21 @@ export async function GET(request: NextRequest) {
     mainTex += '%\\tatdongcham %tắt dòng chấm\n'
     mainTex += '\\begin{document}\n'
 
+    const SUBJECT_SECTION_LABELS: Record<string, string> = { D: 'ĐẠI SỐ / XÁC SUẤT', H: 'HÌNH HỌC', C: 'CHUYÊN ĐỀ' }
+    let lastSubject = ''
+
     for (const chKey of sortedChapterKeys) {
       const [sub, chStr] = chKey.split('|')
       const ch = parseInt(chStr)
       const chapterName = CHAPTER_NAMES[grade]?.[sub]?.[ch]?.replace(/^Ch\.\d+\s*/, '').replace(/^CĐ\d+\s*/, '') || `Chương ${ch}`
+
+      // Add subject area separator when subject changes
+      if (sub !== lastSubject) {
+        mainTex += `\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+        mainTex += `%%%  ${SUBJECT_SECTION_LABELS[sub] || sub}\n`
+        mainTex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+        lastSubject = sub
+      }
 
       mainTex += `%%%%%-------Chương ${ch}--------%%%%%%%\n`
       mainTex += `\\newpage\\chapter{${chapterName}}\n`
@@ -167,7 +178,8 @@ export async function GET(request: NextRequest) {
       const sortedLessons = Object.keys(lessons).map(Number).sort((a, b) => a - b)
 
       for (const les of sortedLessons) {
-        const dataFileName = `Chuong${ch}-bai${les}`
+        // Include subject prefix to avoid file naming collision (e.g. D-Chuong1 vs H-Chuong1)
+        const dataFileName = `${sub}-Chuong${ch}-bai${les}`
         mainTex += `\\input{data/${dataFileName}}\n`
 
         // ── Generate lesson file content ──────────────────────────────────────
