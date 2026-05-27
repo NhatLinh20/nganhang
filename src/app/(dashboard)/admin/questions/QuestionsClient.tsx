@@ -387,29 +387,31 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
             <Link href="/admin/import" className="btn btn-primary">
               📥 Import file .tex
             </Link>
-            <button
-              onClick={handleExportBank}
-              disabled={exportingBank || total === 0}
-              className="btn btn-primary"
-              style={{
-                background: exportingBank ? '#94a3b8' : '#059669',
-                cursor: exportingBank || total === 0 ? 'not-allowed' : 'pointer',
-                opacity: total === 0 ? 0.5 : 1,
-                border: 'none',
-                color: 'white',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                fontFamily: 'inherit',
-                whiteSpace: 'nowrap',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              {exportingBank ? '⏳ Đang xuất...' : `📤 Xuất ${total.toLocaleString()} câu`}
-            </button>
+            {isAdmin && (
+              <button
+                onClick={handleExportBank}
+                disabled={exportingBank || total === 0}
+                className="btn btn-primary"
+                style={{
+                  background: exportingBank ? '#94a3b8' : '#059669',
+                  cursor: exportingBank || total === 0 ? 'not-allowed' : 'pointer',
+                  opacity: total === 0 ? 0.5 : 1,
+                  border: 'none',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                {exportingBank ? '⏳ Đang xuất...' : `📤 Xuất ${total.toLocaleString()} câu`}
+              </button>
+            )}
           </div>
         }
       />
