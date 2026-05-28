@@ -598,13 +598,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create empty ans/ folder
+    // Create empty ans/ and data/ folders
     zip.addFile('ans/', Buffer.alloc(0))
+    zip.addFile('data/', Buffer.alloc(0))
 
     if (examSets.length === 1) {
       // ── Single exam ──
       const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0], validHeaderStyles, includeAnswerTable !== false)
-      zip.addFile('ma_tran_de_thi_toan.tex', Buffer.from(maTranTex, 'utf-8'))
+      zip.addFile('data/ma_tran_de_thi_toan.tex', Buffer.from(maTranTex, 'utf-8'))
 
       const mainPath = path.join(configDir, 'main.tex')
       if (fs.existsSync(mainPath)) {
@@ -615,7 +616,7 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < examSets.length; i++) {
         const examLabel = `Đề ${i + 1}`
         const maTranTex = buildMaTranTex(examSets[i], displayTitle, displayGrade, examLabel, validHeaderLabels, codes[i], validHeaderStyles, includeAnswerTable !== false)
-        zip.addFile(`ma_tran_de_thi_toan${i + 1}.tex`, Buffer.from(maTranTex, 'utf-8'))
+        zip.addFile(`data/ma_tran_de_thi_toan${i + 1}.tex`, Buffer.from(maTranTex, 'utf-8'))
       }
 
       let mainTex = '\\documentclass[12pt,a4paper,twoside]{book}\n'
@@ -626,7 +627,7 @@ export async function POST(request: NextRequest) {
       mainTex += '%\\tatdongcham %tắt dòng chấm\n'
       mainTex += '\\begin{document}\n'
       for (let i = 0; i < examSets.length; i++) {
-        mainTex += `\\newpage\\input{ma_tran_de_thi_toan${i + 1}}\n`
+        mainTex += `\\newpage\\input{data/ma_tran_de_thi_toan${i + 1}}\n`
       }
       mainTex += '\\end{document}\n'
 
