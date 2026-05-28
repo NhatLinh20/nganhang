@@ -19,17 +19,6 @@ interface QuestionItem {
   latex_content: string
 }
 
-interface LessonBlock {
-  id: string
-  type: 'chapter' | 'section' | 'theory' | 'exercises' | 'variant'
-  grade: number
-  subjectArea: string
-  chapter: number
-  lesson?: number
-  variant?: number
-  questions?: QuestionItem[]
-}
-
 interface VariantStatsRow {
   lesson: number
   lesson_name: string
@@ -40,36 +29,27 @@ interface VariantStatsRow {
   total: number
 }
 
-type ModalMode = null | 'addBlock' | 'selectChapter' | 'selectSection' | 'questionPicker'
-
-let _blockIdCounter = 0
-function genId() { return `blk_${Date.now()}_${++_blockIdCounter}` }
-
-const BLOCK_ICONS: Record<string, string> = {
-  chapter: '📘', section: '📄', theory: '📝', exercises: '📋', variant: '🎯'
-}
-const BLOCK_LABELS: Record<string, string> = {
-  chapter: 'Chương', section: 'Bài', theory: 'Lý thuyết', exercises: 'Bài tập', variant: 'Dạng'
-}
 const TYPE_LABELS: Record<string, string> = {
   multiple_choice: 'TN', true_false: 'Đ/S', short_answer: 'Ngắn', essay: 'Tự luận'
 }
+const SUBJECT_LABELS: Record<string, string> = { D: 'Đại số / XS / TK', H: 'Hình học', C: 'Chuyên đề' }
+const SUBJECT_ICONS: Record<string, string> = { D: '📐', H: '📏', C: '📎' }
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function LessonBuilderClient({ userRole }: { userRole: string }) {
   const [grade, setGrade] = useState(12)
-  const [blocks, setBlocks] = useState<LessonBlock[]>([])
-  const [modal, setModal] = useState<ModalMode>(null)
-  const [exporting, setExporting] = useState(false)
+  const [phase, setPhase] = useState<'select' | 'build'>('select')
 
-  // Selector state for chapter/section modals
-  const [selSubject, setSelSubject] = useState('D')
-  const [selChapter, setSelChapter] = useState<number | ''>('')
-  const [selLesson, setSelLesson] = useState<number | ''>('')
+  // Phase 1: Selection
+  const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set())
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
 
-  // ── Question Picker state (fullscreen stats table) ─────────────────────────
-  const [pickerSubject, setPickerSubject] = useState('D')
-  const [pickerChapter, setPickerChapter] = useState<number>(1)
+  // Phase 2: Build — questions per lesson key "D|1|1"
+  const [lessonQuestions, setLessonQuestions] = useState<Record<string, QuestionItem[]>>({})
+
+  // Question picker
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [activePickerKey, setActivePickerKey] = useState<string | null>(null) // "D|1|1"
   const [pickerLesson, setPickerLesson] = useState('')
   const [pickerVariant, setPickerVariant] = useState('')
   const [pickerType, setPickerType] = useState('')
@@ -77,6 +57,8 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
   const [loadingStats, setLoadingStats] = useState(false)
   const [pickerSelections, setPickerSelections] = useState<Record<string, number>>({})
   const [loadingFetch, setLoadingFetch] = useState(false)
+
+  const [exporting, setExporting] = useState(false)
 
   // Toast
   const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success' | 'info'; title: string; message: string; visible: boolean }>({ type: 'info', title: '', message: '', visible: false })
@@ -93,57 +75,122 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('lesson-builder-state')
+      const saved = localStorage.getItem('lesson-builder-v2')
       if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.grade) setGrade(parsed.grade)
-        if (parsed.blocks) setBlocks(parsed.blocks)
+        const p = JSON.parse(saved)
+        if (p.grade) setGrade(p.grade)
+        if (p.phase) setPhase(p.phase)
+        if (p.selectedLessons) setSelectedLessons(new Set(p.selectedLessons))
+        if (p.expandedChapters) setExpandedChapters(new Set(p.expandedChapters))
+        if (p.lessonQuestions) setLessonQuestions(p.lessonQuestions)
       }
-    } catch (e) {
-      console.error('Failed to load lesson builder state', e)
-    }
+    } catch (e) { console.error('Failed to load state', e) }
     setIsLoaded(true)
   }, [])
 
   useEffect(() => {
     if (!isLoaded) return
     try {
-      localStorage.setItem('lesson-builder-state', JSON.stringify({ grade, blocks }))
-    } catch (e) {
-      console.error('Failed to save lesson builder state', e)
-    }
-  }, [isLoaded, grade, blocks])
+      localStorage.setItem('lesson-builder-v2', JSON.stringify({
+        grade, phase,
+        selectedLessons: Array.from(selectedLessons),
+        expandedChapters: Array.from(expandedChapters),
+        lessonQuestions,
+      }))
+    } catch (e) { console.error('Failed to save state', e) }
+  }, [isLoaded, grade, phase, selectedLessons, expandedChapters, lessonQuestions])
 
   const handleReset = () => {
-    if (!window.confirm('Bạn có chắc chắn muốn làm mới? Toàn bộ cấu hình đang làm việc sẽ bị xóa.')) return
-    localStorage.removeItem('lesson-builder-state')
+    if (!window.confirm('Bạn có chắc chắn muốn làm mới? Toàn bộ cấu hình sẽ bị xóa.')) return
+    localStorage.removeItem('lesson-builder-v2')
     setGrade(12)
-    setBlocks([])
-    setModal(null)
-    showToast('info', 'Đã làm mới', 'Trang đã được reset về trạng thái ban đầu.')
+    setPhase('select')
+    setSelectedLessons(new Set())
+    setExpandedChapters(new Set())
+    setLessonQuestions({})
+    showToast('info', 'Đã làm mới', 'Trang đã được reset.')
   }
 
-  // ── Derived data for chapter/section selectors ─────────────────────────────
-  const chaptersMap = CURRICULUM[grade]?.[selSubject] || {}
+  // ── Checkbox tree helpers ──────────────────────────────────────────────────
+  const toggleChapterExpand = (key: string) => {
+    setExpandedChapters(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
 
-  // Find last chapter/section context
-  const lastChapter = [...blocks].reverse().find(b => b.type === 'chapter')
-  const lastSection = [...blocks].reverse().find(b => b.type === 'section')
+  const toggleLessonSelect = (key: string) => {
+    setSelectedLessons(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
 
-  // ── Picker derived data ────────────────────────────────────────────────────
-  const pickerChaptersMap = CURRICULUM[grade]?.[pickerSubject] || {}
-  const pickerAvailableChapters = Object.keys(pickerChaptersMap).map(Number)
-  const pickerAvailableLessons = pickerChapter && pickerChaptersMap[pickerChapter]
-    ? Object.keys(pickerChaptersMap[pickerChapter]).map(Number) : []
-  const pickerAvailableVariants = pickerChapter && pickerLesson && pickerChaptersMap[pickerChapter]?.[Number(pickerLesson)]
-    ? pickerChaptersMap[pickerChapter][Number(pickerLesson)] : []
+  // ── Build phase: structured data from selections ───────────────────────────
+  const buildStructure = useCallback(() => {
+    // Parse selected keys and group by subject → chapter → lessons
+    const map: Record<string, Record<number, number[]>> = {}
+    for (const key of selectedLessons) {
+      const [sub, chStr, lesStr] = key.split('|')
+      const ch = parseInt(chStr)
+      const les = parseInt(lesStr)
+      if (!map[sub]) map[sub] = {}
+      if (!map[sub][ch]) map[sub][ch] = []
+      map[sub][ch].push(les)
+    }
 
-  // ── Fetch stats when picker opens or filters change ────────────────────────
+    // Sort
+    const subjectOrder = ['D', 'H', 'C']
+    const result: { subject: string; chapter: number; lessons: number[] }[] = []
+    for (const sub of subjectOrder) {
+      if (!map[sub]) continue
+      const chapters = Object.keys(map[sub]).map(Number).sort((a, b) => a - b)
+      for (const ch of chapters) {
+        result.push({ subject: sub, chapter: ch, lessons: map[sub][ch].sort((a, b) => a - b) })
+      }
+    }
+    return result
+  }, [selectedLessons])
+
+  const structure = buildStructure()
+
+  const handleStartBuild = () => {
+    if (selectedLessons.size === 0) {
+      showToast('warning', 'Chưa chọn bài', 'Hãy chọn ít nhất 1 bài trước khi tạo.')
+      return
+    }
+    setPhase('build')
+  }
+
+  // ── Question picker ────────────────────────────────────────────────────────
+  const openPicker = (key: string) => {
+    setActivePickerKey(key)
+    setPickerLesson('')
+    setPickerVariant('')
+    setPickerType('')
+    setPickerSelections({})
+    setPickerOpen(true)
+  }
+
+  // Parse active key
+  const activeSubject = activePickerKey?.split('|')[0] || 'D'
+  const activeChapter = parseInt(activePickerKey?.split('|')[1] || '1')
+
+  // Picker available lessons/variants from CURRICULUM
+  const pickerChaptersMap = CURRICULUM[grade]?.[activeSubject] || {}
+  const pickerAvailableLessons = activeChapter && pickerChaptersMap[activeChapter]
+    ? Object.keys(pickerChaptersMap[activeChapter]).map(Number) : []
+  const pickerAvailableVariants = activeChapter && pickerLesson && pickerChaptersMap[activeChapter]?.[Number(pickerLesson)]
+    ? pickerChaptersMap[activeChapter][Number(pickerLesson)] : []
+
+  // Fetch stats when picker opens
   const fetchStats = useCallback(async () => {
-    if (!pickerChapter) return
+    if (!activeChapter) return
     setLoadingStats(true)
     try {
-      const res = await fetch(`/api/exams/stats?grade=${grade}&subject_area=${pickerSubject}&chapter=${pickerChapter}`)
+      const res = await fetch(`/api/exams/stats?grade=${grade}&subject_area=${activeSubject}&chapter=${activeChapter}`)
       const json = await res.json()
       if (json.error) {
         showToast('error', 'Lỗi', json.error)
@@ -155,15 +202,15 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     } finally {
       setLoadingStats(false)
     }
-  }, [grade, pickerSubject, pickerChapter, showToast])
+  }, [grade, activeSubject, activeChapter, showToast])
 
   useEffect(() => {
-    if (modal === 'questionPicker') {
+    if (pickerOpen && activePickerKey) {
       fetchStats()
     }
-  }, [modal, fetchStats])
+  }, [pickerOpen, activePickerKey, fetchStats])
 
-  // ── Picker selection summary ───────────────────────────────────────────────
+  // Picker stats summary
   const getPickerStats = useCallback(() => {
     const stats = {
       types: { multiple_choice: 0, true_false: 0, short_answer: 0, essay: 0 } as Record<string, number>,
@@ -184,10 +231,9 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
 
   const pickerStats = getPickerStats()
 
-  // ── Picker count change handler ────────────────────────────────────────────
   const handlePickerCountChange = (lesson: number, variant: number, type: string, diff: string, value: string, max: number) => {
     const num = parseInt(value)
-    const key = `${grade}|${pickerSubject}|${pickerChapter}|${lesson}|${variant}|${type}|${diff}`
+    const key = `${grade}|${activeSubject}|${activeChapter}|${lesson}|${variant}|${type}|${diff}`
     setPickerSelections(prev => {
       const next = { ...prev }
       if (isNaN(num) || num <= 0) {
@@ -199,8 +245,9 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     })
   }
 
-  // ── Add questions to lesson ────────────────────────────────────────────────
-  const handleAddQuestionsToLesson = async () => {
+  // Add questions from picker to the lesson
+  const handleAddQuestions = async () => {
+    if (!activePickerKey) return
     const selectionArray: { grade: number; subject_area: string; chapter: number; lesson: number; variant: number; difficulty: string; question_type: string; count: number }[] = []
 
     Object.entries(pickerSelections).forEach(([key, count]) => {
@@ -237,37 +284,23 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
 
       const questions: QuestionItem[] = data.questions || []
       if (questions.length === 0) {
-        showToast('warning', 'Không có câu hỏi', 'Không tìm thấy câu hỏi phù hợp.')
+        showToast('warning', 'Không có', 'Không tìm thấy câu hỏi phù hợp.')
         return
       }
 
-      // Group questions by (lesson, variant) → create variant blocks
-      const groups: Record<string, QuestionItem[]> = {}
-      for (const q of questions) {
-        const gKey = `${q.lesson}|${q.variant}`
-        if (!groups[gKey]) groups[gKey] = []
-        groups[gKey].push(q)
-      }
+      // Store questions for this lesson key
+      setLessonQuestions(prev => ({
+        ...prev,
+        [activePickerKey]: [...(prev[activePickerKey] || []), ...questions],
+      }))
 
-      const newBlocks: LessonBlock[] = []
-      for (const [gKey, qs] of Object.entries(groups)) {
-        const [les, vari] = gKey.split('|').map(Number)
-        newBlocks.push({
-          id: genId(), type: 'variant', grade,
-          subjectArea: pickerSubject, chapter: pickerChapter,
-          lesson: les, variant: vari,
-          questions: qs,
-        })
-      }
-
-      setBlocks(prev => [...prev, ...newBlocks])
       setPickerSelections({})
-      setModal(null)
+      setPickerOpen(false)
 
       if (data.warnings && data.warnings.length > 0) {
         showToast('warning', 'Cảnh báo', data.warnings.join('\n'))
       } else {
-        showToast('success', 'Đã thêm', `${questions.length} câu hỏi đã được thêm vào bài học.`)
+        showToast('success', 'Đã thêm', `${questions.length} câu hỏi đã được thêm.`)
       }
     } catch {
       showToast('error', 'Lỗi kết nối', 'Không thể kết nối đến máy chủ.')
@@ -276,155 +309,42 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     }
   }
 
-  // ── Block management ───────────────────────────────────────────────────────
-  const addBlock = useCallback((block: LessonBlock) => {
-    setBlocks(prev => [...prev, block])
-    setModal(null)
-  }, [])
-
-  const removeBlock = useCallback((id: string) => {
-    setBlocks(prev => prev.filter(b => b.id !== id))
-  }, [])
-
-  const moveBlock = useCallback((fromIdx: number, toIdx: number) => {
-    setBlocks(prev => {
-      const next = [...prev]
-      const [item] = next.splice(fromIdx, 1)
-      next.splice(toIdx, 0, item)
+  const removeQuestions = (key: string) => {
+    setLessonQuestions(prev => {
+      const next = { ...prev }
+      delete next[key]
       return next
     })
-  }, [])
-
-  // ── Open modal helpers ─────────────────────────────────────────────────────
-  const openChapterSelect = () => {
-    setSelSubject(lastChapter?.subjectArea || 'D')
-    setSelChapter('')
-    setModal('selectChapter')
   }
-
-  const openSectionSelect = () => {
-    const sub = lastChapter?.subjectArea || 'D'
-    const ch = lastChapter?.chapter || ''
-    setSelSubject(sub)
-    setSelChapter(ch as number)
-    setSelLesson('')
-    setModal('selectSection')
-  }
-
-  const openQuestionPicker = () => {
-    const sub = lastChapter?.subjectArea || 'D'
-    const ch = lastChapter?.chapter || 1
-    setPickerSubject(sub)
-    setPickerChapter(ch)
-    setPickerLesson('')
-    setPickerVariant('')
-    setPickerType('')
-    setPickerSelections({})
-    setModal('questionPicker')
-  }
-
-  // ── Confirm add block ──────────────────────────────────────────────────────
-  const confirmChapter = () => {
-    if (selChapter === '') return
-    addBlock({ id: genId(), type: 'chapter', grade, subjectArea: selSubject, chapter: selChapter as number })
-  }
-
-  const confirmSection = () => {
-    if (selChapter === '' || selLesson === '') return
-    addBlock({ id: genId(), type: 'section', grade, subjectArea: selSubject, chapter: selChapter as number, lesson: selLesson as number })
-  }
-
-  const addTheory = () => {
-    if (!lastSection) {
-      showToast('warning', 'Chưa có bài', 'Hãy thêm một Bài (section) trước khi thêm Lý thuyết.')
-      return
-    }
-    addBlock({
-      id: genId(), type: 'theory', grade,
-      subjectArea: lastChapter?.subjectArea || 'D',
-      chapter: lastChapter?.chapter || 1,
-      lesson: lastSection.lesson,
-    })
-  }
-
-  const addExercises = () => {
-    if (!lastSection) {
-      showToast('warning', 'Chưa có bài', 'Hãy thêm một Bài (section) trước khi thêm Bài tập.')
-      return
-    }
-    addBlock({
-      id: genId(), type: 'exercises', grade,
-      subjectArea: lastChapter?.subjectArea || 'D',
-      chapter: lastChapter?.chapter || 1,
-      lesson: lastSection.lesson,
-    })
-  }
-
-  // ── Generate LaTeX preview ─────────────────────────────────────────────────
-  const generateLatex = useCallback(() => {
-    if (blocks.length === 0) return ''
-    let tex = '% Bài học được tạo từ Ngân Hàng Toán\n'
-    tex += '% ═══════════════════════════════════\n\n'
-
-    for (const block of blocks) {
-      switch (block.type) {
-        case 'chapter': {
-          const name = CHAPTER_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter] || `Chương ${block.chapter}`
-          tex += `\\chapter{${name.replace(/^Ch\.\d+\s*/, '')}}\n\n`
-          break
-        }
-        case 'section': {
-          const name = LESSON_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter]?.[block.lesson!] || `Bài ${block.lesson}`
-          tex += `\\section{${name.replace(/^§\d+\s*/, '')}}\n\n`
-          break
-        }
-        case 'theory': {
-          const fileName = `${block.grade}_${block.subjectArea}_${block.chapter}_${block.lesson}`
-          tex += `\\subsection{Lý thuyết}\n`
-          tex += `\\input{theory/${fileName}}\n\n`
-          break
-        }
-        case 'exercises': {
-          tex += `\\subsection{Bài tập rèn luyện}\n\n`
-          break
-        }
-        case 'variant': {
-          const varName = block.variant != null
-            ? (VARIANT_NAMES[block.grade]?.[block.subjectArea]?.[block.chapter]?.[block.lesson!]?.[block.variant] || `Dạng ${block.variant}`)
-            : 'Tổng hợp'
-          tex += `\\subsubsection{${varName}}\n`
-          if (block.questions && block.questions.length > 0) {
-            for (const q of block.questions) {
-              const content = q.latex_content.trim()
-              tex += `${content}\n\n`
-            }
-          }
-          break
-        }
-      }
-    }
-    return tex
-  }, [blocks])
-
-  const latexPreview = generateLatex()
-  const totalQuestions = blocks.reduce((sum, b) => sum + (b.questions?.length || 0), 0)
 
   // ── Export ─────────────────────────────────────────────────────────────────
+  const totalQuestions = Object.values(lessonQuestions).reduce((sum, qs) => sum + qs.length, 0)
+
   const handleExport = async () => {
-    if (blocks.length === 0) {
-      showToast('warning', 'Chưa có nội dung', 'Hãy thêm ít nhất 1 block trước khi xuất.')
+    if (structure.length === 0) {
+      showToast('warning', 'Chưa có nội dung', 'Hãy chọn bài và tạo bài học trước.')
       return
     }
     setExporting(true)
     try {
+      // Build lessons array for API
+      const lessons = structure.flatMap(ch =>
+        ch.lessons.map(les => ({
+          subject: ch.subject,
+          chapter: ch.chapter,
+          lesson: les,
+          questions: lessonQuestions[`${ch.subject}|${ch.chapter}|${les}`] || [],
+        }))
+      )
+
       const res = await fetch('/api/export-lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, blocks }),
+        body: JSON.stringify({ grade, lessons }),
       })
       if (!res.ok) {
         const json = await res.json()
-        showToast('error', 'Xuất thất bại', json.error || 'Lỗi chưa xác định')
+        showToast('error', 'Xuất thất bại', json.error || 'Lỗi')
         return
       }
       const blob = await res.blob()
@@ -444,303 +364,191 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     }
   }
 
-  // ── Drag & Drop ────────────────────────────────────────────────────────────
-  const dragItem = useRef<number | null>(null)
-  const dragOver = useRef<number | null>(null)
-
-  const handleDragStart = (idx: number) => { dragItem.current = idx }
-  const handleDragEnter = (idx: number) => { dragOver.current = idx }
-  const handleDragEnd = () => {
-    if (dragItem.current !== null && dragOver.current !== null && dragItem.current !== dragOver.current) {
-      moveBlock(dragItem.current, dragOver.current)
-    }
-    dragItem.current = null
-    dragOver.current = null
-  }
-
-  // ── Block display name ─────────────────────────────────────────────────────
-  const getBlockDisplayName = (b: LessonBlock) => {
-    switch (b.type) {
-      case 'chapter':
-        return CHAPTER_NAMES[b.grade]?.[b.subjectArea]?.[b.chapter] || `Chương ${b.chapter}`
-      case 'section':
-        return LESSON_NAMES[b.grade]?.[b.subjectArea]?.[b.chapter]?.[b.lesson!] || `Bài ${b.lesson}`
-      case 'theory':
-        return 'Lý thuyết'
-      case 'exercises':
-        return 'Bài tập rèn luyện'
-      case 'variant': {
-        const vName = b.variant != null
-          ? (VARIANT_NAMES[b.grade]?.[b.subjectArea]?.[b.chapter]?.[b.lesson!]?.[b.variant] || `Dạng ${b.variant}`)
-          : 'Tổng hợp'
-        return `${vName} (${b.questions?.length || 0} câu)`
-      }
-      default: return ''
-    }
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
       <Header
         title="Tạo Bài Học"
-        subtitle="Ghép nối lý thuyết và bài tập thành bài dạy hoàn chỉnh, xuất file .tex"
+        subtitle="Chọn chương bài, ghép lý thuyết và bài tập, xuất file .tex"
       />
 
-      <div className={styles.layout}>
-        {/* ═══ LEFT PANEL ═══ */}
-        <div className={styles.leftPanel}>
-          <div className={styles.panelHeader}>
-            <div className={styles.gradeRow}>
-              <span className={styles.gradeLabel}>📐 Khối lớp:</span>
-              <select className={styles.gradeSelect} value={grade} onChange={e => setGrade(Number(e.target.value))}>
-                <option value={10}>Lớp 10</option>
-                <option value={11}>Lớp 11</option>
-                <option value={12}>Lớp 12</option>
-              </select>
-              {blocks.length > 0 && (
-                <button
-                  onClick={handleReset}
-                  title="Làm mới (xóa toàn bộ)"
-                  style={{
-                    padding: '6px 10px', background: '#fef2f2', border: '1px solid #fca5a5',
-                    borderRadius: '6px', color: '#dc2626', fontSize: '12px', fontWeight: 600,
-                    cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', gap: '4px',
-                  }}
-                >
-                  🧹 Làm mới
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Blocks List */}
-          <div className={styles.blocksList}>
-            {blocks.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-muted)', fontSize: '13px', lineHeight: 1.6 }}>
-                <div style={{ fontSize: '36px', marginBottom: '12px', opacity: 0.4 }}>📖</div>
-                Chưa có nội dung nào.<br />
-                Bấm <b>+ Thêm block</b> để bắt đầu.
-              </div>
+      <div className={styles.container}>
+        {/* Top bar */}
+        <div className={styles.topBar}>
+          <span className={styles.gradeLabel}>📐 Khối lớp:</span>
+          <select className={styles.gradeSelect} value={grade} onChange={e => { setGrade(Number(e.target.value)); setSelectedLessons(new Set()); setExpandedChapters(new Set()) }}>
+            <option value={10}>Lớp 10</option>
+            <option value={11}>Lớp 11</option>
+            <option value={12}>Lớp 12</option>
+          </select>
+          <div className={styles.topActions}>
+            {(selectedLessons.size > 0 || phase === 'build') && (
+              <button className={styles.resetBtn} onClick={handleReset}>🧹 Làm mới</button>
             )}
+          </div>
+        </div>
 
-            {blocks.map((block, idx) => (
-              <div
-                key={block.id}
-                className={`${styles.blockCard} ${styles[`blockCard${block.type.charAt(0).toUpperCase() + block.type.slice(1)}`]}`}
-                draggable
-                onDragStart={() => handleDragStart(idx)}
-                onDragEnter={() => handleDragEnter(idx)}
-                onDragEnd={handleDragEnd}
-                onDragOver={e => e.preventDefault()}
-              >
-                <span className={styles.blockIcon}>{BLOCK_ICONS[block.type]}</span>
-                <div className={styles.blockInfo}>
-                  <div className={styles.blockTitle}>{getBlockDisplayName(block)}</div>
-                  {block.type === 'variant' && block.questions && block.questions.length > 0 && (
-                    <div className={styles.blockSub}>
-                      {block.questions.slice(0, 3).map(q => q.category_code).join(', ')}
-                      {block.questions.length > 3 && ` +${block.questions.length - 3}`}
+        {/* ═══ PHASE: SELECT ═══ */}
+        {phase === 'select' && (
+          <>
+            <div className={styles.treeSection}>
+              <div className={styles.treeSectionHeader}>
+                📖 Chọn chương bài để tạo bài học
+              </div>
+              <div className={styles.treeSectionBody}>
+                {['D', 'H', 'C'].map(sub => {
+                  const chaptersMap = CURRICULUM[grade]?.[sub]
+                  if (!chaptersMap || Object.keys(chaptersMap).length === 0) return null
+                  const chapters = Object.keys(chaptersMap).map(Number).sort((a, b) => a - b)
+
+                  return (
+                    <div key={sub} className={styles.subjectGroup}>
+                      <div className={styles.subjectHeader}>
+                        <span className={styles.subjectIcon}>{SUBJECT_ICONS[sub]}</span>
+                        {SUBJECT_LABELS[sub]}
+                      </div>
+                      {chapters.map(ch => {
+                        const chKey = `${sub}|${ch}`
+                        const isExpanded = expandedChapters.has(chKey)
+                        const lessonsMap = chaptersMap[ch] || {}
+                        const lessonNums = Object.keys(lessonsMap).map(Number).sort((a, b) => a - b)
+                        const chName = CHAPTER_NAMES[grade]?.[sub]?.[ch] || `Chương ${ch}`
+
+                        // Count selected lessons in this chapter
+                        const selectedInChapter = lessonNums.filter(l => selectedLessons.has(`${sub}|${ch}|${l}`)).length
+
+                        return (
+                          <Fragment key={chKey}>
+                            <div className={styles.chapterRow} onClick={() => toggleChapterExpand(chKey)}>
+                              <span className={`${styles.chapterExpand} ${isExpanded ? styles.chapterExpandOpen : ''}`}>▶</span>
+                              <span className={styles.chapterName}>{chName}</span>
+                              {selectedInChapter > 0 && (
+                                <span className={styles.chapterCount}>✓ {selectedInChapter}/{lessonNums.length}</span>
+                              )}
+                            </div>
+                            {isExpanded && lessonNums.map(les => {
+                              const lesKey = `${sub}|${ch}|${les}`
+                              const lesName = LESSON_NAMES[grade]?.[sub]?.[ch]?.[les] || `Bài ${les}`
+                              return (
+                                <div key={lesKey} className={styles.lessonRow}>
+                                  <input
+                                    type="checkbox"
+                                    className={styles.lessonCheckbox}
+                                    checked={selectedLessons.has(lesKey)}
+                                    onChange={() => toggleLessonSelect(lesKey)}
+                                  />
+                                  <span className={styles.lessonName}>{lesName}</span>
+                                </div>
+                              )
+                            })}
+                          </Fragment>
+                        )
+                      })}
                     </div>
-                  )}
-                </div>
-                <span className={`${styles.blockBadge} ${styles[`badge${block.type.charAt(0).toUpperCase() + block.type.slice(1)}`]}`}>
-                  {BLOCK_LABELS[block.type]}
-                </span>
-                <div className={styles.blockActions}>
-                  <button className={styles.blockActionBtn} onClick={() => removeBlock(block.id)} title="Xóa">✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Add Block + Export */}
-          <div className={styles.addBlockArea}>
-            {modal === 'addBlock' ? (
-              <div className={styles.addMenu}>
-                <button className={styles.addMenuItem} onClick={openChapterSelect}>
-                  <span className={styles.addMenuIcon}>📘</span> Thêm Chương
-                </button>
-                <button className={styles.addMenuItem} onClick={openSectionSelect}>
-                  <span className={styles.addMenuIcon}>📄</span> Thêm Bài
-                </button>
-                <button className={styles.addMenuItem} onClick={() => { addTheory(); setModal(null) }}>
-                  <span className={styles.addMenuIcon}>📝</span> Thêm Lý thuyết
-                </button>
-                <button className={styles.addMenuItem} onClick={() => { addExercises(); setModal(null) }}>
-                  <span className={styles.addMenuIcon}>📋</span> Thêm Bài tập
-                </button>
-                <button className={styles.addMenuItem} onClick={openQuestionPicker}>
-                  <span className={styles.addMenuIcon}>🎯</span> Thêm Dạng bài + Câu hỏi
-                </button>
-                <button className={styles.addMenuItem} onClick={() => setModal(null)} style={{ color: 'var(--color-text-muted)' }}>
-                  <span className={styles.addMenuIcon}>✕</span> Đóng
-                </button>
-              </div>
-            ) : (
-              <button className={styles.addBlockBtn} onClick={() => setModal('addBlock')}>
-                ＋ Thêm block
-              </button>
-            )}
-            <button className={styles.exportBtn} onClick={handleExport} disabled={blocks.length === 0 || exporting}>
-              {exporting ? '⏳ Đang xuất...' : '📥 Xuất file .tex'}
-            </button>
-          </div>
-        </div>
-
-        {/* ═══ RIGHT PANEL (Preview) ═══ */}
-        <div className={styles.rightPanel}>
-          {blocks.length === 0 ? (
-            <div className={styles.previewEmpty}>
-              <div className={styles.previewEmptyIcon}>📄</div>
-              <div className={styles.previewEmptyTitle}>Preview LaTeX</div>
-              <div className={styles.previewEmptySub}>
-                Thêm các block ở panel bên trái để xem trước mã LaTeX được sinh ra.
-                Sau khi hoàn tất, bấm "Xuất file .tex" để tải về.
+                  )
+                })}
               </div>
             </div>
-          ) : (
-            <>
-              <div className={styles.previewHeader}>
-                <span className={styles.previewTitle}>📄 Preview LaTeX</span>
-                <span className={styles.previewStats}>
-                  {blocks.length} blocks • {totalQuestions} câu hỏi
-                </span>
-              </div>
-              <div className={styles.previewBody}>
-                <pre className={styles.previewCode}>{latexPreview}</pre>
-              </div>
-            </>
-          )}
-        </div>
+
+            <div className={styles.selectActions}>
+              <span className={styles.selectedCount}>Đã chọn: {selectedLessons.size} bài</span>
+              <button className={styles.buildBtn} onClick={handleStartBuild} disabled={selectedLessons.size === 0}>
+                📝 Tạo bài học
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ═══ PHASE: BUILD ═══ */}
+        {phase === 'build' && (
+          <>
+            <div className={styles.buildHeader}>
+              <button className={styles.backBtn} onClick={() => setPhase('select')}>
+                ← Quay lại chọn bài
+              </button>
+              <span className={styles.buildTitle}>Nội dung bài học</span>
+              <span className={styles.buildStats}>
+                {selectedLessons.size} bài • {totalQuestions} câu hỏi
+              </span>
+            </div>
+
+            {structure.map(ch => {
+              const chName = CHAPTER_NAMES[grade]?.[ch.subject]?.[ch.chapter]
+                ?.replace(/^Ch\.\d+\s*/, '').replace(/^CĐ\d+\s*/, '')
+                || `Chương ${ch.chapter}`
+
+              return (
+                <div key={`${ch.subject}|${ch.chapter}`} className={styles.buildChapter}>
+                  <div className={styles.buildChapterHeader}>
+                    📘 Chương {ch.chapter}. {chName}
+                  </div>
+                  {ch.lessons.map(les => {
+                    const lesKey = `${ch.subject}|${ch.chapter}|${les}`
+                    const lesName = LESSON_NAMES[grade]?.[ch.subject]?.[ch.chapter]?.[les]
+                      ?.replace(/^§\d+\s*/, '')
+                      || `Bài ${les}`
+                    const questions = lessonQuestions[lesKey] || []
+                    const theoryFile = `${grade}_${ch.subject}_${ch.chapter}_${les}`
+
+                    return (
+                      <div key={lesKey} className={styles.buildLesson}>
+                        <div className={styles.buildLessonHeader}>
+                          📄 Bài {les}. {lesName}
+                        </div>
+                        <div className={styles.buildTheory}>
+                          📝 Lý thuyết
+                          <span className={styles.theoryBadge}>✅ tự động</span>
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>({theoryFile}.tex)</span>
+                        </div>
+                        <div className={styles.buildExercise}>
+                          📋 Bài tập
+                          {questions.length > 0 ? (
+                            <>
+                              <span className={styles.questionCountBadge}>Đã lấy {questions.length} câu</span>
+                              <button className={styles.addQuestionsBtn} onClick={() => openPicker(lesKey)}>
+                                + Thêm
+                              </button>
+                              <button className={styles.removeQuestionsBtn} onClick={() => removeQuestions(lesKey)} title="Xóa câu hỏi">
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <button className={styles.addQuestionsBtn} onClick={() => openPicker(lesKey)}>
+                              + Thêm câu hỏi
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+
+            {/* Export bar */}
+            <div className={styles.exportBar}>
+              <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
+                {exporting ? '⏳ Đang xuất...' : '📥 Xuất file .tex'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* ═══ MODAL: Select Chapter ═══ */}
-      {modal === 'selectChapter' && (
-        <div className={styles.modal} onClick={() => setModal(null)}>
-          <div className={styles.modalInner} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>📘 Thêm Chương</span>
-              <button className={styles.modalClose} onClick={() => setModal(null)}>✕</button>
-            </div>
-            <div className={styles.modalBody}>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Phân môn</span>
-                <select className={styles.modalSelect} value={selSubject} onChange={e => { setSelSubject(e.target.value); setSelChapter('') }}>
-                  <option value="D">Đại số (D)</option>
-                  <option value="H">Hình học (H)</option>
-                  <option value="C">Chuyên đề (C)</option>
-                </select>
-              </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Chương</span>
-                <select className={styles.modalSelect} value={selChapter} onChange={e => setSelChapter(Number(e.target.value))}>
-                  <option value="">— Chọn chương —</option>
-                  {Object.keys(CURRICULUM[grade]?.[selSubject] || {}).map(ch => (
-                    <option key={ch} value={ch}>
-                      {CHAPTER_NAMES[grade]?.[selSubject]?.[Number(ch)] || `Chương ${ch}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.modalCancelBtn} onClick={() => setModal(null)}>Hủy</button>
-              <button className={styles.modalConfirmBtn} onClick={confirmChapter} disabled={selChapter === ''}>Thêm</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ MODAL: Select Section ═══ */}
-      {modal === 'selectSection' && (
-        <div className={styles.modal} onClick={() => setModal(null)}>
-          <div className={styles.modalInner} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>📄 Thêm Bài</span>
-              <button className={styles.modalClose} onClick={() => setModal(null)}>✕</button>
-            </div>
-            <div className={styles.modalBody}>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Phân môn</span>
-                <select className={styles.modalSelect} value={selSubject} onChange={e => { setSelSubject(e.target.value); setSelChapter(''); setSelLesson('') }}>
-                  <option value="D">Đại số (D)</option>
-                  <option value="H">Hình học (H)</option>
-                  <option value="C">Chuyên đề (C)</option>
-                </select>
-              </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Chương</span>
-                <select className={styles.modalSelect} value={selChapter} onChange={e => { setSelChapter(Number(e.target.value)); setSelLesson('') }}>
-                  <option value="">— Chọn chương —</option>
-                  {Object.keys(CURRICULUM[grade]?.[selSubject] || {}).map(ch => (
-                    <option key={ch} value={ch}>
-                      {CHAPTER_NAMES[grade]?.[selSubject]?.[Number(ch)] || `Chương ${ch}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className={styles.modalRow}>
-                <span className={styles.modalLabel}>Bài</span>
-                <select className={styles.modalSelect} value={selLesson} onChange={e => setSelLesson(Number(e.target.value))}>
-                  <option value="">— Chọn bài —</option>
-                  {selChapter !== '' && Object.keys(chaptersMap[selChapter as number] || {}).map(les => (
-                    <option key={les} value={les}>
-                      {LESSON_NAMES[grade]?.[selSubject]?.[selChapter as number]?.[Number(les)] || `Bài ${les}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.modalCancelBtn} onClick={() => setModal(null)}>Hủy</button>
-              <button className={styles.modalConfirmBtn} onClick={confirmSection} disabled={selChapter === '' || selLesson === ''}>Thêm</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ═══ FULLSCREEN QUESTION PICKER ═══ */}
-      {modal === 'questionPicker' && (
+      {pickerOpen && activePickerKey && (
         <div className={styles.pickerOverlay}>
           <div className={styles.pickerContainer}>
             {/* Header */}
             <div className={styles.pickerHeader}>
-              <span className={styles.pickerTitle}>🎯 Chọn câu hỏi cho bài học</span>
-              <button className={styles.pickerCloseBtn} onClick={() => setModal(null)}>✕</button>
+              <span className={styles.pickerTitle}>
+                🎯 Chọn câu hỏi — {CHAPTER_NAMES[grade]?.[activeSubject]?.[activeChapter] || `Ch.${activeChapter}`}
+              </span>
+              <button className={styles.pickerCloseBtn} onClick={() => setPickerOpen(false)}>✕</button>
             </div>
 
             {/* Filters */}
             <div className={styles.pickerFilters}>
-              <div className={styles.pickerFilterGroup}>
-                <span className={styles.pickerFilterLabel}>Phân môn</span>
-                <select className={styles.pickerFilterSelect} value={pickerSubject} onChange={e => {
-                  setPickerSubject(e.target.value)
-                  const newMap = CURRICULUM[grade]?.[e.target.value] || {}
-                  const chs = Object.keys(newMap).map(Number)
-                  setPickerChapter(chs[0] || 1)
-                  setPickerLesson(''); setPickerVariant('')
-                }}>
-                  <option value="D">Đại số / XS</option>
-                  <option value="H">Hình học</option>
-                  <option value="C">Chuyên đề</option>
-                </select>
-              </div>
-              <div className={styles.pickerFilterGroup}>
-                <span className={styles.pickerFilterLabel}>Chương</span>
-                <select className={styles.pickerFilterSelect} value={pickerChapter} onChange={e => {
-                  setPickerChapter(Number(e.target.value))
-                  setPickerLesson(''); setPickerVariant('')
-                }} style={{ minWidth: 220 }}>
-                  {pickerAvailableChapters.map(ch => (
-                    <option key={ch} value={ch}>
-                      {CHAPTER_NAMES[grade]?.[pickerSubject]?.[ch] || `Chương ${ch}`}
-                    </option>
-                  ))}
-                  {pickerAvailableChapters.length === 0 && <option value="">(Không có)</option>}
-                </select>
-              </div>
               <div className={styles.pickerFilterGroup}>
                 <span className={styles.pickerFilterLabel}>Bài</span>
                 <select className={styles.pickerFilterSelect} value={pickerLesson} onChange={e => { setPickerLesson(e.target.value); setPickerVariant('') }}>
@@ -826,7 +634,7 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
                         return (
                           <tr>
                             <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                              Không tìm thấy dữ liệu phù hợp với bộ lọc.
+                              Không tìm thấy dữ liệu phù hợp.
                             </td>
                           </tr>
                         )
@@ -839,7 +647,7 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
                         const countV = row.counts.V || 0
                         const countC = row.counts.C || 0
 
-                        const kBase = `${grade}|${pickerSubject}|${pickerChapter}|${row.lesson}|${row.variant}|${row.question_type}`
+                        const kBase = `${grade}|${activeSubject}|${activeChapter}|${row.lesson}|${row.variant}|${row.question_type}`
                         const selN = pickerSelections[`${kBase}|N`] || 0
                         const selH = pickerSelections[`${kBase}|H`] || 0
                         const selV = pickerSelections[`${kBase}|V`] || 0
@@ -905,13 +713,13 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
 
             {/* Footer */}
             <div className={styles.pickerFooter}>
-              <button className={styles.pickerCancelBtn} onClick={() => setModal(null)}>Hủy</button>
+              <button className={styles.pickerCancelBtn} onClick={() => setPickerOpen(false)}>Hủy</button>
               <button
                 className={styles.pickerSubmitBtn}
-                onClick={handleAddQuestionsToLesson}
+                onClick={handleAddQuestions}
                 disabled={pickerStats.total === 0 || loadingFetch}
               >
-                {loadingFetch ? '⏳ Đang tải...' : `📥 Thêm ${pickerStats.total} câu vào bài học`}
+                {loadingFetch ? '⏳ Đang tải...' : `📥 Thêm ${pickerStats.total} câu`}
               </button>
             </div>
           </div>
@@ -924,7 +732,6 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
           position: 'fixed', top: '24px', right: '24px', zIndex: 99999,
           minWidth: '320px', maxWidth: '460px', borderRadius: '16px', padding: '16px 20px',
           display: 'flex', gap: '12px', alignItems: 'flex-start',
-          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
           boxShadow: `0 8px 32px ${toast.type === 'error' ? 'rgba(220,38,38,0.25)' : toast.type === 'warning' ? 'rgba(217,119,6,0.25)' : toast.type === 'success' ? 'rgba(22,163,74,0.25)' : 'rgba(37,99,235,0.25)'}`,
           background: toast.type === 'error' ? 'linear-gradient(135deg,rgba(254,242,242,0.97),rgba(254,226,226,0.97))'
             : toast.type === 'warning' ? 'linear-gradient(135deg,rgba(255,251,235,0.97),rgba(254,243,199,0.97))'
