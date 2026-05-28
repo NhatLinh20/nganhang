@@ -370,6 +370,18 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       <Header
         title="Tạo Bài Học"
         subtitle="Chọn chương bài, ghép lý thuyết và bài tập, xuất file .tex"
+        actions={
+          <>
+            {(selectedLessons.size > 0 || phase === 'build') && (
+              <button className={styles.resetBtn} onClick={handleReset}>🧹 Làm mới</button>
+            )}
+            {phase === 'build' && (
+              <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
+                {exporting ? '⏳ Đang xuất...' : '📥 Xuất file .tex'}
+              </button>
+            )}
+          </>
+        }
       />
 
       <div className={styles.container}>
@@ -381,11 +393,6 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
             <option value={11}>Lớp 11</option>
             <option value={12}>Lớp 12</option>
           </select>
-          <div className={styles.topActions}>
-            {(selectedLessons.size > 0 || phase === 'build') && (
-              <button className={styles.resetBtn} onClick={handleReset}>🧹 Làm mới</button>
-            )}
-          </div>
         </div>
 
         {/* ═══ PHASE: SELECT ═══ */}
@@ -525,12 +532,7 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
               )
             })}
 
-            {/* Export bar */}
-            <div className={styles.exportBar}>
-              <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
-                {exporting ? '⏳ Đang xuất...' : '📥 Xuất file .tex'}
-              </button>
-            </div>
+
           </>
         )}
       </div>
