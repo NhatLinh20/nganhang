@@ -384,9 +384,6 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
         subtitle={`${total.toLocaleString()} câu hỏi`}
         actions={
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <Link href="/admin/import" className="btn btn-primary">
-              📥 Import file .tex
-            </Link>
             {isAdmin && (
               <button
                 onClick={handleExportBank}
