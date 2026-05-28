@@ -1,4 +1,5 @@
 \usepackage{amsmath,amssymb,mathrsfs,fancyhdr,enumerate,multirow,makecell,currfile,venndiagram,fontawesome,pifont,pgf-pie,pgfplots,yhmath,twemojis}
+\usepackage{etoolbox}
 \usepackage{zref-lastpage}
 \usepackage{zref-user}
 \usepackage{mathpazo}
@@ -37,29 +38,29 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 {CHƯƠNG \thechapter.}
 {0.5em}{\MakeUppercase}
 [\tikz{\draw[myred, line width=1pt,double,thick] (0,0)--(\textwidth,0);}]
-\titlespacing*{\chapter}{0pt}{-5pt}{5pt}
+\titlespacing*{\chapter}{0pt}{-7pt}{5pt}
 % Section
 \titleformat{\section}
 {\bfseries\large\color{myred}}
 {BÀI \arabic{section}.}{0.3em}{\MakeUppercase}
-\titlespacing*{\section}{0pt}{3pt}{5pt}
+\titlespacing*{\section}{0pt}{0pt}{0pt}
 % Subsection
 \renewcommand{\thesubsection}{\Alph{subsection}.}
 \titleformat{\subsection}
 {\bfseries}
-{\Alph{subsection}.}{0.3em}{}
-\titlespacing*{\subsection}{0pt}{3pt}{5pt}
+{\Alph{subsection}.}{0.3em}{\MakeUppercase}
+\titlespacing*{\subsection}{0pt}{0pt}{0pt}
 % Subsubsection
 \titleformat{\subsubsection}
 {\bfseries}
-{\arabic{subsubsection}.}{0.25em}{}
-\titlespacing*{\subsubsection}{0pt}{3pt}{0pt}
+{\arabic{subsubsection}.}{0.5em}{}
+\titlespacing*{\subsubsection}{0pt}{0pt}{0pt}
 % Paragraph
 \renewcommand{\theparagraph}{\arabic{paragraph})}
 \titleformat{\paragraph}
 {\bfseries}
 {\arabic{subsubsection}.\arabic{paragraph}.}{0.3em}{}
-\titlespacing*{\paragraph}{0pt}{3pt}{0pt}
+\titlespacing*{\paragraph}{0pt}{0pt}{0pt}
 %part
 \titleformat{\part}[display]
 {\Large\bfseries\color{red!50!blue}}{
@@ -73,10 +74,6 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 }
 {0.5em}
 {\titlerule[2.5pt]\vskip3pt\titlerule\vskip4pt\centering\fontsize{60pt}{1pt}\fontfamily{qhv}\selectfont\MakeUppercase}
-\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
-	{1ex\@plus -1ex \@minus -.2ex}%
-	{0pt}%
-	{\normalfont\normalsize\bfseries}}
 \makeatother
 %=====Đổi màu phương án đúng
 \def\colorEX{\color{blue}}
@@ -205,70 +202,105 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 %\def\socautl{3}
 \newcounter{phan}
 \setcounter{phan}{0}
-
 \renewcommand{\thephan}{\Roman{phan}}
-
 % PHẦN I
 \newcommand{\caulc}{
 	\stepcounter{phan}
-	\noindent\textbf{PHẦN \thephan. Câu trắc nghiệm nhiều phương án lựa chọn.}
+	\par\noindent
+	\textbf{PHẦN \thephan. Câu trắc nghiệm nhiều phương án lựa chọn.}
+	\par
 	\setcounter{ex}{0}
 }
-
 % PHẦN II
 \newcommand{\cauds}{
 	\stepcounter{phan}
-	\noindent\textbf{PHẦN \thephan. Câu trắc nghiệm đúng sai.}
+	\par\noindent
+	\textbf{PHẦN \thephan. Câu trắc nghiệm đúng sai.}
+	\par
 	\setcounter{ex}{0}
 }
-
 % PHẦN III
 \newcommand{\caukq}{
 	\stepcounter{phan}
-	\noindent\textbf{PHẦN \thephan. Câu trắc nghiệm trả lời ngắn.}
+	\par\noindent
+	\textbf{PHẦN \thephan. Câu trắc nghiệm trả lời ngắn.}
+	\par
 	\setcounter{ex}{0}
 }
-
 % PHẦN IV
 \newcommand{\cautl}{
 	\stepcounter{phan}
-	\noindent\textbf{PHẦN \thephan. Câu tự luận.}
+	\par\noindent
+	\textbf{PHẦN \thephan. Câu tự luận.}
+	\par
 	\setcounter{ex}{0}
 	\setcounter{bt}{0}
 }
-%Định nghĩa Head và Foot
-\pagestyle{fancy}
-\fancyhf{}
-% Header
-%\fancyhead[L]{\color{red!50!white}\faPhone\,0812.8787.92}
-%\fancyhead[R]{\color{red!50!white}Lưu hành nội bộ}
-% Footer
-%\fancyfoot[L]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
-%\fancyfoot[R]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
-% Số trang:
-% LE = trang chẵn bên trái
-% RO = trang lẻ bên phải
-\fancyfoot[LE,RO]{Trang \thepage/\zpageref{\made-lastpage} \,--\, Mã đề \made}
-% Quan trọng: sửa style plain
-\fancypagestyle{plain}{
-%	\fancyhf{}
-%	\fancyhead[L]{\color{red!50!white}\faPhone\,0812.8787.92}
-%	\fancyhead[R]{\color{red!50!white}Lưu hành nội bộ}
-%	\fancyfoot[L]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
-%	\fancyfoot[R]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
-	\fancyfoot[LE,RO]{\thepage/\made}
+%%%%=======Reset phan, ex, bt khi dùng \subsubsection
+\pretocmd{\subsection}{
+	\setcounter{phan}{0}
+	\setcounter{ex}{0}
+	\setcounter{bt}{0}
+}{}{}
+\pretocmd{\subsubsection}{
+	\setcounter{phan}{0}
+	\setcounter{ex}{0}
+	\setcounter{bt}{0}
+}{}{}
+%================================================
+% LOẠI 1
+%================================================
+\newcommand{\StyleLoaiMot}{
+	\fancyhf{}
+	
+	\fancyfoot[LE,RO]{%
+		Trang \thepage/\zpageref{\made-lastpage}
+		\;--\;
+		Mã đề \made
+	}
+	
+	\renewcommand{\headrulewidth}{0pt}
+	\renewcommand{\footrulewidth}{0pt}
 }
-\renewcommand{\headrulewidth}{0pt}
-%\renewcommand{\footrulewidth}{0.5pt}
-%\makeatletter
-%\renewcommand{\headrule}{%
-%	{\color{red}\hrule \@height \headrulewidth \@width \headwidth}
-%}
-%\renewcommand{\footrule}{%
-%	{\color{red}\hrule \@height \footrulewidth \@width \headwidth}
-%}
-%\makeatother
-%=====
+
+%================================================
+% LOẠI 2
+%================================================
+\newcommand{\StyleLoaiHai}{
+	\fancyhf{}
+	
+	\fancyhead[L]{\color{red!50!white}\faPhone\,0812.8787.92}
+	\fancyhead[R]{\color{red!50!white}Lưu hành nội bộ}
+	
+	\fancyfoot[L,R]{\color{red!50!white}Ths: Hồ Ngọc Nhất Linh}
+	\fancyfoot[LE,RO]{\thepage}
+	
+	\renewcommand{\headrulewidth}{0.5pt}
+	\renewcommand{\footrulewidth}{0.5pt}
+}
+
+%================================================
+% LỆNH CHUYỂN STYLE
+%================================================
+\newcommand{\HeaderLoaiMot}{
+	\pagestyle{fancy}
+	\StyleLoaiMot
+	
+	\fancypagestyle{plain}{
+		\StyleLoaiMot
+	}
+}
+\newcommand{\HeaderLoaiHai}{
+	\pagestyle{fancy}
+	\StyleLoaiHai
+	
+	\fancypagestyle{plain}{
+		\StyleLoaiHai
+	}
+}
+%%%%%%%----------chọn loại header, footer
+%\HeaderLoaiMot
+\HeaderLoaiHai
 %%%%%%%%%===Tạo khung
 \newtcolorbox{khung}{
 	before upper=\raggedright,
@@ -284,30 +316,97 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 	top=2pt,
 	bottom=2pt
 }
+%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{boxdn}
+{\begin{tcolorbox}
+		[enhanced jigsaw,breakable,pad at break*=1mm,
+		colback=red!10,boxrule=0pt,frame hidden, 
+		opacityback=0.5,
+		left=3mm, right=0pt, bottom=2pt, top=2pt,
+		before skip=2mm,
+		after skip=2mm,arc=0pt,
+		borderline west={1mm}{0cm}{red!30}
+		]}
+	{\end{tcolorbox}}
+\newenvironment{boxdl}
+{\begin{tcolorbox}
+		[enhanced jigsaw,breakable,pad at break*=1mm,
+		colback=cyan!10,boxrule=0pt,frame hidden, 
+		opacityback=0.5,
+		left=3mm, right=0pt, bottom=2pt, top=2pt,
+		before skip=2mm,
+		after skip=2mm,arc=0pt,
+		borderline west={1mm}{0cm}{cyan!30}
+		]}
+	{\end{tcolorbox}}
+\newenvironment{boxchuy}
+{\begin{tcolorbox}
+		[enhanced jigsaw,breakable,pad at break*=1mm,
+		colback=green!10,boxrule=0pt,frame hidden, 
+		opacityback=0.5,
+		left=3mm, right=0pt, bottom=2pt, top=2pt,
+		before skip=2mm,
+		after skip=2mm,arc=0pt,
+		borderline west={1mm}{0cm}{green!30}
+		]}
+	{\end{tcolorbox}}
+\newenvironment{boxluuy}
+{\begin{tcolorbox}
+		[enhanced jigsaw,breakable,pad at break*=1mm,
+		colback=purple!10,boxrule=0pt,frame hidden, 
+		opacityback=0.5,
+		left=3mm, right=0pt, bottom=2pt, top=2pt,
+		before skip=2mm,
+		after skip=2mm,arc=0pt,
+		borderline west={1mm}{0cm}{purple!30}
+		]}
+	{\end{tcolorbox}}
+\newenvironment{boxpp}
+{\begin{tcolorbox}
+		[enhanced jigsaw,breakable,pad at break*=1mm,
+		colback=orange!10,boxrule=0pt,frame hidden, 
+		opacityback=0.5,
+		left=3mm, right=0pt, bottom=2pt, top=2pt,
+		before skip=2mm,
+		after skip=2mm,arc=0pt,
+		borderline west={1mm}{0cm}{orange!30}
+		]}
+	{\end{tcolorbox}}
+\newenvironment{boxtc}
+{\begin{tcolorbox}
+		[enhanced jigsaw,breakable,pad at break*=1mm,
+		colback=pink!10,boxrule=0pt,frame hidden, 
+		opacityback=0.5,
+		left=3mm, right=0pt, bottom=2pt, top=2pt,
+		before skip=2mm,
+		after skip=2mm,arc=0pt,
+		borderline west={1mm}{0cm}{pink!30}
+		]}
+	{\end{tcolorbox}}
 %%%%%%%%%%---Khai báo định nghĩa, định lý, lưu ý, chú ý, note
 \newenvironment{dn}
-{\begin{khung}\textcolor{red}{\textbf{Định nghĩa. }}}{\end{khung}}
+{\begin{boxdn}\textcolor{red}{\textbf{Định nghĩa. }}}{\end{boxdn}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{dl}
-{\begin{khung}\textcolor{blue}{\textbf{Định lý. }}}{\end{khung}}
+{\begin{boxdl}\textcolor{blue}{\textbf{Định lý. }}}{\end{boxdl}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{luuy}
-{\begin{khung}\textcolor{purple}{\textbf{Lưu ý. }}}{\end{khung}}
+{\begin{boxluuy}\textcolor{purple}{\textbf{Lưu ý. }}}{\end{boxluuy}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{nx}
 {\begin{khung}\textcolor{purple}{\textbf{Nhận xét. }}}{\end{khung}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{pp}
-{\begin{khung}\textcolor{red}{\textbf{Phương pháp. }}}{\end{khung}}
+{\begin{boxpp}\textcolor{orange!70!black}{\textbf{Phương pháp. }}}{\end{boxpp}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{chuy}
-{\begin{khung}\textcolor{green}{\textbf{Chú ý. }}}{\end{khung}}
+{\begin{boxchuy}\textcolor{green!50!black}{\textbf{Chú ý. }}}{\end{boxchuy}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{note}
 {\begin{khung}\textcolor{cyan}{\textbf{Ghi chú. }}}{\end{khung}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{tc}
-{\begin{khung}\textcolor{green!70!black}{\textbf{Tính chất. }}}{\end{khung}}
+{\begin{boxtc}\textcolor{pink!50!black}{\textbf{Tính chất. }}}{\end{boxtc}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcounter{vd}
 \newenvironment{vd}
