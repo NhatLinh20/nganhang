@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     // 3. Generate main.tex
     let mainTex = '\\documentclass[12pt,a4paper,twoside]{book}\n'
     mainTex += '\\input{khaibaochung}\n'
-    mainTex += '%\\HeaderLoaiHai %Bật/tắt header đề thi/header bài dạy\n'
+    mainTex += '\\HeaderLoaiHai %Bật/tắt header đề thi/header bài dạy\n'
     mainTex += '%\\exitdapso %ẩn đs\n'
     mainTex += '\\anloigiai %ẩn lời giải\n'
     mainTex += '%\\tatdongcham %tắt dòng chấm\n'
