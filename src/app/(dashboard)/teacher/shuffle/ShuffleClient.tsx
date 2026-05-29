@@ -274,12 +274,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   }
 
   const handleAddCode = (sourceIdx: number) => {
-    if (isLimitedRole(userRole) && sourceConfigs[sourceIdx]?.codes.length >= 2) {
-      setVipReason('question_limit')
-      setVipDetail(`Số lượng mã đề: ${sourceConfigs[sourceIdx].codes.length + 1}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
-      setShowVipModal(true)
-      return
-    }
+    // Giáo viên chỉ bị giới hạn số đề gốc (2), số mã đề con không giới hạn
     setSourceConfigs(prev => {
       const next = [...prev]
       const allCodes = next.flatMap(c => c.codes)
