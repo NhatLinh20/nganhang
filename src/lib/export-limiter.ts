@@ -4,23 +4,23 @@
 
 export const TEACHER_LIMITS = {
   // Tạo đề thi
-  MAX_EXAMS_PER_BATCH: 2,        // Số đề tối đa / lượt (Admin/VIP: 20)
-  MAX_QUESTIONS_PER_EXAM: 26,    // Tổng câu tối đa / đề
-  MAX_MC: 20,                    // Trắc nghiệm / đề
-  MAX_TF: 4,                     // Đúng/Sai / đề
-  MAX_SA: 6,                     // Trả lời ngắn / đề
-  MAX_ES: 6,                     // Tự luận / đề
+  MAX_EXAMS_PER_BATCH: 12,       // Số đề tối đa / lượt (Admin/VIP: 20)
+  MAX_QUESTIONS_PER_EXAM: 60,    // Tổng câu tối đa / đề
+  MAX_MC: 30,                    // Trắc nghiệm / đề
+  MAX_TF: 10,                    // Đúng/Sai / đề
+  MAX_SA: 10,                    // Trả lời ngắn / đề
+  MAX_ES: 10,                    // Tự luận / đề
 
   // Tạo bài học
-  MAX_LESSONS_PER_MONTH: 1,      // Bài học / tháng
-  MAX_QUESTIONS_PER_LESSON: 25,  // Tổng câu / bài học
-  MAX_MC_LESSON: 20,             // Trắc nghiệm / bài học
-  MAX_TF_LESSON: 4,              // Đúng/Sai / bài học
-  MAX_SA_LESSON: 6,              // Trả lời ngắn / bài học
-  MAX_ES_LESSON: 6,              // Tự luận / bài học
+  MAX_LESSONS_PER_MONTH: 20,     // Bài học / tháng
+  MAX_QUESTIONS_PER_LESSON: 60,  // Tổng câu / bài học
+  MAX_MC_LESSON: 30,             // Trắc nghiệm / bài học
+  MAX_TF_LESSON: 10,             // Đúng/Sai / bài học
+  MAX_SA_LESSON: 10,             // Trả lời ngắn / bài học
+  MAX_ES_LESSON: 10,             // Tự luận / bài học
 
   // Xuất file chung
-  MAX_EXPORTS_PER_DAY: 3,        // Xuất file / ngày (tính chung tất cả trang)
+  MAX_EXPORTS_PER_DAY: 20,       // Xuất file / ngày (tính chung tất cả trang)
 
   // Liên hệ
   ADMIN_PHONE: '0812878792',

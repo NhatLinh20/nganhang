@@ -377,14 +377,6 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
 
     // --- GIỚI HẠN GIÁO VIÊN KHI XUẤT FILE ---
     if (isLimitedRole(userRole)) {
-      // Kiểm tra số lượng bài học
-      if (selectedLessons.size > 1) {
-        setVipReason('lesson_limit')
-        setVipDetail(`Giáo viên chỉ được xuất tối đa 1 bài/lần. Bạn đã chọn ${selectedLessons.size} bài. Nâng VIP để không giới hạn.`)
-        setShowVipModal(true)
-        return
-      }
-
       // Kiểm tra giới hạn số câu hỏi
       const allQs = Object.values(lessonQuestions).flat()
       const limitError = checkLessonQuestionLimits(allQs)
