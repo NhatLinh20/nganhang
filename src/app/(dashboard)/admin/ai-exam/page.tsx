@@ -385,23 +385,7 @@ export default function AiExamPage() {
   const handleGenerate = async () => {
     if (!prompt.trim() && !imageFile) return
 
-    // --- GIỚI HẠN GIÁO VIÊN KHI AI TẠO ĐỀ ---
-    if (isLimitedRole(userRole)) {
-      if (examCount > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
-        setVipReason('question_limit')
-        setVipDetail(`Số lượng đề: ${examCount}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
-        setShowVipModal(true)
-        return
-      }
-
-      const quota = await checkExportQuota()
-      if (!quota.allowed) {
-        setVipReason('daily_limit')
-        setVipDetail('')
-        setShowVipModal(true)
-        return
-      }
-    }
+    // Giáo viên được tự do tạo đề bằng AI, giới hạn chỉ áp dụng khi xuất file
 
     setLoading(true)
     setLoadingStep(1)
@@ -632,10 +616,17 @@ export default function AiExamPage() {
     const currentAllExams = [...allExamsQuestions];
     if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
 
-    // --- GIỚI HẠN GIÁO VIÊN ---
+    // --- GIỚI HẠN GIÁO VIÊN KHI XUẤT FILE ---
     if (isLimitedRole(userRole)) {
+      // Kiểm tra số lượng đề
       const examsToCheck = currentAllExams.length > 0 ? currentAllExams : [questions];
-      
+      if (examsToCheck.length > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+        setVipReason('question_limit')
+        setVipDetail(`Số lượng đề: ${examsToCheck.length}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề. Giảm số đề hoặc nâng VIP.`)
+        setShowVipModal(true)
+        return;
+      }
+
       for (let i = 0; i < examsToCheck.length; i++) {
         const qs = examsToCheck[i];
         
@@ -796,11 +787,11 @@ export default function AiExamPage() {
                 <input
                   type="number"
                   min={1}
-                  max={isLimitedRole(userRole) ? TEACHER_LIMITS.MAX_EXAMS_PER_BATCH : 20}
+                  max={20}
                   value={examCount}
                   onChange={(e) => {
                     let v = parseInt(e.target.value) || 1
-                    if (isLimitedRole(userRole) && v > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) v = TEACHER_LIMITS.MAX_EXAMS_PER_BATCH
+                    if (v > 20) v = 20
                     setExamCount(Math.max(1, v))
                   }}
                   style={{
@@ -815,7 +806,7 @@ export default function AiExamPage() {
                     fontWeight: 600,
                   }}
                 />
-                <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>đề (tối đa {isLimitedRole(userRole) ? TEACHER_LIMITS.MAX_EXAMS_PER_BATCH : 20})</span>
+                <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>đề (tối đa 20)</span>
               </div>
             </div>
 

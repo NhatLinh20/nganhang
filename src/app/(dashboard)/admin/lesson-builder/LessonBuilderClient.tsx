@@ -169,33 +169,7 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       return
     }
 
-    if (isLimitedRole(userRole)) {
-      if (selectedLessons.size > 1) {
-        setVipReason('lesson_limit')
-        setVipDetail(`Giáo viên chỉ được chọn tối đa 1 bài/lần tạo. Bạn đã chọn ${selectedLessons.size} bài. Nâng VIP để không giới hạn.`)
-        setShowVipModal(true)
-        return
-      }
-
-      // Kiểm tra quota bài học / tháng trước khi tạo
-      const lessonQuota = await checkExportQuota('lesson')
-      if (!lessonQuota.allowed) {
-        setVipReason('lesson_limit')
-        setVipDetail('')
-        setShowVipModal(true)
-        return
-      }
-
-      // Kiểm tra quota xuất file chung / ngày trước khi tạo
-      const dailyQuota = await checkExportQuota()
-      if (!dailyQuota.allowed) {
-        setVipReason('daily_limit')
-        setVipDetail('')
-        setShowVipModal(true)
-        return
-      }
-    }
-
+    // Giáo viên được tự do chọn và xây dựng bài học, giới hạn chỉ áp dụng khi xuất file
     setPhase('build')
   }
 
@@ -401,8 +375,16 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       return
     }
 
-    // --- GIỚI HẠN GIÁO VIÊN ---
+    // --- GIỚI HẠN GIÁO VIÊN KHI XUẤT FILE ---
     if (isLimitedRole(userRole)) {
+      // Kiểm tra số lượng bài học
+      if (selectedLessons.size > 1) {
+        setVipReason('lesson_limit')
+        setVipDetail(`Giáo viên chỉ được xuất tối đa 1 bài/lần. Bạn đã chọn ${selectedLessons.size} bài. Nâng VIP để không giới hạn.`)
+        setShowVipModal(true)
+        return
+      }
+
       // Kiểm tra giới hạn số câu hỏi
       const allQs = Object.values(lessonQuestions).flat()
       const limitError = checkLessonQuestionLimits(allQs)
