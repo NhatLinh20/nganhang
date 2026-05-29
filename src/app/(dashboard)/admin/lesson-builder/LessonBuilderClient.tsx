@@ -170,6 +170,13 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     }
 
     if (isLimitedRole(userRole)) {
+      if (selectedLessons.size > 1) {
+        setVipReason('lesson_limit')
+        setVipDetail(`Giáo viên chỉ được chọn tối đa 1 bài/lần tạo. Bạn đã chọn ${selectedLessons.size} bài. Nâng VIP để không giới hạn.`)
+        setShowVipModal(true)
+        return
+      }
+
       // Kiểm tra quota bài học / tháng trước khi tạo
       const lessonQuota = await checkExportQuota('lesson')
       if (!lessonQuota.allowed) {
