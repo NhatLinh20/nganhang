@@ -2,6 +2,7 @@
 // Modal popup đẹp hiển thị khi teacher bị chặn bởi giới hạn
 'use client'
 
+import { useState } from 'react'
 import styles from './VipModal.module.css'
 import { TEACHER_LIMITS } from '@/lib/export-limiter'
 
@@ -28,7 +29,15 @@ const REASON_MESSAGES: Record<VipReason, string> = {
 }
 
 export default function VipModal({ isOpen, onClose, reason = 'generic', detail }: VipModalProps) {
+  const [copied, setCopied] = useState(false)
+
   if (!isOpen) return null
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(TEACHER_LIMITS.ADMIN_PHONE)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -65,17 +74,30 @@ export default function VipModal({ isOpen, onClose, reason = 'generic', detail }
         <div className={styles.divider} />
 
         <div className={styles.contactSection}>
-          <div className={styles.contactLabel}>📞 Liên hệ Admin để nâng cấp:</div>
-          <div className={styles.phoneNumber}>{TEACHER_LIMITS.ADMIN_PHONE}</div>
+          <div className={styles.contactLabel}>📱 Quét mã Zalo để nâng cấp ngay:</div>
+          <div className={styles.qrContainer}>
+            <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://zalo.me/${TEACHER_LIMITS.ADMIN_PHONE}&margin=1`} 
+              alt="Zalo QR Code" 
+              className={styles.qrCode} 
+            />
+          </div>
+          
+          <div className={styles.phoneRow}>
+            <span className={styles.phoneNumber}>{TEACHER_LIMITS.ADMIN_PHONE}</span>
+            <button className={styles.copyBtn} onClick={handleCopy} title="Copy số điện thoại">
+              {copied ? '✅ Đã chép' : '📋 Copy'}
+            </button>
+          </div>
         </div>
 
         <div className={styles.actions}>
+          <a href={`https://zalo.me/${TEACHER_LIMITS.ADMIN_PHONE}`} target="_blank" rel="noopener noreferrer" className={styles.zaloBtn}>
+            💬 Chat Zalo
+          </a>
           <a href={`tel:${TEACHER_LIMITS.ADMIN_PHONE}`} className={styles.callBtn}>
             📞 Gọi ngay
           </a>
-          <button className={styles.closeAction} onClick={onClose}>
-            Đóng
-          </button>
         </div>
       </div>
     </div>
