@@ -4,7 +4,7 @@
 // ═══════════════════════════════════
 // USER & AUTH
 // ═══════════════════════════════════
-export type UserRole = 'admin' | 'teacher'
+export type UserRole = 'admin' | 'teacher' | 'vip'
 
 export interface User {
   id: string

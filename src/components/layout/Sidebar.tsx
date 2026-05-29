@@ -37,7 +37,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
 
   // Lọc menu theo role
   const visibleNavItems = navItems.map(section => {
-    if (userRole === 'teacher') {
+    if (userRole === 'teacher' || userRole === 'vip') {
       // Giáo viên thấy mục AI trong Đề thi, và Ngân hàng câu hỏi trong Quản lý
       if (section.section === 'Đề thi') {
         return {
@@ -104,7 +104,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
             {userEmail ? userEmail.split('@')[0] : 'User'}
           </div>
           <div className={styles.userRole}>
-            {userRole === 'admin' ? 'Quản trị viên' : userRole === 'teacher' ? 'Giáo viên' : 'Học sinh'}
+            {userRole === 'admin' ? 'Quản trị viên' : userRole === 'vip' ? 'VIP 👑' : userRole === 'teacher' ? 'Giáo viên' : 'Học sinh'}
           </div>
         </div>
         <form action={logout}>

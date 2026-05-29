@@ -247,6 +247,14 @@
 }
 .btnWarning:hover { background: var(--color-warning-100); }
 
+.btnVip {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border-color: #f59e0b;
+  font-weight: 700;
+}
+.btnVip:hover { background: linear-gradient(135deg, #fde68a, #fcd34d); }
+
 /* Empty State */
 .emptyState {
   padding: var(--space-10) var(--space-4);

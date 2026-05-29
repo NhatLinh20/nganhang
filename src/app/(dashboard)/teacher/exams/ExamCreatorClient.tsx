@@ -6,6 +6,8 @@ import styles from './examCreator.module.css'
 import tableStyles from '../../admin/questions/questions.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 import { CURRICULUM } from '../../admin/questions/QuestionsClient'
+import { isLimitedRole, TEACHER_LIMITS, checkExportQuota, logExport } from '@/lib/export-limiter'
+import VipModal from '@/components/VipModal'
 
 // Re-use types from AI exam
 interface ExamQuestion {
@@ -68,6 +70,10 @@ const generateUniqueExamCodes = (count: number): string[] => {
 
 export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const router = useRouter()
+  // ─── VIP MODAL STATE ───────────────────────────────────────────────────────
+  const [showVipModal, setShowVipModal] = useState(false)
+  const [vipReason, setVipReason] = useState<'daily_limit' | 'question_limit' | 'generic'>('generic')
+  const [vipDetail, setVipDetail] = useState('')
   // ─── MAIN LAYOUT STATE ──────────────────────────────────────────────────────
   const [mainTab, setMainTab] = useState<'config' | 'result'>('config')
 
@@ -531,29 +537,39 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     const currentAllExams = [...allExamsQuestions];
     if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
     
-    // --- GIỚI HẠN GIÁO VIÊN: TỐI ĐA 30 CÂU/ĐỀ VÀ TỪNG PHẦN ---
-    if (userRole !== 'admin') {
+    // --- GIỚI HẠN GIÁO VIÊN ---
+    if (isLimitedRole(userRole)) {
       const examsToCheck = currentAllExams.length > 0 ? currentAllExams : [questions];
       
       for (let i = 0; i < examsToCheck.length; i++) {
         const qs = examsToCheck[i];
         
-        // Giới hạn tổng
-        if (qs.length > 30) {
-          alert('Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
+        if (qs.length > TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM) {
+          setVipReason('question_limit')
+          setVipDetail(`Đề số ${i+1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
+          setShowVipModal(true)
           return;
         }
 
-        // Giới hạn từng phần
         const mcCount = qs.filter(q => q.question_type === 'multiple_choice').length;
         const tfCount = qs.filter(q => q.question_type === 'true_false').length;
         const saCount = qs.filter(q => q.question_type === 'short_answer').length;
         const esCount = qs.filter(q => q.question_type === 'essay').length;
 
-        if (mcCount > 25 || tfCount > 4 || saCount > 6 || esCount > 6) {
-          alert(`Tài khoản giáo viên bị giới hạn số câu ở đề số ${i+1}:\n- Trắc nghiệm: tối đa 25 câu (đang có ${mcCount})\n- Đúng/Sai: tối đa 4 câu (đang có ${tfCount})\n- Trả lời ngắn: tối đa 6 câu (đang có ${saCount})\n- Tự luận: tối đa 6 câu (đang có ${esCount})\n\nVui lòng giảm bớt câu hỏi để tiếp tục.`);
+        if (mcCount > TEACHER_LIMITS.MAX_MC || tfCount > TEACHER_LIMITS.MAX_TF || saCount > TEACHER_LIMITS.MAX_SA || esCount > TEACHER_LIMITS.MAX_ES) {
+          setVipReason('question_limit')
+          setVipDetail(`Đề số ${i+1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
+          setShowVipModal(true)
           return;
         }
+      }
+
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setVipReason('daily_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return;
       }
     }
 
@@ -612,6 +628,11 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+
+      // Ghi log xuất file
+      if (isLimitedRole(userRole)) {
+        await logExport('manual_exam', '/teacher/exams');
+      }
     } catch (err) {
       alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'));
     }
@@ -702,11 +723,11 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
             <div className={styles.configInputGroup} style={{ width: 100, position: 'relative' }}>
               <input 
                 type="number" 
-                min={1} max={userRole !== 'admin' ? 4 : 20}
+                min={1} max={isLimitedRole(userRole) ? TEACHER_LIMITS.MAX_EXAMS_PER_BATCH : 20}
                 value={configNumExams}
                 onChange={e => {
                   let val = parseInt(e.target.value) || 1;
-                  if (userRole !== 'admin' && val > 4) val = 4;
+                  if (isLimitedRole(userRole) && val > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) val = TEACHER_LIMITS.MAX_EXAMS_PER_BATCH;
                   setConfigNumExams(val);
                 }}
                 className={styles.configInput}
@@ -1507,6 +1528,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         </div>
       )}
 
+      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} detail={vipDetail} />
     </div>
   )
 }

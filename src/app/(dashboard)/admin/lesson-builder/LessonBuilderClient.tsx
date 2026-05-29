@@ -4,6 +4,8 @@ import Header from '@/components/layout/Header'
 import styles from './lesson-builder.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 import { CURRICULUM } from '../questions/QuestionsClient'
+import { isLimitedRole, TEACHER_LIMITS, checkLessonQuestionLimits, checkExportQuota, logExport } from '@/lib/export-limiter'
+import VipModal from '@/components/VipModal'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface QuestionItem {
@@ -59,6 +61,11 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
   const [loadingFetch, setLoadingFetch] = useState(false)
 
   const [exporting, setExporting] = useState(false)
+
+  // VIP Modal
+  const [showVipModal, setShowVipModal] = useState(false)
+  const [vipReason, setVipReason] = useState<'daily_limit' | 'question_limit' | 'lesson_limit' | 'generic'>('generic')
+  const [vipDetail, setVipDetail] = useState('')
 
   // Toast
   const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success' | 'info'; title: string; message: string; visible: boolean }>({ type: 'info', title: '', message: '', visible: false })
@@ -325,6 +332,38 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       showToast('warning', 'Chưa có nội dung', 'Hãy chọn bài và tạo bài học trước.')
       return
     }
+
+    // --- GIỚI HẠN GIÁO VIÊN ---
+    if (isLimitedRole(userRole)) {
+      // Kiểm tra giới hạn số câu hỏi
+      const allQs = Object.values(lessonQuestions).flat()
+      const limitError = checkLessonQuestionLimits(allQs)
+      if (limitError) {
+        setVipReason('question_limit')
+        setVipDetail(limitError)
+        setShowVipModal(true)
+        return
+      }
+
+      // Kiểm tra quota bài học / tháng
+      const lessonQuota = await checkExportQuota('lesson')
+      if (!lessonQuota.allowed) {
+        setVipReason('lesson_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return
+      }
+
+      // Kiểm tra quota xuất file chung / ngày
+      const dailyQuota = await checkExportQuota()
+      if (!dailyQuota.allowed) {
+        setVipReason('daily_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return
+      }
+    }
+
     setExporting(true)
     try {
       // Build lessons array for API
@@ -357,6 +396,11 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
       showToast('success', 'Xuất thành công', 'File ZIP đã được tải xuống.')
+
+      // Ghi log xuất file
+      if (isLimitedRole(userRole)) {
+        await logExport('lesson', '/admin/lesson-builder')
+      }
     } catch {
       showToast('error', 'Lỗi kết nối', 'Không thể kết nối đến máy chủ.')
     } finally {
@@ -755,6 +799,8 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
           <button onClick={() => setToast(p => ({ ...p, visible: false }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', opacity: 0.4, color: 'inherit', flexShrink: 0 }}>✕</button>
         </div>
       )}
+
+      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} detail={vipDetail} />
 
       <style>{`
         @keyframes toastSlideIn {

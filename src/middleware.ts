@@ -60,8 +60,8 @@ export async function middleware(request: NextRequest) {
     const role = profile?.role || user.user_metadata?.role || ''
     const isApproved = profile?.is_approved || role === 'admin' // Admin auto approve
 
-    // Kiểm tra teacher chưa approved
-    if (role === 'teacher' && !isApproved) {
+    // Kiểm tra teacher/vip chưa approved
+    if ((role === 'teacher' || role === 'vip') && !isApproved) {
       if (pathname !== '/pending' && !pathname.startsWith('/api/auth')) {
         return NextResponse.redirect(new URL('/pending', request.url))
       }
@@ -75,7 +75,7 @@ export async function middleware(request: NextRequest) {
 
     // Nếu vào trang dashboard thì điều hướng dựa trên quyền
     if (pathname === '/dashboard' || pathname === '/') {
-      if (role === 'teacher') {
+      if (role === 'teacher' || role === 'vip') {
         return NextResponse.redirect(new URL('/admin/ai-exam', request.url))
       }
       if (role === 'admin') {
@@ -85,13 +85,13 @@ export async function middleware(request: NextRequest) {
 
     // Xử lý các route admin và teacher
     if (pathname.startsWith('/admin') || pathname.startsWith('/teacher')) {
-      if (role === 'teacher') {
-        // Giáo viên được phép vào /teacher/*, /admin/ai-exam, /admin/questions và /admin/lesson-builder
+      if (role === 'teacher' || role === 'vip') {
+        // Giáo viên/VIP được phép vào /teacher/*, /admin/ai-exam, /admin/questions và /admin/lesson-builder
         if (!pathname.startsWith('/teacher') && pathname !== '/admin/ai-exam' && pathname !== '/admin/questions' && pathname !== '/admin/lesson-builder') {
           return NextResponse.redirect(new URL('/admin/questions', request.url))
         }
       } else if (role !== 'admin') {
-        // Nếu không phải admin và không phải teacher
+        // Nếu không phải admin và không phải teacher/vip
         return NextResponse.redirect(new URL('/login', request.url))
       }
     }

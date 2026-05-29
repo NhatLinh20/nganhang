@@ -9,6 +9,7 @@ import { parseQuestion } from '@/lib/latex-parser'
 import styles from './questions.module.css'
 import Link from 'next/link'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
+import VipModal from '@/components/VipModal'
 
 // Labels
 const GRADE_LABELS: Record<number, string> = { 10: 'Lớp 10', 11: 'Lớp 11', 12: 'Lớp 12' }
@@ -108,6 +109,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
 
   // State for bank export
   const [exportingBank, setExportingBank] = useState(false)
+  const [showVipModal, setShowVipModal] = useState(false)
 
 
 
@@ -384,34 +386,40 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
         subtitle={`${total.toLocaleString()} câu hỏi`}
         actions={
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {isAdmin && (
-              <button
-                onClick={handleExportBank}
-                disabled={exportingBank || total === 0}
-                className="btn btn-primary"
-                style={{
-                  background: exportingBank ? '#94a3b8' : '#059669',
-                  cursor: exportingBank || total === 0 ? 'not-allowed' : 'pointer',
-                  opacity: total === 0 ? 0.5 : 1,
-                  border: 'none',
-                  color: 'white',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                {exportingBank ? '⏳ Đang xuất...' : `📤 Xuất ${total.toLocaleString()} câu`}
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (userRole === 'teacher') {
+                  setShowVipModal(true)
+                  return
+                }
+                handleExportBank()
+              }}
+              disabled={exportingBank || total === 0}
+              className="btn btn-primary"
+              style={{
+                background: exportingBank ? '#94a3b8' : '#059669',
+                cursor: exportingBank || total === 0 ? 'not-allowed' : 'pointer',
+                opacity: total === 0 ? 0.5 : 1,
+                border: 'none',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {exportingBank ? '⏳ Đang xuất...' : `📤 Xuất ${total.toLocaleString()} câu`}
+            </button>
           </div>
         }
       />
+
+      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason="bank_export" />
 
       <div className={styles.pageWrapper}>
         {/* ═══ FILTER SIDEBAR ═══ */}

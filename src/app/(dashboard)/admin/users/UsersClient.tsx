@@ -10,6 +10,8 @@ import {
   toggleUserActive, 
   getLoginLogs, 
   getUserStats,
+  upgradeToVip,
+  downgradeFromVip,
   UserManagementData,
   LoginLogData
 } from '@/app/actions/user-management'
@@ -77,6 +79,20 @@ export default function UsersClient() {
     const action = currentActive ? 'Khóa' : 'Mở khóa'
     if (!confirm(`Bạn có chắc muốn ${action} tài khoản này?`)) return
     await toggleUserActive(id, !currentActive)
+    fetchData()
+  }
+
+  const handleUpgradeVip = async (id: string) => {
+    if (!confirm('Nâng cấp tài khoản này lên VIP? Họ sẽ không bị giới hạn xuất file và số câu hỏi.')) return
+    const res = await upgradeToVip(id)
+    if (res.error) alert('Lỗi: ' + res.error)
+    fetchData()
+  }
+
+  const handleDowngradeVip = async (id: string) => {
+    if (!confirm('Hạ tài khoản VIP này về Giáo viên? Họ sẽ bị giới hạn trở lại.')) return
+    const res = await downgradeFromVip(id)
+    if (res.error) alert('Lỗi: ' + res.error)
     fetchData()
   }
 
@@ -232,8 +248,8 @@ export default function UsersClient() {
                       </td>
                       <td>{u.email}</td>
                       <td>
-                        <span className={u.role === 'admin' ? 'badge badge-V' : 'badge badge-N'}>
-                          {u.role === 'admin' ? 'Admin' : 'Giáo viên'}
+                        <span className={u.role === 'admin' ? 'badge badge-V' : u.role === 'vip' ? 'badge badge-C' : 'badge badge-N'}>
+                          {u.role === 'admin' ? 'Admin' : u.role === 'vip' ? 'VIP 👑' : 'Giáo viên'}
                         </span>
                       </td>
                       <td>
@@ -244,6 +260,16 @@ export default function UsersClient() {
                       <td>
                         {u.role !== 'admin' && (
                           <div className={styles.actions}>
+                            {u.role === 'teacher' && (
+                              <button className={`${styles.actionBtn} ${styles.btnVip}`} onClick={() => handleUpgradeVip(u.id)}>
+                                ⭐ Nâng VIP
+                              </button>
+                            )}
+                            {u.role === 'vip' && (
+                              <button className={`${styles.actionBtn} ${styles.btnWarning}`} onClick={() => handleDowngradeVip(u.id)}>
+                                ↩ Hạ VIP
+                              </button>
+                            )}
                             <button 
                               className={`${styles.actionBtn} ${u.is_active ? styles.btnWarning : styles.btnApprove}`}
                               onClick={() => handleToggleActive(u.id, u.is_active)}

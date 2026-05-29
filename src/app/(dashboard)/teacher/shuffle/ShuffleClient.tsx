@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Fragment } from 'react'
 import styles from './shuffle.module.css'
+import { isLimitedRole, checkExportQuota, logExport } from '@/lib/export-limiter'
+import VipModal from '@/components/VipModal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -159,6 +161,10 @@ function shuffleAnswerOptions(q: ExamQuestion): ExamQuestion {
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function ShuffleClient({ userRole }: { userRole: string }) {
+
+  // VIP Modal state
+  const [showVipModal, setShowVipModal] = useState(false)
+  const [vipReason, setVipReason] = useState<'daily_limit' | 'generic'>('generic')
 
   // Source data
   const [sourceData, setSourceData] = useState<ShuffleSourceData | null>(null)
@@ -381,6 +387,16 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   const handleExportTex = async () => {
     if (shuffledExams.length === 0) return
 
+    // Kiểm tra quota xuất file hàng ngày (chỉ teacher)
+    if (isLimitedRole(userRole)) {
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setVipReason('daily_limit')
+        setShowVipModal(true)
+        return
+      }
+    }
+
     try {
       const payload: Record<string, unknown> = {
         title: sourceData?.configTitle || 'Đề thi trộn',
@@ -433,6 +449,11 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
+
+      // Ghi log xuất file
+      if (isLimitedRole(userRole)) {
+        await logExport('shuffle', '/teacher/shuffle')
+      }
     } catch (err) {
       alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
     }
@@ -879,6 +900,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
           </div>
         </div>
       )}
+      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} />
     </div>
   )
 }

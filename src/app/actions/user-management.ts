@@ -219,3 +219,56 @@ export async function getUserStats(): Promise<{ stats?: { total: number, pending
     }
   }
 }
+
+// ═══════════════════════════════════════════════════
+// 8. NÂNG CẤP TEACHER → VIP
+// ═══════════════════════════════════════════════════
+export async function upgradeToVip(userId: string): Promise<{ success?: boolean, error?: string }> {
+  const admin = await isAdmin()
+  if (!admin) return { error: 'Không có quyền truy cập.' }
+
+  const supabaseAdmin = createAdminClient()
+  
+  // Chỉ nâng cấp từ teacher → vip
+  const { data: user } = await supabaseAdmin.from('users').select('role').eq('id', userId).single()
+  if (user?.role !== 'teacher') {
+    return { error: 'Chỉ có thể nâng cấp tài khoản giáo viên lên VIP.' }
+  }
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({ role: 'vip', updated_at: new Date().toISOString() })
+    .eq('id', userId)
+
+  if (error) return { error: 'Không thể nâng cấp tài khoản.' }
+
+  revalidatePath('/admin/users')
+  return { success: true }
+}
+
+// ═══════════════════════════════════════════════════
+// 9. HẠ VIP → TEACHER
+// ═══════════════════════════════════════════════════
+export async function downgradeFromVip(userId: string): Promise<{ success?: boolean, error?: string }> {
+  const admin = await isAdmin()
+  if (!admin) return { error: 'Không có quyền truy cập.' }
+
+  const supabaseAdmin = createAdminClient()
+  
+  // Chỉ hạ từ vip → teacher
+  const { data: user } = await supabaseAdmin.from('users').select('role').eq('id', userId).single()
+  if (user?.role !== 'vip') {
+    return { error: 'Tài khoản này không phải VIP.' }
+  }
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({ role: 'teacher', updated_at: new Date().toISOString() })
+    .eq('id', userId)
+
+  if (error) return { error: 'Không thể hạ tài khoản.' }
+
+  revalidatePath('/admin/users')
+  return { success: true }
+}
+

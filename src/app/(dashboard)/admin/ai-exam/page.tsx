@@ -7,6 +7,8 @@ import tableStyles from '../questions/questions.module.css'
 import { VARIANT_NAMES, CHAPTER_NAMES, LESSON_NAMES } from '@/lib/curriculum-labels'
 import { CURRICULUM } from '../questions/QuestionsClient'
 import { createClient } from '@/lib/supabase/client'
+import { isLimitedRole, TEACHER_LIMITS, checkExportQuota, logExport } from '@/lib/export-limiter'
+import VipModal from '@/components/VipModal'
 
 interface ExamQuestion {
   id: string
@@ -157,6 +159,9 @@ export default function AiExamPage() {
 
   const [isLoaded, setIsLoaded] = useState(false)
   const [userRole, setUserRole] = useState('')
+  const [showVipModal, setShowVipModal] = useState(false)
+  const [vipReason, setVipReason] = useState<'daily_limit' | 'question_limit' | 'generic'>('generic')
+  const [vipDetail, setVipDetail] = useState('')
 
   // ═══ TOAST NOTIFICATION SYSTEM ═══
   const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success' | 'info'; title: string; message: string; visible: boolean }>({
@@ -253,7 +258,15 @@ export default function AiExamPage() {
     const fetchUser = async () => {
       const supabase = createClient()
       const { data } = await supabase.auth.getUser()
-      setUserRole(data?.user?.user_metadata?.role || '')
+      if (data?.user) {
+        // Lấy role từ DB (chính xác hơn user_metadata)
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single()
+        setUserRole(profile?.role || data.user.user_metadata?.role || '')
+      }
     }
     fetchUser()
   }, [])
@@ -601,16 +614,18 @@ export default function AiExamPage() {
     const currentAllExams = [...allExamsQuestions];
     if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
 
-    // --- GIỚI HẠN GIÁO VIÊN: TỐI ĐA 30 CÂU/ĐỀ VÀ TỪNG PHẦN ---
-    if (userRole !== 'admin') {
+    // --- GIỚI HẠN GIÁO VIÊN ---
+    if (isLimitedRole(userRole)) {
       const examsToCheck = currentAllExams.length > 0 ? currentAllExams : [questions];
       
       for (let i = 0; i < examsToCheck.length; i++) {
         const qs = examsToCheck[i];
         
         // Giới hạn tổng
-        if (qs.length > 30) {
-          showToast('warning', 'Tài khoản giáo viên chỉ được phép xuất tối đa 30 câu/đề. Vui lòng giảm số lượng câu hỏi và thử lại.');
+        if (qs.length > TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM) {
+          setVipReason('question_limit')
+          setVipDetail(`Đề số ${i+1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu. Giảm số lượng hoặc nâng VIP.`)
+          setShowVipModal(true)
           return;
         }
 
@@ -620,10 +635,21 @@ export default function AiExamPage() {
         const saCount = qs.filter(q => q.question_type === 'short_answer').length;
         const esCount = qs.filter(q => q.question_type === 'essay').length;
 
-        if (mcCount > 25 || tfCount > 4 || saCount > 6 || esCount > 6) {
-          showToast('warning', `Đề số ${i+1} vượt giới hạn: TN ${mcCount}/25, Đ/S ${tfCount}/4, Ngắn ${saCount}/6, TL ${esCount}/6. Vui lòng giảm bớt câu hỏi.`);
+        if (mcCount > TEACHER_LIMITS.MAX_MC || tfCount > TEACHER_LIMITS.MAX_TF || saCount > TEACHER_LIMITS.MAX_SA || esCount > TEACHER_LIMITS.MAX_ES) {
+          setVipReason('question_limit')
+          setVipDetail(`Đề số ${i+1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
+          setShowVipModal(true)
           return;
         }
+      }
+
+      // Kiểm tra quota xuất file hàng ngày
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setVipReason('daily_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return;
       }
     }
 
@@ -693,6 +719,11 @@ export default function AiExamPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+
+      // Ghi log xuất file
+      if (isLimitedRole(userRole)) {
+        await logExport('ai_exam', '/admin/ai-exam');
+      }
     } catch (err) {
       showToast('error', 'Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'));
     }
@@ -747,11 +778,11 @@ export default function AiExamPage() {
                 <input
                   type="number"
                   min={1}
-                  max={userRole !== 'admin' ? 4 : 20}
+                  max={isLimitedRole(userRole) ? TEACHER_LIMITS.MAX_EXAMS_PER_BATCH : 20}
                   value={examCount}
                   onChange={(e) => {
                     let v = parseInt(e.target.value) || 1
-                    if (userRole !== 'admin' && v > 4) v = 4
+                    if (isLimitedRole(userRole) && v > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) v = TEACHER_LIMITS.MAX_EXAMS_PER_BATCH
                     setExamCount(Math.max(1, v))
                   }}
                   style={{
@@ -766,7 +797,7 @@ export default function AiExamPage() {
                     fontWeight: 600,
                   }}
                 />
-                <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>đề (tối đa {userRole !== 'admin' ? 4 : 20})</span>
+                <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: 500 }}>đề (tối đa {isLimitedRole(userRole) ? TEACHER_LIMITS.MAX_EXAMS_PER_BATCH : 20})</span>
               </div>
             </div>
 
@@ -1912,6 +1943,8 @@ export default function AiExamPage() {
           </button>
         </div>
       )}
+
+      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} detail={vipDetail} />
 
       <style>{`
         @keyframes toastSlideIn {
