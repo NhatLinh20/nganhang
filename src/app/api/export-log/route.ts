@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error('export-log GET lesson error:', error)
-        return NextResponse.json({ allowed: true, count: 0, limit: TEACHER_LIMITS.MAX_LESSONS_PER_MONTH, remaining: TEACHER_LIMITS.MAX_LESSONS_PER_MONTH })
+        return NextResponse.json({ allowed: false, count: 0, limit: TEACHER_LIMITS.MAX_LESSONS_PER_MONTH, remaining: 0, error: 'Database error: Bảng export_logs có thể chưa tồn tại. Vui lòng chạy file 003_vip_role_and_export_logs.sql trong Supabase.' })
       }
 
       const used = count || 0
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('export-log GET error:', error)
-      return NextResponse.json({ allowed: true, count: 0, limit: TEACHER_LIMITS.MAX_EXPORTS_PER_DAY, remaining: TEACHER_LIMITS.MAX_EXPORTS_PER_DAY })
+      return NextResponse.json({ allowed: false, count: 0, limit: TEACHER_LIMITS.MAX_EXPORTS_PER_DAY, remaining: 0, error: 'Database error: Bảng export_logs có thể chưa tồn tại. Vui lòng chạy file 003_vip_role_and_export_logs.sql trong Supabase.' })
     }
 
     const used = count || 0
