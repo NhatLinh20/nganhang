@@ -20,7 +20,7 @@ export const TEACHER_LIMITS = {
   MAX_ES_LESSON: 6,              // Tự luận / bài học
 
   // Xuất file chung
-  MAX_EXPORTS_PER_DAY: 1,        // Xuất file / ngày (tính chung tất cả trang)
+  MAX_EXPORTS_PER_DAY: 3,        // Xuất file / ngày (tính chung tất cả trang)
 
   // Liên hệ
   ADMIN_PHONE: '0812878792',
