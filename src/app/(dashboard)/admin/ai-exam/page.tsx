@@ -175,13 +175,13 @@ export default function AiExamPage() {
     if (err.includes('503') || err.includes('service unavailable') || err.includes('high demand')) {
       return {
         title: 'Máy chủ AI đang quá tải',
-        message: 'Google Gemini đang có quá nhiều người sử dụng. Vui lòng đợi 1-2 phút rồi thử lại.'
+        message: 'Google Gemini đang quá tải vì có quá nhiều người sử dụng. Bạn có thể tự nhập API key cá nhân của mình ở góc dưới bên trái màn hình để sử dụng hoặc đợi 1-2 phút rồi thử lại.'
       }
     }
     if (err.includes('429') || err.includes('rate limit') || err.includes('quota')) {
       return {
         title: 'Vượt quá giới hạn sử dụng',
-        message: 'Bạn đã gửi quá nhiều yêu cầu trong thời gian ngắn. Vui lòng đợi vài phút rồi thử lại.'
+        message: 'Google Gemini đang quá tải do vượt quá hạn mức. Bạn có thể tự nhập API key cá nhân của mình để sử dụng hoặc đợi vài phút rồi thử lại.'
       }
     }
     if (err.includes('401') || err.includes('unauthorized') || err.includes('api key')) {
