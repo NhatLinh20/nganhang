@@ -163,11 +163,32 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
 
   const structure = buildStructure()
 
-  const handleStartBuild = () => {
+  const handleStartBuild = async () => {
     if (selectedLessons.size === 0) {
       showToast('warning', 'Chưa chọn bài', 'Hãy chọn ít nhất 1 bài trước khi tạo.')
       return
     }
+
+    if (isLimitedRole(userRole)) {
+      // Kiểm tra quota bài học / tháng trước khi tạo
+      const lessonQuota = await checkExportQuota('lesson')
+      if (!lessonQuota.allowed) {
+        setVipReason('lesson_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return
+      }
+
+      // Kiểm tra quota xuất file chung / ngày trước khi tạo
+      const dailyQuota = await checkExportQuota()
+      if (!dailyQuota.allowed) {
+        setVipReason('daily_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return
+      }
+    }
+
     setPhase('build')
   }
 
@@ -274,6 +295,46 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
     if (selectionArray.length === 0) {
       showToast('warning', 'Chưa chọn', 'Hãy nhập số lượng câu cần lấy trước.')
       return
+    }
+
+    // --- GIỚI HẠN GIÁO VIÊN KHI THÊM CÂU HỎI VÀO BÀI HỌC ---
+    if (isLimitedRole(userRole)) {
+      const currentQuestions = Object.values(lessonQuestions).flat()
+      const currentTotal = currentQuestions.length
+      
+      let newTotal = 0
+      let newMc = 0
+      let newTf = 0
+      let newSa = 0
+      let newEs = 0
+      
+      selectionArray.forEach(sel => {
+        newTotal += sel.count
+        if (sel.question_type === 'multiple_choice') newMc += sel.count
+        else if (sel.question_type === 'true_false') newTf += sel.count
+        else if (sel.question_type === 'short_answer') newSa += sel.count
+        else if (sel.question_type === 'essay') newEs += sel.count
+      })
+
+      const projectedTotal = currentTotal + newTotal
+      if (projectedTotal > TEACHER_LIMITS.MAX_QUESTIONS_PER_LESSON) {
+        setVipReason('question_limit')
+        setVipDetail(`Tổng số câu hỏi sẽ vượt quá giới hạn bài học (${projectedTotal}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_LESSON} câu).`)
+        setShowVipModal(true)
+        return
+      }
+
+      const mcCount = currentQuestions.filter(q => q.question_type === 'multiple_choice').length + newMc
+      const tfCount = currentQuestions.filter(q => q.question_type === 'true_false').length + newTf
+      const saCount = currentQuestions.filter(q => q.question_type === 'short_answer').length + newSa
+      const esCount = currentQuestions.filter(q => q.question_type === 'essay').length + newEs
+
+      if (mcCount > TEACHER_LIMITS.MAX_MC_LESSON || tfCount > TEACHER_LIMITS.MAX_TF_LESSON || saCount > TEACHER_LIMITS.MAX_SA_LESSON || esCount > TEACHER_LIMITS.MAX_ES_LESSON) {
+        setVipReason('question_limit')
+        setVipDetail(`Dự kiến vượt giới hạn bài học: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC_LESSON}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF_LESSON}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA_LESSON}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES_LESSON}.`)
+        setShowVipModal(true)
+        return
+      }
     }
 
     setLoadingFetch(true)
