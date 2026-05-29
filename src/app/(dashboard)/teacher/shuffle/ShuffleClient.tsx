@@ -394,11 +394,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   const handleExportTex = async () => {
     if (shuffledExams.length === 0) return
 
-    // Kiểm tra quota và số lượng đề (chỉ teacher)
+    // Kiểm tra quota và số lượng đề GỐC (chỉ teacher)
     if (isLimitedRole(userRole)) {
-      if (shuffledExams.length > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+      const numSourceExams = sourceData?.sourceExams?.length || shuffledExams.length
+      if (numSourceExams > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
         setVipReason('question_limit')
-        setVipDetail(`Số lượng mã đề: ${shuffledExams.length}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
+        setVipDetail(`Số lượng đề gốc: ${numSourceExams}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
         setShowVipModal(true)
         return
       }
