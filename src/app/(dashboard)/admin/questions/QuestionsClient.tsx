@@ -10,6 +10,7 @@ import styles from './questions.module.css'
 import Link from 'next/link'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 import VipModal from '@/components/VipModal'
+import { isLimitedRole } from '@/lib/export-limiter'
 
 // Labels
 const GRADE_LABELS: Record<number, string> = { 10: 'Lớp 10', 11: 'Lớp 11', 12: 'Lớp 12' }
@@ -388,7 +389,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               onClick={() => {
-                if (userRole === 'teacher') {
+                if (isLimitedRole(userRole)) {
                   setShowVipModal(true)
                   return
                 }

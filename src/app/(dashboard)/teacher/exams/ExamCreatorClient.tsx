@@ -320,6 +320,53 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       return
     }
 
+    // --- GIỚI HẠN GIÁO VIÊN KHI TẠO ĐỀ ---
+    if (isLimitedRole(userRole)) {
+      if (configNumExams > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+        setVipReason('question_limit')
+        setVipDetail(`Số lượng đề: ${configNumExams}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
+        setShowVipModal(true)
+        return
+      }
+
+      let totalQuestions = 0
+      let mcCount = 0
+      let tfCount = 0
+      let saCount = 0
+      let esCount = 0
+
+      selectionArray.forEach(sel => {
+        totalQuestions += sel.count
+        if (sel.question_type === 'multiple_choice') mcCount += sel.count
+        else if (sel.question_type === 'true_false') tfCount += sel.count
+        else if (sel.question_type === 'short_answer') saCount += sel.count
+        else if (sel.question_type === 'essay') esCount += sel.count
+      })
+
+      if (totalQuestions > TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM) {
+        setVipReason('question_limit')
+        setVipDetail(`Tổng số câu hỏi: ${totalQuestions}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
+        setShowVipModal(true)
+        return
+      }
+
+      if (mcCount > TEACHER_LIMITS.MAX_MC || tfCount > TEACHER_LIMITS.MAX_TF || saCount > TEACHER_LIMITS.MAX_SA || esCount > TEACHER_LIMITS.MAX_ES) {
+        setVipReason('question_limit')
+        setVipDetail(`TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
+        setShowVipModal(true)
+        return
+      }
+
+      // Kiểm tra xem hôm nay còn lượt xuất/tạo đề không (tạo đề cũng tốn lượt hoặc giới hạn 1 lần xuất)
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setVipReason('daily_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return
+      }
+    }
+
     setLoadingGenerate(true)
     setHasGenerated(true)
     setMainTab('result') // Tự động nhảy sang tab kết quả

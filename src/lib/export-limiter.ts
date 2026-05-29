@@ -30,8 +30,8 @@ export const TEACHER_LIMITS = {
  * Kiểm tra role có bị giới hạn hay không.
  * Chỉ teacher bị giới hạn. VIP và Admin không bị.
  */
-export function isLimitedRole(role: string): boolean {
-  return role === 'teacher'
+export function isLimitedRole(role: string | null | undefined): boolean {
+  return role !== 'admin' && role !== 'vip'
 }
 
 /**

@@ -385,6 +385,24 @@ export default function AiExamPage() {
   const handleGenerate = async () => {
     if (!prompt.trim() && !imageFile) return
 
+    // --- GIỚI HẠN GIÁO VIÊN KHI AI TẠO ĐỀ ---
+    if (isLimitedRole(userRole)) {
+      if (examCount > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+        setVipReason('question_limit')
+        setVipDetail(`Số lượng đề: ${examCount}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
+        setShowVipModal(true)
+        return
+      }
+
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setVipReason('daily_limit')
+        setVipDetail('')
+        setShowVipModal(true)
+        return
+      }
+    }
+
     setLoading(true)
     setLoadingStep(1)
     setResult(null)

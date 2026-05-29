@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react'
 import styles from './shuffle.module.css'
-import { isLimitedRole, checkExportQuota, logExport } from '@/lib/export-limiter'
+import { isLimitedRole, checkExportQuota, logExport, TEACHER_LIMITS } from '@/lib/export-limiter'
 import VipModal from '@/components/VipModal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -164,7 +164,8 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
 
   // VIP Modal state
   const [showVipModal, setShowVipModal] = useState(false)
-  const [vipReason, setVipReason] = useState<'daily_limit' | 'generic'>('generic')
+  const [vipReason, setVipReason] = useState<'daily_limit' | 'question_limit' | 'generic'>('generic')
+  const [vipDetail, setVipDetail] = useState('')
 
   // Source data
   const [sourceData, setSourceData] = useState<ShuffleSourceData | null>(null)
@@ -273,6 +274,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   }
 
   const handleAddCode = (sourceIdx: number) => {
+    if (isLimitedRole(userRole) && sourceConfigs[sourceIdx]?.codes.length >= 2) {
+      setVipReason('question_limit')
+      setVipDetail(`Số lượng mã đề: ${sourceConfigs[sourceIdx].codes.length + 1}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
+      setShowVipModal(true)
+      return
+    }
     setSourceConfigs(prev => {
       const next = [...prev]
       const allCodes = next.flatMap(c => c.codes)
@@ -387,11 +394,19 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   const handleExportTex = async () => {
     if (shuffledExams.length === 0) return
 
-    // Kiểm tra quota xuất file hàng ngày (chỉ teacher)
+    // Kiểm tra quota và số lượng đề (chỉ teacher)
     if (isLimitedRole(userRole)) {
+      if (shuffledExams.length > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+        setVipReason('question_limit')
+        setVipDetail(`Số lượng mã đề: ${shuffledExams.length}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
+        setShowVipModal(true)
+        return
+      }
+
       const quota = await checkExportQuota()
       if (!quota.allowed) {
         setVipReason('daily_limit')
+        setVipDetail('')
         setShowVipModal(true)
         return
       }
@@ -900,7 +915,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
           </div>
         </div>
       )}
-      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} />
+      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} detail={vipDetail} />
     </div>
   )
 }
