@@ -399,6 +399,31 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         return
       }
 
+      // Kiểm tra giới hạn số câu hỏi trên từng đề gốc
+      const examsToCheck = sourceData?.sourceExams || []
+      for (let i = 0; i < examsToCheck.length; i++) {
+        const qs = examsToCheck[i].questions
+
+        if (qs.length > TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM) {
+          setVipReason('question_limit')
+          setVipDetail(`Đề gốc ${i + 1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
+          setShowVipModal(true)
+          return
+        }
+
+        const mcCount = qs.filter(q => q.question_type === 'multiple_choice').length
+        const tfCount = qs.filter(q => q.question_type === 'true_false').length
+        const saCount = qs.filter(q => q.question_type === 'short_answer').length
+        const esCount = qs.filter(q => q.question_type === 'essay').length
+
+        if (mcCount > TEACHER_LIMITS.MAX_MC || tfCount > TEACHER_LIMITS.MAX_TF || saCount > TEACHER_LIMITS.MAX_SA || esCount > TEACHER_LIMITS.MAX_ES) {
+          setVipReason('question_limit')
+          setVipDetail(`Đề gốc ${i + 1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
+          setShowVipModal(true)
+          return
+        }
+      }
+
       const quota = await checkExportQuota()
       if (!quota.allowed) {
         setVipReason('daily_limit')
