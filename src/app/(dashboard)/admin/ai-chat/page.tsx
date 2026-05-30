@@ -134,15 +134,60 @@ export default function AiChatPage() {
   }
 
   const handleFormatTab = () => {
-    let formatted = editorContent
-      .replace(/\\begin\{ex\}/g, '\\begin{ex}')
-      .replace(/\\choice/g, '\t\\choice')
-      .replace(/\\choiceTF/g, '\t\\choiceTF')
-      .replace(/\\loigiai/g, '\t\\loigiai')
-      .replace(/\\begin\{itemchoice\}/g, '\t\\begin{itemchoice}')
-      .replace(/\\itemch /g, '\t\t\\itemch ')
-      .replace(/\\end\{itemchoice\}/g, '\t\\end{itemchoice}')
-    setEditorContent(formatted)
+    const lines = editorContent.split('\n')
+    let envIndent = 0
+    let braceIndent = 0
+    let inChoice = 0
+
+    const formattedLines = lines.map(line => {
+      const trimmed = line.trim()
+      if (!trimmed) return ''
+
+      let lineEnvIndent = envIndent
+      if (trimmed.startsWith('\\end{')) {
+        envIndent = Math.max(0, envIndent - 1)
+        lineEnvIndent = envIndent
+      }
+
+      let lineBraceIndent = braceIndent
+      if (trimmed.startsWith('}')) {
+        lineBraceIndent = Math.max(0, braceIndent - 1)
+      }
+
+      let extraIndent = 0
+      if ((trimmed.startsWith('\\choice') || trimmed.startsWith('\\choiceTF')) && !trimmed.match(/\{.*\}/)) {
+        inChoice = 4
+      } else if (inChoice > 0 && trimmed.startsWith('{')) {
+        extraIndent = 1
+        inChoice--
+      }
+
+      if (trimmed.startsWith('\\loigiai') || trimmed.startsWith('\\begin{')) {
+        inChoice = 0
+      }
+
+      const totalTabs = lineEnvIndent + lineBraceIndent + extraIndent
+      const formattedLine = '\t'.repeat(Math.max(0, totalTabs)) + trimmed
+
+      if (trimmed.startsWith('\\begin{')) {
+        envIndent++
+      }
+
+      // Xử lý đếm ngoặc nhọn để biết có xuống dòng trong block không (VD: \loigiai{ )
+      const unescapedTrimmed = trimmed.replace(/\\\\/g, '').replace(/\\%/g, 'ESCAPED_PERCENT')
+      const withoutComment = unescapedTrimmed.split('%')[0]
+      const cleanForBraces = withoutComment.replace(/\\\{/g, '').replace(/\\\}/g, '')
+      
+      const openBraces = (cleanForBraces.match(/\{/g) || []).length
+      const closeBraces = (cleanForBraces.match(/\}/g) || []).length
+      
+      braceIndent += (openBraces - closeBraces)
+      if (braceIndent < 0) braceIndent = 0
+
+      return formattedLine
+    })
+
+    setEditorContent(formattedLines.join('\n'))
   }
 
   const getGeneratedId = () => {
