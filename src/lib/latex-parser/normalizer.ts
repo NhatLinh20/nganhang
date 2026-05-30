@@ -23,8 +23,9 @@ function removeNonIdComments(content: string): string {
 // Thêm rule bảo vệ: đảm bảo luôn có \n sau \begin{ex}%[ID]
 // (phòng trường hợp file gốc không có xuống dòng)
 function ensureNewlineAfterBeginTag(content: string): string {
+  // Bỏ ? → %[ID] bắt buộc phải có, không còn khớp \begin{ex} đơn độc nữa
   return content.replace(
-    /(\\begin\{(?:ex|bt)\}(?:%\[[^\]]*\])?)[^\S\n]*(?!\n)/g,
+    /(\\begin\{(?:ex|bt)\}%\[[^\]]*\])[^\S\n]*(?!\n)/g,
     '$1\n'
   );
 }
