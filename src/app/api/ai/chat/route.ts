@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
     const chat = model.startChat({
       history: history.map((msg) => ({
         role: msg.role as 'user' | 'model',
-        parts: msg.parts,
+        parts: msg.parts as any[],
       })),
     })
 
