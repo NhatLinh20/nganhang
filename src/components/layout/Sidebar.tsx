@@ -27,6 +27,7 @@ const navItems = [
       { href: '/teacher/exams', icon: '📝', label: 'Tạo đề thi' },
       { href: '/teacher/shuffle', icon: '🔀', label: 'Trộn đề' },
       { href: '/admin/ai-exam', icon: '🤖', label: 'AI tạo đề' },
+      { href: '/admin/ai-chat', icon: '💬', label: 'Trợ lý AI' },
       { href: '/admin/lesson-builder', icon: '📖', label: 'Tạo bài học' },
     ],
   },
@@ -42,7 +43,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
       if (section.section === 'Đề thi') {
         return {
           ...section,
-          items: section.items.filter(item => item.href === '/admin/ai-exam' || item.href === '/teacher/exams' || item.href === '/teacher/shuffle' || item.href === '/admin/lesson-builder')
+          items: section.items.filter(item => item.href === '/admin/ai-exam' || item.href === '/admin/ai-chat' || item.href === '/teacher/exams' || item.href === '/teacher/shuffle' || item.href === '/admin/lesson-builder')
         }
       }
       if (section.section === 'Quản lý') {
@@ -58,7 +59,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
       return section
     }
     
-    // Học sinh (student) hoặc các role khác không thấy menu admin/teacher
+    // Các role khác không thấy menu admin/teacher
     return null
   }).filter(Boolean) as typeof navItems
 
@@ -104,7 +105,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
             {userEmail ? userEmail.split('@')[0] : 'User'}
           </div>
           <div className={styles.userRole}>
-            {userRole === 'admin' ? 'Quản trị viên' : userRole === 'vip' ? 'VIP 👑' : userRole === 'teacher' ? 'Giáo viên' : 'Học sinh'}
+            {userRole === 'admin' ? 'Quản trị viên' : userRole === 'vip' ? 'VIP 👑' : 'Giáo viên'}
           </div>
         </div>
         <form action={logout}>
