@@ -776,22 +776,18 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                                           >
                                             ✏️ Sửa
                                           </button>
-
                                         </>
-                                      )
                                     ) : null}
-                                      {isAdmin && (
-                                        <button
-                                          className="btn btn-sm btn-secondary"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            navigator.clipboard.writeText(q.latex_content)
-                                            alert('Đã copy!')
-                                          }}
-                                        >
-                                          📋 Copy
-                                        </button>
-                                      )}
+                                    <button
+                                      className="btn btn-sm btn-secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        navigator.clipboard.writeText(q.latex_content)
+                                        alert('Đã copy!')
+                                      }}
+                                    >
+                                      📋 Copy
+                                    </button>
                                   </div>
                                 </div>
                                 {editingId === q.id ? (
