@@ -62,6 +62,13 @@ function replaceFracWithDfrac(content: string): string {
   return content.replace(/\\frac/g, '\\dfrac');
 }
 
+function replaceIntWithDisplaystyleInt(content: string): string {
+  // Thay thế \int thành \displaystyle\int
+  return content.replace(/(\\displaystyle\s*)?\\int/g, (match, p1) => {
+    return p1 ? match : '\\displaystyle\\int';
+  });
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -70,6 +77,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   trimTrailingWhitespace,
   formatDecimalsWithComma, // ← chuẩn hóa số thập phân 0,975 -> 0{,}975
   replaceFracWithDfrac,    // ← đổi \frac thành \dfrac
+  replaceIntWithDisplaystyleInt, // ← đổi \int thành \displaystyle\int
 ]
 
 export function normalizeQuestion(block: string): string {
