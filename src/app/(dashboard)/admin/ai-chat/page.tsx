@@ -216,11 +216,41 @@ export default function AiChatPage() {
     setImagePreview(null)
   }
 
+  // Drag and drop handlers
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
+      handleImageSelect(file)
+    }
+  }
+
   // Paste image from clipboard
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData.items
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith('image/')) {
+      if (items[i].type.startsWith('image/') || items[i].type === 'application/pdf') {
         const file = items[i].getAsFile()
         if (file) handleImageSelect(file)
         break
@@ -358,7 +388,20 @@ export default function AiChatPage() {
 
       <div className={styles.layout}>
         {/* ═══ LEFT PANE (CHAT) ═══ */}
-        <div className={styles.leftPane}>
+        <div 
+          className={`${styles.leftPane} ${isDragging ? styles.isDragging : ''}`}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDragging && (
+            <div className={styles.dragOverlay}>
+              <div className={styles.dragOverlayIcon}>📥</div>
+              <div className={styles.dragOverlayText}>Thả file ảnh hoặc PDF vào đây</div>
+            </div>
+          )}
+          
           <div className={styles.chatWindow}>
           {messages.length === 0 && !isStreaming ? (
             <div className={styles.emptyState}>
@@ -475,17 +518,22 @@ export default function AiChatPage() {
         {/* ═══ INPUT AREA ═══ */}
         <div className={styles.inputArea}>
           <div className={styles.inputAreaInner}>
-            {/* Image preview */}
-            {imagePreview && (
-              <div className={styles.imagePreviewRow}>
-                <div className={styles.imagePreviewThumb}>
-                  <img src={imagePreview} alt="Preview" />
-                  <button
-                    className={styles.imagePreviewRemove}
-                    onClick={removeImage}
-                  >
-                    ✕
-                  </button>
+            {/* File preview */}
+            {imageFile && (
+              <div className={styles.filePreviewRow}>
+                <div className={styles.filePreviewChip}>
+                  <div className={styles.filePreviewIcon}>
+                    {imageFile.type === 'application/pdf' ? '📄' : (
+                      <img src={imagePreview!} alt="Preview" />
+                    )}
+                  </div>
+                  <div className={styles.filePreviewInfo}>
+                    <span className={styles.filePreviewName}>{imageFile.name}</span>
+                    <span className={styles.filePreviewType}>
+                      {imageFile.type === 'application/pdf' ? 'PDF Document' : 'Image File'}
+                    </span>
+                  </div>
+                  <button className={styles.filePreviewRemove} onClick={removeImage}>✕</button>
                 </div>
               </div>
             )}
