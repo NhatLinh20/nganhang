@@ -1,5 +1,5 @@
 // src/app/api/import/route.ts
-// API endpoint để import file .tex vào database
+// API endpoint để import câu hỏi đã parse vào database
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -12,49 +12,32 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createAdminClient()
 
-    // 1. Đọc file từ form data
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
-    const sourceFile = formData.get('source_file') as string | null
+    // Đọc JSON body: { questions: ParsedQuestion[] }
+    const body = await request.json()
+    const questions: ParsedQuestion[] = body.questions
 
-    if (!file) {
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return NextResponse.json(
-        { error: 'Không có file được upload' } satisfies ApiResponse<never>,
+        { error: 'Không có câu hỏi nào để import' } satisfies ApiResponse<never>,
         { status: 400 }
       )
     }
 
-    // 2. Đọc nội dung file
-    const texContent = await file.text()
-
-    if (!texContent.trim()) {
-      return NextResponse.json(
-        { error: 'File rỗng' } satisfies ApiResponse<never>,
-        { status: 400 }
-      )
-    }
-
-    // 3. Parse file .tex
-    const { questions, result } = parseTexFile(texContent, {
-      sourceFile: sourceFile || file.name,
-      skipDuplicates: true,
-    })
-
-    // Chuẩn hóa xuống dòng dạng Unix (\n) để đồng bộ so khớp trùng lặp trên mọi hệ điều hành
+    // Chuẩn hóa line endings
     questions.forEach(q => {
       if (q.latex_content) {
         q.latex_content = q.latex_content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
       }
     })
 
-    if (questions.length === 0) {
-      return NextResponse.json({
-        data: { result, questions: [] },
-        message: formatImportReport(result),
-      } satisfies ApiResponse<{ result: ImportResult; questions: ParsedQuestion[] }>)
+    const result: ImportResult = {
+      total: questions.length,
+      success: questions.length,
+      skipped: 0,
+      errors: [],
     }
 
-    // 4. Kiểm tra duplicate trong database (theo latex_content)
+    // Kiểm tra duplicate trong database (theo latex_content)
     const latexContents = questions.map(q => q.latex_content)
     const { data: existingQuestions } = await supabase
       .from('questions')
@@ -70,7 +53,7 @@ export async function POST(request: NextRequest) {
       result.success -= dbDuplicates
     }
 
-    // 5. Insert vào database theo batch (500 câu mỗi lần)
+    // Insert vào database theo batch (500 câu mỗi lần)
     const BATCH_SIZE = 500
     let insertedCount = 0
 
@@ -123,10 +106,10 @@ export async function PUT(request: NextRequest) {
 
     const { questions, result, rawBlocks } = parseTexFile(tex_content, {
       sourceFile: source_file,
-      skipDuplicates: false,  // Preview không cần check dup
+      skipDuplicates: false,
     })
 
-    // Chuẩn hóa xuống dòng dạng Unix (\n) để đồng bộ so khớp trùng lặp trên mọi hệ điều hành
+    // Chuẩn hóa line endings
     questions.forEach(q => {
       if (q.latex_content) {
         q.latex_content = q.latex_content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')

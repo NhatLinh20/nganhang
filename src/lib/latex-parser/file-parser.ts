@@ -3,6 +3,7 @@
 
 import type { ParsedQuestion, ImportResult, ImportError } from '@/types'
 import { parseQuestion } from './question-parser'
+import { extractComments, findValidCategoryCode } from './category-parser'
 
 export interface ParseOptions {
   sourceFile?: string       // Tên file .tex
@@ -13,6 +14,17 @@ export interface ParseFileResult {
   questions: ParsedQuestion[]
   result: ImportResult
   rawBlocks: string[]       // Debug: danh sách các block đã tìm thấy
+}
+
+export interface ErrorBlock {
+  content: string
+  reason: string
+}
+
+export interface ExtractResult {
+  validBlocks: string[]
+  errorBlocks: ErrorBlock[]
+  totalBlocks: number
 }
 
 // ═══════════════════════════════════════════════════
@@ -164,4 +176,38 @@ export function formatImportReport(result: ImportResult): string {
   }
 
   return lines.join('\n')
+}
+
+// ═══════════════════════════════════════════════════
+// Bước 2 (Plan): Chỉ tách block + validate ID
+// ═══════════════════════════════════════════════════
+
+/**
+ * Tách tất cả block từ nội dung .tex và chia thành câu đạt (có ID hợp lệ) / câu lỗi
+ * Chưa parse chi tiết loại câu, đáp án — chỉ validate sơ bộ.
+ */
+export function extractAndValidateBlocks(texContent: string): ExtractResult {
+  const cleaned = preprocessTexContent(texContent)
+  const rawBlocks = extractExBlocks(cleaned)
+
+  const validBlocks: string[] = []
+  const errorBlocks: ErrorBlock[] = []
+
+  for (const block of rawBlocks) {
+    const comments = extractComments(block)
+    const categoryInfo = findValidCategoryCode(comments)
+
+    if (categoryInfo) {
+      validBlocks.push(block)
+    } else {
+      errorBlocks.push({
+        content: block,
+        reason: comments.length > 0
+          ? `Không tìm thấy ID 6 tham số hợp lệ. Tìm thấy: [${comments.join(', ')}]`
+          : 'Không có comment %[ID] nào trên dòng \\begin{ex}',
+      })
+    }
+  }
+
+  return { validBlocks, errorBlocks, totalBlocks: rawBlocks.length }
 }
