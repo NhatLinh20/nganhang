@@ -8,8 +8,8 @@ function removeNonIdComments(content: string): string {
   const ID_PATTERN = /^\d+[a-zA-Z]\d+[a-zA-Z]\d+-\d+$/;
 
   return content.replace(
-    // Match toàn bộ phần đầu dòng \begin{ex/bt} + mọi %[...] theo sau
-    /(\\begin\{(?:ex|bt)\})\s*((?:%\[[^\]]*\]\s*)*)/g,
+    // Đổi \s* thành [^\S\n]* để không nuốt ký tự xuống dòng
+    /(\\begin\{(?:ex|bt)\})[^\S\n]*((?:%\[[^\]]*\][^\S\n]*)*)/g,
     (_match, beginTag, comments) => {
       // Tách tất cả %[...] tags và tìm tag ID hợp lệ đầu tiên
       const allTags = [...comments.matchAll(/%\[([^\]]*)\]/g)];
@@ -17,6 +17,15 @@ function removeNonIdComments(content: string): string {
       // Tái tạo dòng: chỉ giữ \begin{ex}%[ID hợp lệ]
       return validTag ? `${beginTag}${validTag[0]}` : beginTag;
     }
+  );
+}
+
+// Thêm rule bảo vệ: đảm bảo luôn có \n sau \begin{ex}%[ID]
+// (phòng trường hợp file gốc không có xuống dòng)
+function ensureNewlineAfterBeginTag(content: string): string {
+  return content.replace(
+    /(\\begin\{(?:ex|bt)\}(?:%\[[^\]]*\])?)[^\S\n]*(?!\n)/g,
+    '$1\n'
   );
 }
 
@@ -46,6 +55,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
   removeNonIdComments,    // ← sau đó mới xử lý comment
+  ensureNewlineAfterBeginTag, // ← đảm bảo luôn xuống dòng sau tag
   trimTrailingWhitespace,
 ]
 
