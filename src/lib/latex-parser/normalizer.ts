@@ -7,33 +7,31 @@ type NormalizeRule = (content: string) => string
 
 // ── Regex nhận diện ID 6 tham số ─────────────────────────────────────────────
 // Khớp: 1D5H2-3, 2D3H1-3, 0D8V2-5, v.v.
-const ID_REGEX = /^\d+[a-zA-Z]\d+[a-zA-Z]\d+-\d+$/
+// Mở rộng regex để chắc chắn không bỏ sót ID hợp lệ có dấu cách
+const ID_REGEX = /^\s*\d+[a-zA-Z]\d+[a-zA-Z]\d+-\d+\s*$/
 
 // ── Rule 1: Xóa %[...] không phải ID trên dòng \begin{ex} ──────────────────
-// Logic chuyển từ scripts/clean-comments.js sang TypeScript
 function removeNonIdComments(content: string): string {
   const lines = content.split('\n')
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     if (line.includes('\\begin{ex}') || line.includes('\\begin{bt}')) {
-      const originalLine = line
-      let nonIdFound = false
-
+      
+      // Tìm dòng có dạng \begin{ex} tiếp theo là các comments %[...]
+      // Chúng ta sẽ lặp và xóa các %[...] không hợp lệ
+      
       const newLine = line.replace(/%\[([^\]]*)\]/g, (match, innerText) => {
-        const text = innerText.trim()
-        if (ID_REGEX.test(text)) {
-          return match // Giữ nguyên ID hợp lệ
-        } else {
-          nonIdFound = true
-          return '' // Xóa cụm không phải ID
+        // Kiểm tra xem innerText có khớp với ID không
+        if (ID_REGEX.test(innerText)) {
+          return match // Trả về nguyên bản nếu là ID
         }
+        return '' // Xóa bỏ hoàn toàn nếu không phải ID (như %[Dự án Tex...])
       })
 
-      if (nonIdFound && newLine !== originalLine) {
-        // Dọn dẹp khoảng trắng thừa cuối dòng
-        lines[i] = newLine.replace(/ +(?=%)/g, '').trimEnd()
-      }
+      // Cập nhật lại dòng, dọn dẹp khoảng trắng dư thừa
+      // Ví dụ: "\begin{ex}  %[ID]" -> "\begin{ex}%[ID]"
+      lines[i] = newLine.replace(/\s+(?=%\[)/g, '').trimRight()
     }
   }
 
@@ -49,7 +47,7 @@ function normalizeLineEndings(content: string): string {
 function trimTrailingWhitespace(content: string): string {
   return content
     .split('\n')
-    .map(line => line.trimEnd())
+    .map(line => line.trimRight())
     .join('\n')
 }
 
