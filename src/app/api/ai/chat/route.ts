@@ -143,9 +143,18 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Hệ phương trình dùng \\heva{ &x=1 \\\\ &y=2 }. Hoặc dùng \\hoac{ &x=1 \\\\ &x=2 } (Dùng & để canh dọc).
 - Dùng cặp \\left( \\right), \\big( \\big) hợp lý, không lạm dụng.
 
-6. Đồ thị và Hình vẽ:
-- NẾU CÓ HÌNH VẼ HOẶC ĐỒ THỊ: BẮT BUỘC phải vẽ lại bằng code TikZ (\\begin{tikzpicture}...\\end{tikzpicture}). TUYỆT ĐỐI KHÔNG dùng \\includegraphics.
-- Tuân thủ quy định TikZ thuần, không lạm dụng định nghĩa ngoài.
+6. Đồ thị và Hình vẽ (TikZ & Bảng biến thiên):
+- NẾU CÓ HÌNH VẼ HOẶC ĐỒ THỊ: BẮT BUỘC vẽ bằng code TikZ thuần (\begin{tikzpicture}...\end{tikzpicture}). TUYỆT ĐỐI KHÔNG dùng \includegraphics.
+- Bắt buộc khai báo ở đầu tikzpicture (trừ bảng biến thiên): [scale=1, font=\footnotesize, line join=round, line cap=round, >=stealth]. Mũi tên luôn dùng >=stealth, tuyệt đối không dùng >=triangle 45.
+- Đánh dấu góc: dùng \draw pic[draw,angle radius=...] {angle = ...} hoặc {right angle = ...}. Không tự định nghĩa \gocvg, \vgv...
+- Không tự định nghĩa các hàm số như \def\hamso, \def\f... vì sẽ gây lỗi.
+- Hình vẽ minh hoạ trong lời giải phải dùng \begin{center} để canh giữa.
+
+7. Quy định Bảng biến thiên (BBT):
+- Canh giữa BBT bởi \begin{center}, không dùng khung ngoài. Khai báo chuẩn: \tkzTabInit[nocadre=true, lgt=..., espcl=..., deltacl=0.5].
+- Tham số lgt: lgt=1.2 nếu tên hàm là f(x); lgt=1.0 nếu tên hàm là y.
+- Tham số espcl: espcl=4 (BBT 3 cột); espcl=3 (BBT 4 cột); espcl=2.5 (BBT >= 5 cột).
+- Phân số: Hàng x, f'(x) dùng \tfrac. Hàng f(x) dùng \dfrac.
 
 LƯU Ý CUỐI CÙNG: 
 - Trả lời bằng tiếng Việt, ngắn gọn.

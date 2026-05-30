@@ -60,13 +60,7 @@ function renderMarkdown(text: string): string {
   return html
 }
 
-const QUICK_PROMPTS = [
-  'Hướng dẫn cách import file .tex vào ngân hàng câu hỏi',
-  'Giải thích cấu trúc ID 6 tham số (ví dụ: 2D1N3-1)',
-  'Cách tạo đề thi bằng AI từ ma trận',
-  'Gõ lại câu hỏi từ ảnh thành LaTeX chuẩn',
-  'Gán ID cho câu hỏi Toán',
-]
+
 
 export default function AiChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -407,20 +401,6 @@ export default function AiChatPage() {
               <div className={styles.emptyTitle}>Trợ lý AI Ngân Hàng Toán</div>
               <div className={styles.emptySubtitle}>
                 Hỏi bất cứ điều gì về phần mềm, gửi ảnh câu hỏi để gõ lại LaTeX, hoặc nhờ gán ID cho câu hỏi.
-              </div>
-              <div className={styles.quickActions}>
-                {QUICK_PROMPTS.map((qp, i) => (
-                  <button
-                    key={i}
-                    className={styles.quickAction}
-                    onClick={() => {
-                      setInput(qp)
-                      textareaRef.current?.focus()
-                    }}
-                  >
-                    {qp}
-                  </button>
-                ))}
               </div>
             </div>
           ) : (
