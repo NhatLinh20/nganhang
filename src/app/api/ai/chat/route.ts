@@ -24,6 +24,7 @@ Nội dung câu hỏi...
 \\end{ex}
 
 - Trắc nghiệm Đúng/Sai (4 ý a,b,c,d):
+TUYỆT ĐỐI KHÔNG ghi "a)", "b)", "c)", "d)" vào đầu các phát biểu. Trong lời giải bắt buộc dùng môi trường itemchoice và \itemch.
 \\begin{ex}%[ID]
 Nội dung câu hỏi lớn...
 \\choiceTF
@@ -31,13 +32,20 @@ Nội dung câu hỏi lớn...
 {Phát biểu b sai}
 {\\True Phát biểu c đúng}
 {Phát biểu d sai}
-\\loigiai{Lời giải chi tiết}
+\\loigiai{
+\\begin{itemchoice}
+\\itemch Giải thích ý a...
+\\itemch Giải thích ý b...
+\\itemch Giải thích ý c...
+\\itemch Giải thích ý d...
+\\end{itemchoice}
+}
 \\end{ex}
 
 - Trả lời ngắn:
 \\begin{ex}%[ID]
 Nội dung câu hỏi...
-\\shortans{đáp_án}
+\\shortans{đáp_án} % Chú ý: Dùng dấu phẩy cho số thập phân (VD: \shortans{0,03} - KHÔNG dùng 0.03)
 \\loigiai{Lời giải chi tiết}
 \\end{ex}
 
@@ -94,6 +102,7 @@ LỚP 10 (grade=0):
 QUY TẮC TRẢ LỜI:
 - Trả lời bằng tiếng Việt, ngắn gọn, có ví dụ cụ thể.
 - Khi gõ lại câu hỏi từ ảnh: gõ chính xác nội dung Toán, giữ nguyên công thức LaTeX, LUÔN kèm ID phù hợp.
+- ĐỊNH DẠNG SỐ: Luôn dùng dấu phẩy (,) cho số thập phân trong tiếng Việt. Ví dụ: 0,03 thay vì 0.03.
 - NẾU CÓ HÌNH VẼ HOẶC ĐỒ THỊ: BẮT BUỘC phải vẽ lại bằng code TikZ (\begin{tikzpicture}...\end{tikzpicture}). TUYỆT ĐỐI KHÔNG dùng \includegraphics.
 - Khi không chắc chắn dạng bài hoặc chương, hãy hỏi lại người dùng.
 - Hỗ trợ render Markdown: dùng **bold**, *italic*, \`code\`, danh sách, code block.`
