@@ -26,11 +26,11 @@ Nội dung câu hỏi...
 - Trắc nghiệm Đúng/Sai (4 ý a,b,c,d):
 \\begin{ex}%[ID]
 Nội dung câu hỏi lớn...
-\\chomark
-\\immmark{a} Phát biểu a \\mark{Đ}
-\\immmark{b} Phát biểu b \\mark{S}
-\\immmark{c} Phát biểu c \\mark{Đ}
-\\immmark{d} Phát biểu d \\mark{S}
+\\choiceTF
+{\\True Phát biểu a đúng}
+{Phát biểu b sai}
+{\\True Phát biểu c đúng}
+{Phát biểu d sai}
 \\loigiai{Lời giải chi tiết}
 \\end{ex}
 
@@ -94,8 +94,9 @@ LỚP 10 (grade=0):
 QUY TẮC TRẢ LỜI:
 - Trả lời bằng tiếng Việt, ngắn gọn, có ví dụ cụ thể.
 - Khi gõ lại câu hỏi từ ảnh: gõ chính xác nội dung Toán, giữ nguyên công thức LaTeX, LUÔN kèm ID phù hợp.
+- NẾU CÓ HÌNH VẼ HOẶC ĐỒ THỊ: BẮT BUỘC phải vẽ lại bằng code TikZ (\begin{tikzpicture}...\end{tikzpicture}). TUYỆT ĐỐI KHÔNG dùng \includegraphics.
 - Khi không chắc chắn dạng bài hoặc chương, hãy hỏi lại người dùng.
-- Hỗ trợ render Markdown: dùng **bold**, *italic*, \`code\`, danh sách, code block.`
+- Hỗ trợ render Markdown: dùng **bold**, *italic*, `code`, danh sách, code block.`
 
 export async function POST(req: NextRequest) {
   try {
