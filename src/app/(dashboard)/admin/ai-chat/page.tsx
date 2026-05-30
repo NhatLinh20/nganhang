@@ -2,6 +2,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Header from '@/components/layout/Header'
 import styles from './ai-chat.module.css'
+import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
+import { normalizeQuestion } from '@/lib/latex-parser/normalizer'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -86,6 +88,18 @@ export default function AiChatPage() {
   const chatEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Editor State
+  const [editorContent, setEditorContent] = useState('')
+  const [isIdModalOpen, setIsIdModalOpen] = useState(false)
+  
+  // ID Modal State
+  const [selectedGrade, setSelectedGrade] = useState<number>(12)
+  const [selectedSubject, setSelectedSubject] = useState<string>('D')
+  const [selectedChapter, setSelectedChapter] = useState<number>(1)
+  const [selectedDiff, setSelectedDiff] = useState<string>('N')
+  const [selectedLesson, setSelectedLesson] = useState<number>(1)
+  const [selectedVariant, setSelectedVariant] = useState<number>(1)
+
   // Load from localStorage
   useEffect(() => {
     try {
@@ -94,6 +108,7 @@ export default function AiChatPage() {
         const parsed = JSON.parse(saved)
         if (parsed.messages) setMessages(parsed.messages)
         if (parsed.aiModel) setAiModel(parsed.aiModel)
+        if (parsed.editorContent) setEditorContent(parsed.editorContent)
       }
     } catch (e) {
       console.error('Failed to load chat state', e)
@@ -103,11 +118,49 @@ export default function AiChatPage() {
   // Save to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel }))
+      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel, editorContent }))
     } catch (e) {
       console.error('Failed to save chat state', e)
     }
-  }, [messages, aiModel])
+  }, [messages, aiModel, editorContent])
+
+  // Editor Actions
+  const handleCopy = (text: string) => {
+    setEditorContent(prev => prev ? prev + '\n\n' + text : text)
+  }
+
+  const handleNormalize = () => {
+    setEditorContent(prev => normalizeQuestion(prev))
+  }
+
+  const handleFormatTab = () => {
+    let formatted = editorContent
+      .replace(/\\begin\{ex\}/g, '\\begin{ex}')
+      .replace(/\\choice/g, '\t\\choice')
+      .replace(/\\choiceTF/g, '\t\\choiceTF')
+      .replace(/\\loigiai/g, '\t\\loigiai')
+      .replace(/\\begin\{itemchoice\}/g, '\t\\begin{itemchoice}')
+      .replace(/\\itemch /g, '\t\t\\itemch ')
+      .replace(/\\end\{itemchoice\}/g, '\t\\end{itemchoice}')
+    setEditorContent(formatted)
+  }
+
+  const getGeneratedId = () => {
+    let chCode = selectedChapter.toString()
+    if (selectedGrade === 10 && selectedChapter === 10) chCode = '0'
+    return `${selectedGrade % 10}${selectedSubject}${chCode}${selectedDiff}${selectedLesson}-${selectedVariant}`
+  }
+
+  const handleAssignId = () => {
+    const generatedId = getGeneratedId()
+    if (editorContent.includes('\\begin{ex}')) {
+      const replaced = editorContent.replace(/\\begin\{ex\}(%\[[^\]]*\])?/, `\\begin{ex}%[${generatedId}]`)
+      setEditorContent(replaced)
+    } else {
+      setEditorContent(prev => prev + `\n\\begin{ex}%[${generatedId}]\n\n\\end{ex}`)
+    }
+    setIsIdModalOpen(false)
+  }
 
   // Auto-scroll
   useEffect(() => {
@@ -280,8 +333,9 @@ export default function AiChatPage() {
       />
 
       <div className={styles.layout}>
-        {/* ═══ CHAT WINDOW ═══ */}
-        <div className={styles.chatWindow}>
+        {/* ═══ LEFT PANE (CHAT) ═══ */}
+        <div className={styles.leftPane}>
+          <div className={styles.chatWindow}>
           {messages.length === 0 && !isStreaming ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>💬</div>
@@ -329,6 +383,11 @@ export default function AiChatPage() {
                         : styles.messageBubbleAI
                     }`}
                   >
+                    {msg.role === 'model' && (
+                      <button className={styles.copyBtn} onClick={() => handleCopy(msg.content)} title="Copy sang Editor">
+                        📋 Copy
+                      </button>
+                    )}
                     {msg.role === 'user' && msg.imageDataUrl && (
                       <img
                         src={msg.imageDataUrl}
@@ -538,7 +597,114 @@ export default function AiChatPage() {
             )}
           </div>
         </div>
+        </div> {/* END LEFT PANE */}
+
+        {/* ═══ RIGHT PANE (EDITOR) ═══ */}
+        <div className={styles.rightPane}>
+          <div className={styles.editorToolbar}>
+            <div className={styles.editorTitle}>📝 Raw LaTeX Editor</div>
+            <button className={styles.btnToolbar} onClick={handleNormalize} title="Chuẩn hóa ký tự ẩn, xóa comment rác">✨ Chuẩn hóa</button>
+            <button className={styles.btnToolbar} onClick={handleFormatTab} title="Canh lề thụt đầu dòng">↹ Canh tab</button>
+            <button className={styles.btnToolbar} onClick={() => setIsIdModalOpen(true)} title="Gán ID cho câu hỏi đầu tiên">🏷 Gán ID</button>
+          </div>
+          <textarea
+            className={styles.editorTextarea}
+            value={editorContent}
+            onChange={e => setEditorContent(e.target.value)}
+            placeholder="Paste code LaTeX vào đây hoặc bấm Copy từ tin nhắn của AI..."
+            spellCheck={false}
+          />
+        </div>
       </div>
+
+      {/* ═══ GÁN ID MODAL ═══ */}
+      {isIdModalOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsIdModalOpen(false)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>🏷 Chọn ID Câu Hỏi</div>
+              <button className={styles.modalClose} onClick={() => setIsIdModalOpen(false)}>✕</button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className={styles.formGroup}>
+                  <label>Lớp</label>
+                  <select className={styles.formSelect} value={selectedGrade} onChange={e => setSelectedGrade(Number(e.target.value))}>
+                    <option value={10}>Lớp 10</option>
+                    <option value={11}>Lớp 11</option>
+                    <option value={12}>Lớp 12</option>
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Nhóm môn</label>
+                  <select className={styles.formSelect} value={selectedSubject} onChange={e => {
+                    setSelectedSubject(e.target.value)
+                    setSelectedChapter(Number(Object.keys(CHAPTER_NAMES[selectedGrade][e.target.value] || {})[0] || 1))
+                  }}>
+                    {Object.keys(CHAPTER_NAMES[selectedGrade] || {}).map(sub => (
+                      <option key={sub} value={sub}>{sub === 'D' ? 'Đại số/Giải tích' : sub === 'H' ? 'Hình học' : 'Chuyên đề'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Chương</label>
+                <select className={styles.formSelect} value={selectedChapter} onChange={e => {
+                  setSelectedChapter(Number(e.target.value))
+                  setSelectedLesson(1)
+                }}>
+                  {Object.entries(CHAPTER_NAMES[selectedGrade]?.[selectedSubject] || {}).map(([cId, name]) => (
+                    <option key={cId} value={Number(cId)}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Bài học</label>
+                <select className={styles.formSelect} value={selectedLesson} onChange={e => {
+                  setSelectedLesson(Number(e.target.value))
+                  setSelectedVariant(1)
+                }}>
+                  {Object.entries(LESSON_NAMES[selectedGrade]?.[selectedSubject]?.[selectedChapter] || {}).map(([lId, name]) => (
+                    <option key={lId} value={Number(lId)}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className={styles.formGroup}>
+                  <label>Dạng bài (Variant)</label>
+                  <select className={styles.formSelect} value={selectedVariant} onChange={e => setSelectedVariant(Number(e.target.value))}>
+                    {Object.entries(VARIANT_NAMES[selectedGrade]?.[selectedSubject]?.[selectedChapter]?.[selectedLesson] || {}).map(([vId, name]) => (
+                      <option key={vId} value={Number(vId)}>Dạng {vId}: {name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Mức độ</label>
+                  <select className={styles.formSelect} value={selectedDiff} onChange={e => setSelectedDiff(e.target.value)}>
+                    <option value="N">Nhận biết (N)</option>
+                    <option value="H">Thông hiểu (H)</option>
+                    <option value="V">Vận dụng (V)</option>
+                    <option value="C">Vận dụng cao (C)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.idPreviewBox}>
+                ID Sẽ Gán: {getGeneratedId()}
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button className="btn btn-secondary" onClick={() => setIsIdModalOpen(false)}>Hủy</button>
+              <button className="btn btn-primary" onClick={handleAssignId}>Chèn ID</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
