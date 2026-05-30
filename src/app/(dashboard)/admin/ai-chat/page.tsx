@@ -93,6 +93,13 @@ export default function AiChatPage() {
   const [editorContent, setEditorContent] = useState('')
   const [isCopied, setIsCopied] = useState(false)
   const [isIdModalOpen, setIsIdModalOpen] = useState(false)
+  const [showQuickPromptsMenu, setShowQuickPromptsMenu] = useState(false)
+
+  const CHAT_QUICK_PROMPTS = [
+    'Gõ lại câu hỏi từ ảnh/PDF thành LaTeX chuẩn.',
+    'Tạo bài toán tương tự, đổi số.',
+    'Thêm lời giải cho các câu hỏi sau, và gõ theo chuẩn latex.',
+  ]
   
   // ID Modal State
   const [selectedGrade, setSelectedGrade] = useState<number>(12)
@@ -565,7 +572,30 @@ export default function AiChatPage() {
             {/* Bottom bar */}
             <div className={styles.bottomBar}>
               <div className={styles.bottomBarLeft}>
-                <span>Nhấn Enter để gửi, Shift+Enter để xuống dòng</span>
+                <button 
+                  className={styles.quickPromptToggle}
+                  onClick={() => setShowQuickPromptsMenu(!showQuickPromptsMenu)}
+                  title="Gợi ý nhanh"
+                >
+                  ⚡ Gợi ý nhanh {showQuickPromptsMenu ? '▲' : '▼'}
+                </button>
+                {showQuickPromptsMenu && (
+                  <div className={styles.quickPromptMenu}>
+                    {CHAT_QUICK_PROMPTS.map((prompt, i) => (
+                      <button 
+                        key={i} 
+                        className={styles.quickPromptMenuItem}
+                        onClick={() => {
+                          setInput(prompt);
+                          setShowQuickPromptsMenu(false);
+                          textareaRef.current?.focus();
+                        }}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className={styles.bottomBarRight}>
                 <select
