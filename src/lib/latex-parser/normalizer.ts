@@ -52,9 +52,22 @@ function trimTrailingWhitespace(content: string): string {
     .join('\n');
 }
 
+function processOutsideTikz(content: string, processor: (text: string) => string): string {
+  // Tách văn bản thành mảng: [ngoài tikz, trong tikz, ngoài tikz, ...]
+  const parts = content.split(/(\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\})/);
+  for (let i = 0; i < parts.length; i++) {
+    // Vị trí chẵn là văn bản ngoài tikzpicture
+    if (i % 2 === 0) {
+      parts[i] = processor(parts[i]);
+    }
+  }
+  return parts.join('');
+}
+
 function formatDecimalsWithComma(content: string): string {
   // Chuẩn hóa số thập phân trong tiếng Việt: 0,975 -> 0{,}975 để LaTeX không bị cách chữ
-  return content.replace(/(\d),(\d)/g, '$1{,}$2');
+  // CẢNH BÁO: Phải bỏ qua code TikZ để tránh làm hỏng tọa độ như (0,0) -> (0{,}0)
+  return processOutsideTikz(content, text => text.replace(/(\d),(\d)/g, '$1{,}$2'));
 }
 
 function replaceFracWithDfrac(content: string): string {
@@ -71,12 +84,13 @@ function replaceIntWithDisplaystyleInt(content: string): string {
 
 function removeSpacesAroundOperators(content: string): string {
   // Xóa khoảng trắng quanh các dấu +, -, =, <, >
-  let res = content.replace(/[ \t]*([+\-=<>])[ \t]*/g, '$1');
-  
-  // Dấu mũi tên (\Leftrightarrow, \Rightarrow...): xóa khoảng trắng phía trước, để lại đúng 1 khoảng trắng phía sau
-  res = res.replace(/[ \t]*(\\Leftrightarrow|\\Rightarrow|\\Leftarrow|\\iff|\\implies)[ \t]*/g, '$1 ');
-  
-  return res;
+  // Bỏ qua TikZ vì có thể phá hỏng các cú pháp như draw (A) + (1,0) hoặc các khai báo option
+  return processOutsideTikz(content, text => {
+    let res = text.replace(/[ \t]*([+\-=<>])[ \t]*/g, '$1');
+    // Dấu mũi tên (\Leftrightarrow, \Rightarrow...): xóa khoảng trắng phía trước, để lại đúng 1 khoảng trắng phía sau
+    res = res.replace(/[ \t]*(\\Leftrightarrow|\\Rightarrow|\\Leftarrow|\\iff|\\implies)[ \t]*/g, '$1 ');
+    return res;
+  });
 }
 
 const NORMALIZE_RULES: NormalizeRule[] = [
