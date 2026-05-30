@@ -64,7 +64,7 @@ const TYPE_LABELS: Record<string, string> = {
 const SUBJECT_LABELS: Record<string, string> = { D: 'Đại số', H: 'Hình học', C: 'Chuyên đề' }
 const TYPE_ICONS: Record<string, string> = { multiple_choice: '⏺', true_false: '☑', short_answer: '✍', essay: '📝' }
 
-const EXAMPLE_PROMPTS = [
+const DEFAULT_PROMPTS = [
   'MA TRẬN THI THỬ TỐT NGHIỆP THPT\nPHẦN 1: TRẮC NGHIỆM 4 ĐÁP ÁN (12 CÂU)\n- Câu 1: Phương trình lượng giác cơ bản (Mức độ: Hiểu)\n- Câu 2: Tìm nghiệm của phương trình mũ, logarit cơ bản (Mức độ: Hiểu)\n- Câu 3: Cấp số cộng, cấp số nhân, dãy số (Mức độ: Hiểu)\n- Câu 4: Giá trị lớn nhất, nhỏ nhất của hàm số trên đoạn [a;b] (Mức độ: Hiểu)\n- Câu 5: Số đường tiệm cận đứng, tiệm cận ngang dựa vào bbt (Bảng biến thiên) (Mức độ: Biết)\n- Câu 6: Phép toán vector (Mức độ: Hiểu)\n- Câu 7: Khoảng biến thiên, tìm tứ phân vị (Mức độ: Biết)\n- Câu 8: Họ nguyên hàm (Mức độ: Biết)\n- Câu 9: Tính chất tích phân (Trong hình ghi "Tích chất" - có thể là lỗi đánh máy của "Tính chất") (Mức độ: Hiểu)\n- Câu 10: Diện tích hình phẳng cho bài toán cụ thể (Mức độ: Hiểu)\n- Câu 11: Lập phương trình mặt cầu biết tâm và bán kính (Mức độ: Hiểu)\n- Câu 12: Công thức hoặc bài toán xác suất có điều kiện, toàn phần (Mức độ: Biết)\nPHẦN 2: CÂU HỎI ĐÚNG/SAI (4 BÀI, MỖI BÀI 4 Ý a,b,c,d)\nBÀI 1: Nội dung - Các câu hỏi liên quan đến khảo sát hàm số y = (ax+b)/(cx+d) hoặc y = (ax^2+bx+c)/(mx+n)\n- Ý a: (Mức độ: Biết)\n- Ý b: (Mức độ: Hiểu)\n- Ý c: (Mức độ: Hiểu)\n- Ý d: (Mức độ: Vận dụng thấp)\nBÀI 2: Nội dung - Bài toán thực tế về phương trình đường thẳng, mặt phẳng, mặt cầu trong không gian Oxyz\n- Ý a: (Mức độ: Biết)\n- Ý b: (Mức độ: Hiểu)\n- Ý c: (Mức độ: Hiểu)\n- Ý d: (Mức độ: Vận dụng thấp)\nBÀI 3: Nội dung - Bài toán chuyển động vận dụng đạo hàm, nguyên hàm, tích phân\n- Ý a: (Mức độ: Biết)\n- Ý b: (Mức độ: Hiểu)\n- Ý c: (Mức độ: Hiểu)\n- Ý d: (Mức độ: Vận dụng thấp)\nBÀI 4: Nội dung - Bài toán thực tế về xác suất có điều kiện\n- Ý a: (Mức độ: Biết)\n- Ý b: (Mức độ: Hiểu)\n- Ý c: (Mức độ: Hiểu)\n- Ý d: (Mức độ: Vận dụng thấp)\nPHẦN 3: CÂU HỎI TRẢ LỜI NGẮN (6 CÂU)\n- Câu 1: Tính khoảng cách giữa 2 đường thẳng chéo nhau, đường thẳng với mặt phẳng. Góc của đường thẳng với mặt, mặt với mặt. Góc nhị diện. Thể tích. (Mức độ: Hiểu)\n- Câu 2: Ứng dụng cấp số cộng, cấp số nhân giải quyết bài toán thực tế. (Mức độ: Hiểu)\n- Câu 3: Bài toán về lợi nhuận lớn nhất, chi phí thấp nhất. (Mức độ: Vận dụng thấp)\n- Câu 4: Xác suất cổ điển (Mức độ: Vận dụng cao)\n- Câu 5: Tính diện tích, thể tích (Mức độ: Vận dụng cao)\n- Câu 6: Công thức xác suất toàn phần, công thức Bayes. (Mức độ: Vận dụng thấp)',
   'MA TRẬN ĐỀ THI CUỐI KÌ 2 TOÁN 10\n\nPHẦN I: TRẮC NGHIỆM KHÁCH QUAN (TNKQ) - TỔNG 20 CÂU\n\nCHỦ ĐỀ 1: Phương pháp tọa độ trong mặt phẳng\n- Đường thẳng trong mặt phẳng tọa độ: 1 câu (Mức độ: Biết)\n- Vị trí tương đối giữa hai đường thẳng, Góc và khoảng cách: 2 câu (1 câu Biết, 1 câu Hiểu)\n- Đường tròn trong mặt phẳng tọa độ: 2 câu (1 câu Biết, 1 câu Hiểu)\n- Ba đường conic trong mặt phẳng tọa độ: 2 câu (Mức độ: Biết)\n\nCHỦ ĐỀ 2: Đại số tổ hợp\n- Quy tắc cộng và quy tắc nhân: 3 câu (1 câu Biết, 2 câu Hiểu)\n- Hoán vị, Chỉnh hợp, Tổ hợp: 3 câu (1 câu Biết, 2 câu Hiểu)\n- Nhị thức Newton: 2 câu (1 câu Biết, 1 câu Hiểu)\n\nCHỦ ĐỀ 3: Tính xác suất theo định nghĩa cổ điển\n- Biến cố và định nghĩa cổ điển của xác suất: 3 câu (2 câu Biết, 1 câu Hiểu)\n- Tính xác suất theo định nghĩa cổ điển: 2 câu (Mức độ: Biết)\n\nPHẦN II: TRẮC NGHIỆM ĐÚNG/SAI (Gồm 2 câu hỏi lớn, mỗi câu thường có 4 ý a,b,c,d)\n\n- Câu hỏi 1: Nội dung kết hợp "Quy tắc cộng và quy tắc nhân" & "Hoán vị, Chỉnh hợp, Tổ hợp".\n  Cấu trúc mức độ: Gồm 2 ý mức độ Biết và 2 ý mức độ Hiểu.\n\n- Câu hỏi 2: Nội dung kết hợp "Biến cố và định nghĩa cổ điển của xác suất" & "Tính xác suất theo định nghĩa cổ điển".\n  Cấu trúc mức độ: Gồm 2 ý mức độ Biết và 2 ý mức độ Hiểu.\n\nPHẦN III: TỰ LUẬN\n\nCHỦ ĐỀ 1: Phương pháp tọa độ trong mặt phẳng\n- Câu 1a: Nội dung về "Đường thẳng trong mặt phẳng tọa độ" (Mức độ: Vận dụng - VD)\n- Câu 1b: Nội dung về "Đường tròn trong mặt phẳng tọa độ" (Mức độ: Vận dụng - VD)\n\nCHỦ ĐỀ 2: Đại số tổ hợp\n- Câu 2: Nội dung kết hợp "Quy tắc đếm" và "Hoán vị, Chỉnh hợp, Tổ hợp" (Mức độ: Vận dụng - VD)\n\nCHỦ ĐỀ 3: Tính xác suất theo định nghĩa cổ điển\n- Câu 3: Nội dung kết hợp "Biến cố, định nghĩa cổ điển của xác suất" và "Tính xác suất" (Mức độ: Vận dụng cao - VDC)',
   'MA TRẬN ĐỀ THI CUỐI KÌ 1 TOÁN 11\nTổng quan cấu trúc đề thi (10 điểm):\n- Phần I (Trắc nghiệm nhiều phương án lựa chọn): 20 câu (5.0 điểm)\n- Phần II (Trắc nghiệm Đúng/Sai): 8 ý/câu (2.0 điểm)\n- Phần III (Trắc nghiệm trả lời ngắn/Tự luận): 5 câu (3.0 điểm)\n\nPHẦN I: TRẮC NGHIỆM 4 ĐÁP ÁN (TỔNG 20 CÂU)\n* Mức độ Nhận biết (16 câu):\n- Bài 1. Giá trị lượng giác của góc lượng giác (1 câu)\n- Bài 2. Công thức lượng giác (1 câu)\n- Bài 3. Hàm số lượng giác (1 câu)\n- Bài 4. Phương trình lượng giác cơ bản (1 câu)\n- Bài 5. Dãy số (1 câu)\n- Bài 6. Cấp số cộng (1 câu)\n- Bài 7. Cấp số nhân (1 câu)\n- Bài 8. Mẫu số liệu ghép nhóm (1 câu)\n- Bài 9. Các số đặc trưng đo xu thế trung tâm (1 câu)\n- Bài 10. Đường thẳng và mặt phẳng trong không gian (1 câu)\n- Bài 11. Hai đường thẳng song song (1 câu)\n- Bài 12. Đường thẳng và mặt phẳng song song (1 câu)\n- Bài 13. Hai mặt phẳng song song (1 câu)\n- Bài 14. Phép chiếu song song (1 câu)\n- Bài 16. Giới hạn của hàm số (1 câu)\n- Bài 17. Hàm số liên tục (1 câu)\n\n* Mức độ Thông hiểu (4 câu):\n- Bài 5. Dãy số (1 câu)\n- Bài 9. Các số đặc trưng đo xu thế trung tâm (1 câu)\n- Bài 10. Đường thẳng và mặt phẳng trong không gian (1 câu)\n- Bài 12. Đường thẳng và mặt phẳng song song (1 câu)\n\n\nPHẦN II: CÂU HỎI ĐÚNG/SAI (TỔNG 8 Ý/CÂU)\n* Mức độ Nhận biết (4 ý):\n- Bài 10. Đường thẳng và mặt phẳng trong không gian (1 ý)\n- Bài 13. Hai mặt phẳng song song (1 ý)\n- Bài 15. Giới hạn của dãy số (1 ý)\n- Bài 16. Giới hạn của hàm số (1 ý)\n\n* Mức độ Thông hiểu (4 ý):\n- Bài 11. Hai đường thẳng song song (1 ý)\n- Bài 12. Đường thẳng và mặt phẳng song song (1 ý)\n- Bài 15. Giới hạn của dãy số (1 ý)\n- Bài 16. Giới hạn của hàm số (1 ý)\n\nPHẦN III: CÂU HỎI TRẢ LỜI NGẮN / TỰ LUẬN (TỔNG 5 CÂU)\n\n* Mức độ Vận dụng (4 câu):\n- Bài 10. Đường thẳng và mặt phẳng trong không gian (1 câu)\n- Bài 13. Hai mặt phẳng song song (1 câu)\n- Bài 16. Giới hạn của hàm số (1 câu)\n- Bài 17. Hàm số liên tục (1 câu)\n\n* Mức độ Vận dụng cao (1 câu):\n- Bài 15. Giới hạn của dãy số (1 câu)',
@@ -154,6 +154,12 @@ export default function AiExamPage() {
   const [aiModel, setAiModel] = useState('gemini-3.5-flash')
   const [temperature, setTemperature] = useState('0.7')
   const [customApiKey, setCustomApiKey] = useState('')
+  
+  // Quick Suggestions Modal states
+  const [quickPrompts, setQuickPrompts] = useState<string[]>(DEFAULT_PROMPTS)
+  const [showPromptModal, setShowPromptModal] = useState(false)
+  const [editingPromptIndex, setEditingPromptIndex] = useState<number | null>(null)
+  const [editingPromptText, setEditingPromptText] = useState('')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -305,6 +311,7 @@ export default function AiExamPage() {
         }
         if (parsed.temperature !== undefined) setTemperature(parsed.temperature)
         if (parsed.excelOption) setExcelOption(parsed.excelOption)
+        if (parsed.quickPrompts) setQuickPrompts(parsed.quickPrompts)
       }
     } catch (e) {
       console.error('Failed to load state', e)
@@ -330,14 +337,15 @@ export default function AiExamPage() {
       examCount,
       activeExamIndex,
       allExamsQuestions,
-      excelOption
+      excelOption,
+      quickPrompts
     }
     try {
       localStorage.setItem('ai-exam-state', JSON.stringify(stateToSave))
     } catch (e) {
       console.error('Failed to save state', e)
     }
-  }, [activeTab, prompt, imagePreview, result, questions, swappedOutIds, aiModel, temperature, isLoaded, examCount, activeExamIndex, allExamsQuestions, headerLabels, examCodes])
+  }, [activeTab, prompt, imagePreview, result, questions, swappedOutIds, aiModel, temperature, isLoaded, examCount, activeExamIndex, allExamsQuestions, headerLabels, examCodes, excelOption, quickPrompts])
 
   // Reset all states and clear localStorage
   const handleReset = () => {
@@ -1021,17 +1029,55 @@ export default function AiExamPage() {
           ) : !result ? (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px' }}>
               {/* Quick Suggestions at Top Left */}
-              <div className={styles.exampleSection} style={{ borderBottom: 'none', width: '100%', maxWidth: '600px', padding: 0 }}>
-                <div className={styles.exampleLabel} style={{ textAlign: 'left', marginBottom: '12px' }}>💡 HOẶC BẤM VÀO CÁC GỢI Ý NHANH DƯỚI ĐÂY:</div>
-                <div className={styles.exampleChips}>
-                  {EXAMPLE_PROMPTS.map((ex, i) => (
-                    <button
-                      key={i}
-                      className={styles.exampleChip}
-                      onClick={() => setPrompt(ex)}
-                    >
-                      {ex.slice(0, 80)}...
-                    </button>
+              <div className={styles.exampleSection} style={{ borderBottom: 'none', width: '100%', maxWidth: '800px', padding: 0 }}>
+                <div className={styles.exampleLabel} style={{ textAlign: 'left', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>💡 HOẶC BẤM VÀO CÁC GỢI Ý NHANH DƯỚI ĐÂY:</span>
+                  <button 
+                    onClick={() => {
+                      setEditingPromptIndex(null);
+                      setEditingPromptText('');
+                      setShowPromptModal(true);
+                    }}
+                    style={{ background: 'var(--color-primary-600)', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <span>+</span> Thêm gợi ý
+                  </button>
+                </div>
+                <div className={styles.exampleChips} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {quickPrompts.map((ex, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', width: '100%' }}>
+                      <button
+                        className={styles.exampleChip}
+                        style={{ flex: 1, textAlign: 'left', margin: 0, padding: '10px 14px', lineHeight: '1.4' }}
+                        onClick={() => setPrompt(ex)}
+                      >
+                        {ex.slice(0, 100)}{ex.length > 100 ? '...' : ''}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingPromptIndex(i);
+                          setEditingPromptText(ex);
+                          setShowPromptModal(true);
+                        }}
+                        style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Sửa gợi ý này"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Bạn có chắc chắn muốn xóa gợi ý này?')) {
+                            const newPrompts = [...quickPrompts];
+                            newPrompts.splice(i, 1);
+                            setQuickPrompts(newPrompts);
+                          }
+                        }}
+                        style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Xóa gợi ý này"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1950,6 +1996,53 @@ export default function AiExamPage() {
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Prompt Modal */}
+      {showPromptModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '600px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#1e293b' }}>
+              {editingPromptIndex !== null ? 'Chỉnh sửa gợi ý nhanh' : 'Thêm gợi ý nhanh mới'}
+            </h3>
+            <textarea
+              style={{
+                width: '100%', height: '200px', padding: '12px',
+                border: '1px solid #cbd5e1', borderRadius: '8px',
+                fontSize: '14px', lineHeight: '1.5', resize: 'vertical',
+                fontFamily: 'inherit', color: '#334155'
+              }}
+              placeholder="Nhập nội dung ma trận hoặc gợi ý..."
+              value={editingPromptText}
+              onChange={(e) => setEditingPromptText(e.target.value)}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
+              <button
+                onClick={() => setShowPromptModal(false)}
+                style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={() => {
+                  if (!editingPromptText.trim()) return;
+                  const newPrompts = [...quickPrompts];
+                  if (editingPromptIndex !== null) {
+                    newPrompts[editingPromptIndex] = editingPromptText;
+                  } else {
+                    newPrompts.push(editingPromptText);
+                  }
+                  setQuickPrompts(newPrompts);
+                  setShowPromptModal(false);
+                }}
+                disabled={!editingPromptText.trim()}
+                style={{ background: 'var(--color-primary-600)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: editingPromptText.trim() ? 'pointer' : 'not-allowed', fontWeight: 600, opacity: editingPromptText.trim() ? 1 : 0.5 }}
+              >
+                Lưu lại
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
