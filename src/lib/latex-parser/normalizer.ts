@@ -3,6 +3,62 @@
 
 type NormalizeRule = (content: string) => string
 
+export function formatLatexIndentation(content: string): string {
+  const lines = content.split('\n')
+  let envIndent = 0
+  let braceIndent = 0
+  let inChoice = 0
+
+  const formattedLines = lines.map(line => {
+    const trimmed = line.trim()
+    if (!trimmed) return ''
+
+    let lineEnvIndent = envIndent
+    if (trimmed.startsWith('\\end{')) {
+      envIndent = Math.max(0, envIndent - 1)
+      lineEnvIndent = envIndent
+    }
+
+    let lineBraceIndent = braceIndent
+    if (trimmed.startsWith('}')) {
+      lineBraceIndent = Math.max(0, braceIndent - 1)
+    }
+
+    let extraIndent = 0
+    if ((trimmed.startsWith('\\choice') || trimmed.startsWith('\\choiceTF')) && !trimmed.match(/\{.*\}/)) {
+      inChoice = 4
+    } else if (inChoice > 0 && trimmed.startsWith('{')) {
+      extraIndent = 1
+      inChoice--
+    }
+
+    if (trimmed.startsWith('\\loigiai') || trimmed.startsWith('\\begin{')) {
+      inChoice = 0
+    }
+
+    const totalTabs = lineEnvIndent + lineBraceIndent + extraIndent
+    const formattedLine = '\t'.repeat(Math.max(0, totalTabs)) + trimmed
+
+    if (trimmed.startsWith('\\begin{')) {
+      envIndent++
+    }
+
+    const unescapedTrimmed = trimmed.replace(/\\\\/g, '').replace(/\\%/g, 'ESCAPED_PERCENT')
+    const withoutComment = unescapedTrimmed.split('%')[0]
+    const cleanForBraces = withoutComment.replace(/\\\{/g, '').replace(/\\\}/g, '')
+    
+    const openBraces = (cleanForBraces.match(/\{/g) || []).length
+    const closeBraces = (cleanForBraces.match(/\}/g) || []).length
+    
+    braceIndent += (openBraces - closeBraces)
+    if (braceIndent < 0) braceIndent = 0
+
+    return formattedLine
+  })
+
+  return formattedLines.join('\n')
+}
+
 function removeNonIdComments(content: string): string {
   // ID hợp lệ: dạng 2D3N1-2 (số, chữ, số, chữ, số, gạch ngang, số)
   const ID_PATTERN = /^\d+[a-zA-Z]\d+[a-zA-Z]\d+-\d+$/;
@@ -103,6 +159,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   replaceFracWithDfrac,    // ← đổi \frac thành \dfrac
   replaceIntWithDisplaystyleInt, // ← đổi \int thành \displaystyle\int
   removeSpacesAroundOperators, // ← xóa khoảng trắng quanh +, -, =, \Leftrightarrow
+  formatLatexIndentation, // ← canh tab tự động
 ]
 
 export function normalizeQuestion(block: string): string {

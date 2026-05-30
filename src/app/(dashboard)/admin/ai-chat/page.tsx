@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import Header from '@/components/layout/Header'
 import styles from './ai-chat.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
-import { normalizeQuestion } from '@/lib/latex-parser/normalizer'
+import { normalizeQuestion, formatLatexIndentation } from '@/lib/latex-parser/normalizer'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -90,6 +90,7 @@ export default function AiChatPage() {
 
   // Editor State
   const [editorContent, setEditorContent] = useState('')
+  const [isCopied, setIsCopied] = useState(false)
   const [isIdModalOpen, setIsIdModalOpen] = useState(false)
   
   // ID Modal State
@@ -133,61 +134,15 @@ export default function AiChatPage() {
     setEditorContent(prev => normalizeQuestion(prev))
   }
 
-  const handleFormatTab = () => {
-    const lines = editorContent.split('\n')
-    let envIndent = 0
-    let braceIndent = 0
-    let inChoice = 0
-
-    const formattedLines = lines.map(line => {
-      const trimmed = line.trim()
-      if (!trimmed) return ''
-
-      let lineEnvIndent = envIndent
-      if (trimmed.startsWith('\\end{')) {
-        envIndent = Math.max(0, envIndent - 1)
-        lineEnvIndent = envIndent
-      }
-
-      let lineBraceIndent = braceIndent
-      if (trimmed.startsWith('}')) {
-        lineBraceIndent = Math.max(0, braceIndent - 1)
-      }
-
-      let extraIndent = 0
-      if ((trimmed.startsWith('\\choice') || trimmed.startsWith('\\choiceTF')) && !trimmed.match(/\{.*\}/)) {
-        inChoice = 4
-      } else if (inChoice > 0 && trimmed.startsWith('{')) {
-        extraIndent = 1
-        inChoice--
-      }
-
-      if (trimmed.startsWith('\\loigiai') || trimmed.startsWith('\\begin{')) {
-        inChoice = 0
-      }
-
-      const totalTabs = lineEnvIndent + lineBraceIndent + extraIndent
-      const formattedLine = '\t'.repeat(Math.max(0, totalTabs)) + trimmed
-
-      if (trimmed.startsWith('\\begin{')) {
-        envIndent++
-      }
-
-      // Xử lý đếm ngoặc nhọn để biết có xuống dòng trong block không (VD: \loigiai{ )
-      const unescapedTrimmed = trimmed.replace(/\\\\/g, '').replace(/\\%/g, 'ESCAPED_PERCENT')
-      const withoutComment = unescapedTrimmed.split('%')[0]
-      const cleanForBraces = withoutComment.replace(/\\\{/g, '').replace(/\\\}/g, '')
-      
-      const openBraces = (cleanForBraces.match(/\{/g) || []).length
-      const closeBraces = (cleanForBraces.match(/\}/g) || []).length
-      
-      braceIndent += (openBraces - closeBraces)
-      if (braceIndent < 0) braceIndent = 0
-
-      return formattedLine
-    })
-
-    setEditorContent(formattedLines.join('\n'))
+  const handleCopyToClipboard = async () => {
+    if (!editorContent) return
+    try {
+      await navigator.clipboard.writeText(editorContent)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 2000)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const getGeneratedId = () => {
@@ -648,9 +603,11 @@ export default function AiChatPage() {
         <div className={styles.rightPane}>
           <div className={styles.editorToolbar}>
             <div className={styles.editorTitle}>📝 Raw LaTeX Editor</div>
-            <button className={styles.btnToolbar} onClick={handleNormalize} title="Chuẩn hóa ký tự ẩn, xóa comment rác">✨ Chuẩn hóa</button>
-            <button className={styles.btnToolbar} onClick={handleFormatTab} title="Canh lề thụt đầu dòng">↹ Canh tab</button>
+            <button className={styles.btnToolbar} onClick={handleNormalize} title="Chuẩn hóa ký tự ẩn, tự động canh tab, xóa comment rác">✨ Chuẩn hóa</button>
             <button className={styles.btnToolbar} onClick={() => setIsIdModalOpen(true)} title="Gán ID cho câu hỏi đầu tiên">🏷 Gán ID</button>
+            <button className={styles.btnToolbar} onClick={handleCopyToClipboard} title="Copy nội dung">
+              {isCopied ? '✅ Đã copy' : '📋 Copy'}
+            </button>
           </div>
           <textarea
             className={styles.editorTextarea}
