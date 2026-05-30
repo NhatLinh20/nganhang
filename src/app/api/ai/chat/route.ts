@@ -155,6 +155,7 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Tham số lgt: lgt=1.2 nếu tên hàm là f(x); lgt=1.0 nếu tên hàm là y.
 - Tham số espcl: espcl=4 (BBT 3 cột); espcl=3 (BBT 4 cột); espcl=2.5 (BBT >= 5 cột).
 - Phân số: Hàng x, f'(x) dùng \tfrac. Hàng f(x) dùng \dfrac.
+- Gián đoạn (hai gạch ||): Hàng y' dùng ký hiệu d trong \tkzTabLine. Hàng y BẮT BUỘC dùng cú pháp +D- / giá trị 1 / giá trị 2 hoặc -D+ / giá trị 1 / giá trị 2 trong \tkzTabVar (Tuyệt đối không dùng - / ... / + / ...).
 
 LƯU Ý CUỐI CÙNG: 
 - Trả lời bằng tiếng Việt, ngắn gọn.
