@@ -96,7 +96,7 @@ QUY TẮC TRẢ LỜI:
 - Khi gõ lại câu hỏi từ ảnh: gõ chính xác nội dung Toán, giữ nguyên công thức LaTeX, LUÔN kèm ID phù hợp.
 - NẾU CÓ HÌNH VẼ HOẶC ĐỒ THỊ: BẮT BUỘC phải vẽ lại bằng code TikZ (\begin{tikzpicture}...\end{tikzpicture}). TUYỆT ĐỐI KHÔNG dùng \includegraphics.
 - Khi không chắc chắn dạng bài hoặc chương, hãy hỏi lại người dùng.
-- Hỗ trợ render Markdown: dùng **bold**, *italic*, `code`, danh sách, code block.`
+- Hỗ trợ render Markdown: dùng **bold**, *italic*, \`code\`, danh sách, code block.`
 
 export async function POST(req: NextRequest) {
   try {
