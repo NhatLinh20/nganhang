@@ -2,7 +2,7 @@
 // Parse một block \begin{ex}...\end{ex} thành ParsedQuestion
 
 import type { ParsedQuestion } from '@/types'
-import { extractComments, findValidCategoryCode, detectImageType } from './category-parser'
+import { extractComments, findValidCategoryCode, detectImageType, validateCategoryCode } from './category-parser'
 import { detectQuestionType, detectCorrectAnswer, extractSourceMeta } from './answer-parser'
 
 export interface QuestionParseError {
@@ -35,11 +35,20 @@ export function parseQuestion(
     const categoryInfo = findValidCategoryCode(comments)
 
     if (!categoryInfo) {
+      let specificError = ''
+      for (const comment of comments) {
+        const val = validateCategoryCode(comment)
+        if (!val.valid && val.error !== 'Không đúng định dạng ID 6 tham số') {
+          specificError = `ID lỗi: [${comment}] - ${val.error}`
+          break
+        }
+      }
+
       return {
         success: false,
         error: {
           reason: 'no_valid_id',
-          detail: `Không tìm thấy ID 6 tham số. Comments tìm thấy: [${comments.join(', ')}]`,
+          detail: specificError || `Không tìm thấy ID 6 tham số. Comments tìm thấy: [${comments.join(', ')}]`,
         },
       }
     }

@@ -3,7 +3,7 @@
 
 import type { ParsedQuestion, ImportResult, ImportError } from '@/types'
 import { parseQuestion } from './question-parser'
-import { extractComments, findValidCategoryCode } from './category-parser'
+import { extractComments, findValidCategoryCode, validateCategoryCode } from './category-parser'
 
 export interface ParseOptions {
   sourceFile?: string       // Tên file .tex
@@ -186,6 +186,7 @@ export function formatImportReport(result: ImportResult): string {
  * Tách tất cả block từ nội dung .tex và chia thành câu đạt (có ID hợp lệ) / câu lỗi
  * Chưa parse chi tiết loại câu, đáp án — chỉ validate sơ bộ.
  */
+
 export function extractAndValidateBlocks(texContent: string): ExtractResult {
   const cleaned = preprocessTexContent(texContent)
   const rawBlocks = extractExBlocks(cleaned)
@@ -200,11 +201,22 @@ export function extractAndValidateBlocks(texContent: string): ExtractResult {
     if (categoryInfo) {
       validBlocks.push(block)
     } else {
+      let specificError = ''
+      if (comments.length > 0) {
+        for (const comment of comments) {
+          const val = validateCategoryCode(comment)
+          if (!val.valid && val.error !== 'Không đúng định dạng ID 6 tham số') {
+            specificError = `ID lỗi: [${comment}] - ${val.error}`
+            break
+          }
+        }
+      }
+
       errorBlocks.push({
         content: block,
-        reason: comments.length > 0
+        reason: specificError || (comments.length > 0
           ? `Không tìm thấy ID 6 tham số hợp lệ. Tìm thấy: [${comments.join(', ')}]`
-          : 'Không có comment %[ID] nào trên dòng \\begin{ex}',
+          : 'Không có comment %[ID] nào trên dòng \\begin{ex}'),
       })
     }
   }

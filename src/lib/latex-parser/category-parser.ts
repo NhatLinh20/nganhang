@@ -16,6 +16,51 @@ import type { Difficulty, SubjectArea, ImageType, QuestionType } from '@/types'
 // ═══════════════════════════════════════════════════
 const CATEGORY_CODE_REGEX = /^([012])([DHC])(\d)([NHVC])(\d)-(\d)$/
 
+export const VALID_CHAPTERS: Record<string, Record<string, string[]>> = {
+  '0': {
+    'D': ['0', '1', '2', '3', '6', '7', '8'],
+    'H': ['4', '5', '9'],
+    'C': ['1', '2'],
+  },
+  '1': {
+    'D': ['1', '2', '3', '5', '6', '7', '9'],
+    'H': ['4', '8'],
+    'C': ['1', '2', '3'],
+  },
+  '2': {
+    'D': ['1', '3', '4', '6'],
+    'H': ['2', '5'],
+    'C': [],
+  },
+}
+
+export function validateCategoryCode(code: string): { valid: boolean; error?: string } {
+  const trimmed = code.trim()
+  const match = trimmed.match(CATEGORY_CODE_REGEX)
+  
+  if (!match) {
+    return { valid: false, error: 'Không đúng định dạng ID 6 tham số' }
+  }
+
+  const [, gradeCode, subjectArea, chapterStr] = match
+  const validForGrade = VALID_CHAPTERS[gradeCode]
+  if (!validForGrade) return { valid: false, error: 'Lớp không hợp lệ' }
+  
+  const validChapters = validForGrade[subjectArea]
+  if (!validChapters) return { valid: false, error: 'Phân môn không hợp lệ' }
+  
+  if (!validChapters.includes(chapterStr)) {
+    const subjectName = subjectArea === 'D' ? 'Đại số' : subjectArea === 'H' ? 'Hình học' : 'Chuyên đề'
+    const gradeName = gradeCode === '0' ? '10' : gradeCode === '1' ? '11' : '12'
+    return { 
+      valid: false, 
+      error: `Chương ${chapterStr} không thuộc môn ${subjectName} lớp ${gradeName}` 
+    }
+  }
+  
+  return { valid: true }
+}
+
 export interface CategoryInfo {
   category_code: string
   grade: 10 | 11 | 12
@@ -33,10 +78,11 @@ export interface CategoryInfo {
  */
 export function parseCategoryCode(code: string): CategoryInfo | null {
   const trimmed = code.trim()
-  const match = trimmed.match(CATEGORY_CODE_REGEX)
+  const validation = validateCategoryCode(trimmed)
   
-  if (!match) return null
+  if (!validation.valid) return null
 
+  const match = trimmed.match(CATEGORY_CODE_REGEX)!
   const [, gradeCode, subjectArea, chapterStr, difficulty, lessonStr, variantStr] = match
 
   // Map grade code → actual grade
