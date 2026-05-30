@@ -130,6 +130,7 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Phương trình đường/mặt phẳng dùng \\colon (VD: $(P) \\colon x+y=0$).
 - Cực trị: x_{\\text{CT}}, y_{\\text{CĐ}}.
 - Đại số tổ hợp: Hoán vị \\mathrm{P}_n, Chỉnh hợp \\mathrm{A}_n^k, Tổ hợp \\mathrm{C}_n^k, Xác suất \\mathrm{P}(A).
+- Xác suất có điều kiện: Dùng \\mid (VD: \\mathrm{P}(A \\mid B)), TUYỆT ĐỐI KHÔNG dùng \\;\\middle|\\; hay \\middle|.
 - Phép biến hình: \\mathrm{T}, \\mathrm{Q}, \\mathrm{V}.
 
 5. Cấu trúc Toán học nâng cao:

@@ -149,6 +149,13 @@ function removeSpacesAroundOperators(content: string): string {
   });
 }
 
+function replaceMiddleWithMid(content: string): string {
+  // Thay thế \;\middle|\; hoặc \middle| thành \mid
+  return content
+    .replace(/\\;\s*\\middle\s*\|\s*\\;/g, '\\mid')
+    .replace(/\\middle\s*\|/g, '\\mid');
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -159,6 +166,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   replaceFracWithDfrac,    // ← đổi \frac thành \dfrac
   replaceIntWithDisplaystyleInt, // ← đổi \int thành \displaystyle\int
   removeSpacesAroundOperators, // ← xóa khoảng trắng quanh +, -, =, \Leftrightarrow
+  replaceMiddleWithMid, // ← đổi \middle| thành \mid
   formatLatexIndentation, // ← canh tab tự động
 ]
 
