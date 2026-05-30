@@ -69,6 +69,16 @@ function replaceIntWithDisplaystyleInt(content: string): string {
   });
 }
 
+function removeSpacesAroundOperators(content: string): string {
+  // Xóa khoảng trắng quanh các dấu +, -, =, <, >
+  let res = content.replace(/[ \t]*([+\-=<>])[ \t]*/g, '$1');
+  
+  // Dấu mũi tên (\Leftrightarrow, \Rightarrow...): xóa khoảng trắng phía trước, để lại đúng 1 khoảng trắng phía sau
+  res = res.replace(/[ \t]*(\\Leftrightarrow|\\Rightarrow|\\Leftarrow|\\iff|\\implies)[ \t]*/g, '$1 ');
+  
+  return res;
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -78,6 +88,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   formatDecimalsWithComma, // ← chuẩn hóa số thập phân 0,975 -> 0{,}975
   replaceFracWithDfrac,    // ← đổi \frac thành \dfrac
   replaceIntWithDisplaystyleInt, // ← đổi \int thành \displaystyle\int
+  removeSpacesAroundOperators, // ← xóa khoảng trắng quanh +, -, =, \Leftrightarrow
 ]
 
 export function normalizeQuestion(block: string): string {
