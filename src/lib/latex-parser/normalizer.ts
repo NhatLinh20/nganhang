@@ -52,12 +52,24 @@ function trimTrailingWhitespace(content: string): string {
     .join('\n');
 }
 
+function formatDecimalsWithComma(content: string): string {
+  // Chuẩn hóa số thập phân trong tiếng Việt: 0,975 -> 0{,}975 để LaTeX không bị cách chữ
+  return content.replace(/(\d),(\d)/g, '$1{,}$2');
+}
+
+function replaceFracWithDfrac(content: string): string {
+  // Thay thế \frac thành \dfrac để phân số hiển thị to rõ ràng hơn
+  return content.replace(/\\frac/g, '\\dfrac');
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
   removeNonIdComments,    // ← sau đó mới xử lý comment
   ensureNewlineAfterBeginTag, // ← đảm bảo luôn xuống dòng sau tag
   trimTrailingWhitespace,
+  formatDecimalsWithComma, // ← chuẩn hóa số thập phân 0,975 -> 0{,}975
+  replaceFracWithDfrac,    // ← đổi \frac thành \dfrac
 ]
 
 export function normalizeQuestion(block: string): string {
