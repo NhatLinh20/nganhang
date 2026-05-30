@@ -87,6 +87,7 @@ export default function AiChatPage() {
   // Refs
   const chatEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editorTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Editor State
   const [editorContent, setEditorContent] = useState('')
@@ -153,12 +154,28 @@ export default function AiChatPage() {
 
   const handleAssignId = () => {
     const generatedId = getGeneratedId()
-    if (editorContent.includes('\\begin{ex}')) {
-      const replaced = editorContent.replace(/\\begin\{ex\}(%\[[^\]]*\])?/, `\\begin{ex}%[${generatedId}]`)
-      setEditorContent(replaced)
+    const idString = `%[${generatedId}]`
+    
+    if (editorTextareaRef.current) {
+      const start = editorTextareaRef.current.selectionStart
+      const end = editorTextareaRef.current.selectionEnd
+      
+      const before = editorContent.substring(0, start)
+      const after = editorContent.substring(end)
+      
+      setEditorContent(before + idString + after)
+      
+      // Update cursor position
+      setTimeout(() => {
+        if (editorTextareaRef.current) {
+          editorTextareaRef.current.selectionStart = editorTextareaRef.current.selectionEnd = start + idString.length
+          editorTextareaRef.current.focus()
+        }
+      }, 0)
     } else {
-      setEditorContent(prev => prev + `\n\\begin{ex}%[${generatedId}]\n\n\\end{ex}`)
+      setEditorContent(prev => prev + idString)
     }
+    
     setIsIdModalOpen(false)
   }
 
@@ -610,6 +627,7 @@ export default function AiChatPage() {
             </button>
           </div>
           <textarea
+            ref={editorTextareaRef}
             className={styles.editorTextarea}
             value={editorContent}
             onChange={e => setEditorContent(e.target.value)}
