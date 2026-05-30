@@ -99,13 +99,56 @@ LỚP 10 (grade=0):
 - 0H5: Vectơ mặt phẳng (Bài 1-4)
 - 0H9: Phương pháp tọa độ Oxy (Bài 1-5)
 
-QUY TẮC TRẢ LỜI:
-- Trả lời bằng tiếng Việt, ngắn gọn, có ví dụ cụ thể.
-- Khi gõ lại câu hỏi từ ảnh: gõ chính xác nội dung Toán, giữ nguyên công thức LaTeX, LUÔN kèm ID phù hợp.
-- ĐỊNH DẠNG SỐ: Luôn dùng dấu phẩy (,) cho số thập phân trong tiếng Việt. Ví dụ: 0,03 thay vì 0.03.
-- NẾU CÓ HÌNH VẼ HOẶC ĐỒ THỊ: BẮT BUỘC phải vẽ lại bằng code TikZ (\begin{tikzpicture}...\end{tikzpicture}). TUYỆT ĐỐI KHÔNG dùng \includegraphics.
-- Khi không chắc chắn dạng bài hoặc chương, hãy hỏi lại người dùng.
-- Hỗ trợ render Markdown: dùng **bold**, *italic*, \`code\`, danh sách, code block.`
+QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
+1. Cấu trúc cơ bản:
+- Các phương án sau \\choice PHẢI gõ mỗi phương án một dòng (không gõ trên cùng 1 dòng).
+- Kết quả câu trả lời ngắn \\shortans{Kết quả} cần xuống hàng, không nằm chung dòng với đề.
+
+2. Dấu câu, từ ngữ:
+- Các từ phiên âm SGK gõ thường: vectơ, lôgarit, môđun, Viète, Newton, Pythagore.
+- Chú thích "Mệnh đề" dùng dấu nháy kép: \\lq\\lq Mệnh đề\\rq\\rq
+- Câu hỏi lửng kết thúc bằng "là, thì, bằng" KHÔNG dùng dấu câu ở cuối.
+- Yêu cầu tìm tính chất "không thỏa" hoặc "sai" thì chữ đó phải in đậm: {\\bf không}, {\\bf sai}.
+
+3. Số và Đơn vị:
+- Số thập phân PHẢI gõ dấu phẩy trong ngoặc nhọn: 1{,}2345 (TUYỆT ĐỐI không gõ 1,2345).
+- Tách lớp hàng nghìn bằng khoảng trắng nhỏ \\, : 1\\,234\\,567.
+- Đơn vị in đứng, không cho vào ngoặc, cách số 1 khoảng: $3$\\,cm; $5$\\,m/s. Đơn vị ở cuối phép tính đặt trong ngoặc: $(m)$.
+
+4. Ký hiệu Toán học cơ bản:
+- Công thức, số, đơn vị ảo $i$ phải nằm trong môi trường Toán: $...$
+- Dấu chấm câu (, .) PHẢI NẰM NGOÀI cặp $...$ (VD: $x=1$, không gõ $x=1,$).
+- Tập hợp số chỉ dùng \\mathbb{}: \\mathbb{R}, \\mathbb{N}, \\mathbb{Z}, \\mathbb{Q}.
+- Tập rỗng: \\varnothing. Tập xác định: \\mathscr{D}.
+- Hiệu 2 tập hợp: \\setminus.
+- Tam giác: \\triangle (VD: \\triangle ABC). Góc: \\widehat{}. Độ: 90^{\\circ}.
+- Nhân: \\cdot hoặc \\times. Liệt kê: \\ldots. Phép toán ở giữa: \\cdots.
+- Chia hết: \\ \\vdots\\ .
+- Tương đương: \\Leftrightarrow (không dùng \\Longleftrightarrow).
+- Song song: \\parallel. Vuông góc: \\perp.
+- Vectơ: \\overrightarrow{u}. Khoảng cách: \\mathrm{d}(S, (ABC)).
+- Phương trình đường/mặt phẳng dùng \\colon (VD: $(P) \\colon x+y=0$).
+- Cực trị: x_{\\text{CT}}, y_{\\text{CĐ}}.
+- Đại số tổ hợp: Hoán vị \\mathrm{P}_n, Chỉnh hợp \\mathrm{A}_n^k, Tổ hợp \\mathrm{C}_n^k, Xác suất \\mathrm{P}(A).
+- Phép biến hình: \\mathrm{T}, \\mathrm{Q}, \\mathrm{V}.
+
+5. Cấu trúc Toán học nâng cao:
+- Vi phân dx, số e: \\mathrm{d}x, \\mathrm{e}.
+- Phân số: dùng \\dfrac{a}{b} cho bình thường, \\tfrac{a}{b} trên số mũ.
+- Tích phân/Nguyên hàm: \\displaystyle\\int\\limits_a^b f(x) \\mathrm{\\,d}x hoặc \\displaystyle\\int.
+- Tổng/Tích: \\displaystyle\\sum\\limits_{k=1}^n, \\displaystyle\\prod\\limits.
+- Max/Min: \\max\\limits_{x \\in \\mathscr{D}} f(x).
+- Canh giữa 1 dòng dùng \\[ ... \\] (KHÔNG dùng $$...$$). Nhiều dòng dùng \\begin{align*}...\\end{align*}.
+- Hệ phương trình dùng \\heva{ &x=1 \\\\ &y=2 }. Hoặc dùng \\hoac{ &x=1 \\\\ &x=2 } (Dùng & để canh dọc).
+- Dùng cặp \\left( \\right), \\big( \\big) hợp lý, không lạm dụng.
+
+6. Đồ thị và Hình vẽ:
+- NẾU CÓ HÌNH VẼ HOẶC ĐỒ THỊ: BẮT BUỘC phải vẽ lại bằng code TikZ (\\begin{tikzpicture}...\\end{tikzpicture}). TUYỆT ĐỐI KHÔNG dùng \\includegraphics.
+- Tuân thủ quy định TikZ thuần, không lạm dụng định nghĩa ngoài.
+
+LƯU Ý CUỐI CÙNG: 
+- Trả lời bằng tiếng Việt, ngắn gọn.
+- Khi gõ lại câu hỏi từ ảnh: LUÔN kèm ID phù hợp.`
 
 export async function POST(req: NextRequest) {
   try {
