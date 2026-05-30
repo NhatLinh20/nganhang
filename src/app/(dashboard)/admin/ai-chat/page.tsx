@@ -8,7 +8,7 @@ import { normalizeQuestion, formatLatexIndentation } from '@/lib/latex-parser/no
 interface ChatMessage {
   role: 'user' | 'model'
   content: string
-  imageDataUrl?: string
+  attachments?: { dataUrl: string; name: string; type: string }[]
   timestamp: number
 }
 
@@ -203,18 +203,23 @@ export default function AiChatPage() {
     autoResize()
   }, [input, autoResize])
 
-  // Handle image
-  const handleImageSelect = useCallback((file: File) => {
-    setImageFile(file)
-    const reader = new FileReader()
-    reader.onload = (e) => setImagePreview(e.target?.result as string)
-    reader.readAsDataURL(file)
-  }, [])
+  // Handle files
+  const [selectedFiles, setSelectedFiles] = useState<{ file: File, preview: string }[]>([])
 
-  const removeImage = () => {
-    setImageFile(null)
-    setImagePreview(null)
-  }
+  const handleFilesSelect = useCallback(async (files: File[]) => {
+    const validFiles = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf')
+    if (validFiles.length === 0) return
+
+    const newSelections = await Promise.all(validFiles.map(file => {
+      return new Promise<{file: File, preview: string}>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve({ file, preview: e.target?.result as string })
+        reader.readAsDataURL(file)
+      })
+    }))
+
+    setSelectedFiles(prev => [...prev, ...newSelections])
+  }, [])
 
   // Drag and drop handlers
   const [isDragging, setIsDragging] = useState(false)
@@ -240,43 +245,35 @@ export default function AiChatPage() {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
-      handleImageSelect(file)
-    }
+    const files = Array.from(e.dataTransfer.files)
+    handleFilesSelect(files)
   }
 
   // Paste image from clipboard
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith('image/') || items[i].type === 'application/pdf') {
-        const file = items[i].getAsFile()
-        if (file) handleImageSelect(file)
-        break
-      }
-    }
-  }, [handleImageSelect])
+    const items = Array.from(e.clipboardData.items)
+    const files = items.map(item => item.getAsFile()).filter(Boolean) as File[]
+    handleFilesSelect(files)
+  }, [handleFilesSelect])
 
   // Send message
   const handleSend = async () => {
     const trimmedInput = input.trim()
-    if (!trimmedInput && !imageFile) return
+    if (!trimmedInput && selectedFiles.length === 0) return
     if (isStreaming) return
 
     // Add user message
     const userMessage: ChatMessage = {
       role: 'user',
       content: trimmedInput,
-      imageDataUrl: imagePreview || undefined,
+      attachments: selectedFiles.map(sf => ({ dataUrl: sf.preview, name: sf.file.name, type: sf.file.type })),
       timestamp: Date.now(),
     }
 
     const updatedMessages = [...messages, userMessage]
     setMessages(updatedMessages)
     setInput('')
-    setImageFile(null)
-    setImagePreview(null)
+    setSelectedFiles([])
     setIsStreaming(true)
     setStreamingText('')
 
@@ -299,16 +296,17 @@ export default function AiChatPage() {
       if (customApiKey.trim()) {
         formData.append('custom_api_key', customApiKey.trim())
       }
-      if (userMessage.imageDataUrl) {
-        // Convert dataURL to File
-        const arr = userMessage.imageDataUrl.split(',')
-        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png'
-        const bstr = atob(arr[1])
-        let n = bstr.length
-        const u8arr = new Uint8Array(n)
-        while (n--) u8arr[n] = bstr.charCodeAt(n)
-        const imgFile = new File([u8arr], 'image.png', { type: mime })
-        formData.append('image', imgFile)
+      if (userMessage.attachments && userMessage.attachments.length > 0) {
+        userMessage.attachments.forEach((att, i) => {
+          const arr = att.dataUrl.split(',')
+          const mime = arr[0].match(/:(.*?);/)?.[1] || att.type || 'image/png'
+          const bstr = atob(arr[1])
+          let n = bstr.length
+          const u8arr = new Uint8Array(n)
+          while (n--) u8arr[n] = bstr.charCodeAt(n)
+          const imgFile = new File([u8arr], att.name || `file_${i}`, { type: mime })
+          formData.append('files', imgFile)
+        })
       }
 
       const res = await fetch('/api/ai/chat', {
@@ -455,12 +453,27 @@ export default function AiChatPage() {
                         📋 Copy
                       </button>
                     )}
-                    {msg.role === 'user' && msg.imageDataUrl && (
-                      <img
-                        src={msg.imageDataUrl}
-                        alt="Ảnh đính kèm"
-                        className={styles.messageImage}
-                      />
+                    {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                        {msg.attachments.map((att, idx) => (
+                          att.type === 'application/pdf' ? (
+                            <div key={idx} className={styles.filePreviewChip} style={{ maxWidth: '300px' }}>
+                              <div className={styles.filePreviewIcon}>📄</div>
+                              <div className={styles.filePreviewInfo}>
+                                <span className={styles.filePreviewName}>{att.name}</span>
+                                <span className={styles.filePreviewType}>PDF Document</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <img
+                              key={idx}
+                              src={att.dataUrl}
+                              alt="Ảnh đính kèm"
+                              className={styles.messageImage}
+                            />
+                          )
+                        ))}
+                      </div>
                     )}
                     {msg.role === 'user' ? (
                       <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
@@ -519,22 +532,24 @@ export default function AiChatPage() {
         <div className={styles.inputArea}>
           <div className={styles.inputAreaInner}>
             {/* File preview */}
-            {imageFile && (
+            {selectedFiles.length > 0 && (
               <div className={styles.filePreviewRow}>
-                <div className={styles.filePreviewChip}>
-                  <div className={styles.filePreviewIcon}>
-                    {imageFile.type === 'application/pdf' ? '📄' : (
-                      <img src={imagePreview!} alt="Preview" />
-                    )}
+                {selectedFiles.map((sf, idx) => (
+                  <div key={idx} className={styles.filePreviewChip}>
+                    <div className={styles.filePreviewIcon}>
+                      {sf.file.type === 'application/pdf' ? '📄' : (
+                        <img src={sf.preview} alt="Preview" />
+                      )}
+                    </div>
+                    <div className={styles.filePreviewInfo}>
+                      <span className={styles.filePreviewName}>{sf.file.name}</span>
+                      <span className={styles.filePreviewType}>
+                        {sf.file.type === 'application/pdf' ? 'PDF Document' : 'Image File'}
+                      </span>
+                    </div>
+                    <button className={styles.filePreviewRemove} onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}>✕</button>
                   </div>
-                  <div className={styles.filePreviewInfo}>
-                    <span className={styles.filePreviewName}>{imageFile.name}</span>
-                    <span className={styles.filePreviewType}>
-                      {imageFile.type === 'application/pdf' ? 'PDF Document' : 'Image File'}
-                    </span>
-                  </div>
-                  <button className={styles.filePreviewRemove} onClick={removeImage}>✕</button>
-                </div>
+                ))}
               </div>
             )}
 
@@ -587,17 +602,19 @@ export default function AiChatPage() {
                   accept="image/*,application/pdf"
                   style={{ display: 'none' }}
                   onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) handleImageSelect(file)
+                    if (e.target.files) {
+                      handleFilesSelect(Array.from(e.target.files))
+                    }
                     e.target.value = ''
                   }}
+                  multiple
                 />
 
                 {/* Send */}
                 <button
                   className={styles.sendBtn}
                   onClick={handleSend}
-                  disabled={isStreaming || (!input.trim() && !imageFile)}
+                  disabled={isStreaming || (!input.trim() && selectedFiles.length === 0)}
                   title="Gửi (Enter)"
                 >
                   <svg

@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
     const messagesRaw = formData.get('messages') as string | null
-    const imageFile = formData.get('image') as File | null
+    const uploadedFiles = formData.getAll('files') as File[]
     const modelName = (formData.get('model') as string) || 'gemini-3.5-flash'
     const customApiKey = formData.get('custom_api_key') as string | null
 
@@ -191,13 +191,15 @@ export async function POST(req: NextRequest) {
     // Build content parts for the last message
     const lastParts: any[] = []
 
-    // Add image if provided
-    if (imageFile) {
-      const imageBytes = await imageFile.arrayBuffer()
-      const base64Image = Buffer.from(imageBytes).toString('base64')
-      lastParts.push({
-        inlineData: { data: base64Image, mimeType: imageFile.type },
-      })
+    // Add files if provided
+    for (const file of uploadedFiles) {
+      if (file && file.size > 0) {
+        const fileBytes = await file.arrayBuffer()
+        const base64File = Buffer.from(fileBytes).toString('base64')
+        lastParts.push({
+          inlineData: { data: base64File, mimeType: file.type },
+        })
+      }
     }
 
     // Add text
