@@ -160,7 +160,10 @@ export default function AiChatPage() {
           const res = await fetch('/api/ai/suggest-id', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ latex_content: block }),
+            body: JSON.stringify({ 
+              latex_content: block,
+              custom_api_key: customApiKey 
+            }),
           })
           if (!res.ok) continue
 

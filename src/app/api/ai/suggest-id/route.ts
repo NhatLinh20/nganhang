@@ -4,15 +4,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@supabase/supabase-js'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const embeddingModel = genAI.getGenerativeModel({ model: 'gemini-embedding-001' })
+async function getEmbedding(text: string, apiKey: string): Promise<number[]> {
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const embeddingModel = genAI.getGenerativeModel({ model: 'gemini-embedding-001' })
 
-async function getEmbedding(text: string): Promise<number[]> {
   const result = await embeddingModel.embedContent({
     content: { parts: [{ text }], role: 'user' },
     taskType: 'RETRIEVAL_QUERY' as any,
@@ -45,11 +45,19 @@ function extractQueryFromLatex(latex: string): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { latex_content } = body
+    const { latex_content, custom_api_key } = body
 
     if (!latex_content || typeof latex_content !== 'string') {
       return NextResponse.json(
         { error: 'Thiếu latex_content' },
+        { status: 400 }
+      )
+    }
+
+    const apiKey = custom_api_key?.trim() || process.env.GEMINI_API_KEY
+    if (!apiKey) {
+       return NextResponse.json(
+        { error: 'Thiếu API Key' },
         { status: 400 }
       )
     }
@@ -64,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Tạo embedding
-    const embedding = await getEmbedding(queryText)
+    const embedding = await getEmbedding(queryText, apiKey)
     const vectorStr = `[${embedding.join(',')}]`
 
     // Tìm câu tương tự nhất (không filter để tìm toàn bộ ngân hàng)
