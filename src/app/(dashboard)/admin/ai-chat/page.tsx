@@ -331,9 +331,44 @@ export default function AiChatPage() {
       }
 
       // Add AI message
+      let finalText = fullText
+
+      // ═══ AUTO SUGGEST ID bằng Vector RAG ═══
+      // Nếu phản hồi chứa \begin{ex}, tách từng câu và tìm ID cho mỗi câu
+      if (fullText.includes('\\begin{ex}')) {
+        try {
+          // Tách từng block \begin{ex}...\end{ex}
+          const blocks = fullText.match(/\\begin\{ex\}[\s\S]*?\\end\{ex\}/g) || []
+          let updatedText = fullText
+
+          for (const block of blocks) {
+            const suggestRes = await fetch('/api/ai/suggest-id', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ latex_content: block }),
+            })
+            if (suggestRes.ok) {
+              const suggestData = await suggestRes.json()
+              if (suggestData.best_id && suggestData.similarity > 0.6) {
+                // Thay ID cũ trong đúng block này
+                const newBlock = block.replace(
+                  /%\[[^\]]+\]/,
+                  `%[${suggestData.best_id}]`
+                )
+                updatedText = updatedText.replace(block, newBlock)
+              }
+            }
+          }
+
+          finalText = updatedText
+        } catch (suggestErr) {
+          console.warn('Auto suggest ID failed:', suggestErr)
+        }
+      }
+
       const aiMessage: ChatMessage = {
         role: 'model',
-        content: fullText,
+        content: finalText,
         timestamp: Date.now(),
       }
       setMessages((prev) => [...prev, aiMessage])
