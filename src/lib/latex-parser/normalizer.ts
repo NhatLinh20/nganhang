@@ -178,6 +178,19 @@ function removeTrailingDotInChoice(content: string): string {
   return content.replace(/\.\}$/gm, '}');
 }
 
+function wrapBareNumbersInChoice(content: string): string {
+  // Trong đáp án \choice / \choiceTF, nếu nội dung là số đơn lẻ (chưa có $)
+  // thì tự bọc vào $...$
+  // VD: {2} → {$2$}, {\True 3} → {\True $3$}
+  // Chỉ khớp dòng mà toàn bộ nội dung sau { (và optional \True) là một con số
+  return content.replace(
+    /^(\s*\{)(\\True\s+)?(-?\d+(?:[,.]\d+)?)\s*(\}\s*)$/gm,
+    (_match, open, trueTag, number, close) => {
+      return `${open}${trueTag || ''}$${number}$${close}`;
+    }
+  );
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -192,6 +205,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   replaceLimWithLimits, // ← đổi \lim_{} thành \lim\limits_{}
   replaceBarWithOverline, // ← đổi \bar{} thành \overline{}
   removeTrailingDotInChoice, // ← bỏ dấu chấm cuối đáp án trong \choice
+  wrapBareNumbersInChoice, // ← bọc số đơn lẻ trong \choice bằng $...$
   formatLatexIndentation, // ← canh tab tự động
 ]
 

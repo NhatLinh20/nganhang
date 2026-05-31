@@ -153,18 +153,32 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Hình vẽ minh hoạ trong lời giải phải dùng \begin{center} để canh giữa.
 
 7. Quy định Bảng biến thiên (BBT):
-- Canh giữa BBT bởi \begin{center}, không dùng khung ngoài. Khai báo chuẩn: \tkzTabInit[nocadre=true, lgt=..., espcl=..., deltacl=0.5].
+- Canh giữa BBT bởi \\begin{center}, không dùng khung ngoài.
+- CÚ PHÁP BẮT BUỘC cho \\tkzTabInit (PHẢI TUÂN THEO CHÍNH XÁC):
+  \\tkzTabInit[nocadre=true, lgt=..., espcl=..., deltacl=0.5]{$x$/chiều_cao, $f'(x)$/chiều_cao, $f(x)$/chiều_cao}{giá_trị_x1, giá_trị_x2, ...}
+  Trong đó mỗi phần tử trong ngoặc nhọn đầu tiên có dạng: NHÃN_HIỂN_THỊ/CHIỀU_CAO (nhãn trước dấu /, chiều cao sau dấu /).
+  VD ĐÚNG: {$x$/1, $f'(x)$/1, $f(x)$/2}, hoặc {$x$/0.7, $y'$/0.7, $y$/2}.
+  VD SAI (TUYỆT ĐỐI KHÔNG VIẾT): {x/$x$, f'(x)/$f'(x)$, f(x)/$f(x)$}. Đây là sai hoàn toàn vì đặt tên biến trước dấu / thay vì nhãn LaTeX.
 - Tham số lgt: lgt=1.2 nếu tên hàm là f(x); lgt=1.0 nếu tên hàm là y.
 - Tham số espcl: espcl=4 (BBT 3 cột); espcl=3 (BBT 4 cột); espcl=2.5 (BBT >= 5 cột).
-- Phân số: Hàng x, f'(x) dùng \tfrac. Hàng f(x) dùng \dfrac.
+- Phân số: Hàng x, f'(x) dùng \\tfrac. Hàng f(x) dùng \\dfrac.
 - Gián đoạn (hai gạch ||): Hàng y' dùng ký hiệu d trong \\tkzTabLine. Hàng y dùng cú pháp xDy / $trái$ / $phải$ trong \\tkzTabVar, trong đó x và y là + (đỉnh) hoặc - (đáy) chỉ VỊ TRÍ của giá trị, KHÔNG phải hướng mũi tên. Cụ thể: +D+ (trái ở đỉnh, phải ở đỉnh), +D- (trái ở đỉnh, phải ở đáy), -D+ (trái ở đáy, phải ở đỉnh), -D- (trái ở đáy, phải ở đáy). Ví dụ: nếu hàm giảm xuống $-\\infty$ rồi gián đoạn sang $-3$ ở đáy thì viết -D- / $-\\infty$ / $-3$.
-- BẮT BUỘC đặt các giá trị trong \tkzTabVar vào cặp dấu $...$ (ví dụ: +/$+\infty$, -/$-\infty$, +/$2$).
-- NẾU dùng \end{center} thì BẮT BUỘC phải mở \begin{center} ở trước \begin{tikzpicture}.
+- BẮT BUỘC đặt các giá trị trong \\tkzTabVar vào cặp dấu $...$ (ví dụ: +/$+\\infty$, -/$-\\infty$, +/$2$).
+- NẾU dùng \\end{center} thì BẮT BUỘC phải mở \\begin{center} ở trước \\begin{tikzpicture}.
+- VÍ DỤ MẪU BBT HOÀN CHỈNH:
+\\begin{center}
+\\begin{tikzpicture}
+\\tkzTabInit[nocadre=true, lgt=1.2, espcl=2.5, deltacl=0.5]{$x$/1, $f'(x)$/1, $f(x)$/2}{$-\\infty$, $-1$, $0$, $1$, $+\\infty$}
+\\tkzTabLine{, +, 0, -, 0, +, 0, -, }
+\\tkzTabVar{-/ $-\\infty$, +/ $-1$, -/ $-2$, +/ $-1$, -/ $-\\infty$}
+\\end{tikzpicture}
+\\end{center}
 
 LƯU Ý CUỐI CÙNG: 
 - Trả lời bằng tiếng Việt, ngắn gọn.
 - Khi gõ lại câu hỏi từ ảnh: LUÔN kèm ID phù hợp.
-- Trong các \\choice, \\choiceTF: KHÔNG đặt dấu chấm (.) trước dấu đóng ngoặc } cuối mỗi đáp án. VD đúng: {Toạ độ $D(0;4;0)$}, VD sai: {Toạ độ $D(0;4;0)$.}`
+- Trong các \\choice, \\choiceTF: KHÔNG đặt dấu chấm (.) trước dấu đóng ngoặc } cuối mỗi đáp án. VD đúng: {Toạ độ $D(0;4;0)$}, VD sai: {Toạ độ $D(0;4;0)$.}
+- Trong các \\choice, \\choiceTF: nếu đáp án là một con số hoặc biểu thức toán thì BẮT BUỘC bọc trong $...$. VD đúng: {$3$}, {\\True $2$}. VD sai: {3}, {\\True 2}.`
 
 export async function POST(req: NextRequest) {
   try {
