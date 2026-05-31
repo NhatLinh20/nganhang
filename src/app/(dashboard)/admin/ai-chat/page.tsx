@@ -813,13 +813,12 @@ export default function AiChatPage() {
         {/* ═══ RIGHT PANE (EDITOR) ═══ */}
         <div className={styles.rightPane}>
           <div className={styles.editorToolbar}>
-            <div className={styles.editorTitle}>📝 Raw LaTeX Editor</div>
-            <button className={styles.btnToolbar} onClick={handleNormalize} title="Chuẩn hóa ký tự ẩn, tự động canh tab, xóa comment rác">✨ Chuẩn hóa</button>
-            <button className={styles.btnToolbar} onClick={() => setIsIdModalOpen(true)} title="Gán ID cho câu hỏi đầu tiên">🏷 Gán ID</button>
-            <button className={styles.btnToolbar} onClick={handleAutoAssignId} disabled={isAutoAssigning || !editorContent.trim()} title="Tự động gán ID cho tất cả câu hỏi bằng AI Vector Search">
+            <button className={styles.btnToolbar} onClick={handleNormalize}>✨ Chuẩn hóa</button>
+            <button className={styles.btnToolbar} onClick={() => setIsIdModalOpen(true)}>🏷 Gán ID</button>
+            <button className={styles.btnToolbar} onClick={handleAutoAssignId} disabled={isAutoAssigning || !editorContent.trim()}>
               {isAutoAssigning ? '⏳ Đang gán...' : '🤖 Gán ID tự động'}
             </button>
-            <button className={styles.btnToolbar} onClick={handleCopyToClipboard} title="Copy nội dung">
+            <button className={styles.btnToolbar} onClick={handleCopyToClipboard}>
               {isCopied ? '✅ Đã copy' : '📋 Copy'}
             </button>
           </div>
