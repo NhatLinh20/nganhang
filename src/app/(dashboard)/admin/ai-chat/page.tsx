@@ -165,10 +165,25 @@ export default function AiChatPage() {
               custom_api_key: customApiKey 
             }),
           })
-          if (!res.ok) continue
+          
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}))
+            console.error('Suggest ID failed for a block:', errData)
+            alert(`Lỗi API suggest-id: ${errData.error || res.statusText}`)
+            continue
+          }
 
           const data = await res.json()
-          if (!data.best_id || data.similarity < 0.6) continue
+          if (!data.best_id) {
+            console.warn('No best_id returned:', data)
+            alert('Không tìm thấy ID nào tương tự trong ngân hàng.')
+            continue
+          }
+          if (data.similarity < 0.6) {
+            console.warn('Similarity too low:', data.similarity)
+            alert(`Tìm thấy ID ${data.best_id} nhưng độ chính xác quá thấp (${Math.round(data.similarity * 100)}%). Bỏ qua để tránh gán sai.`)
+            continue
+          }
 
           const newId = `%[${data.best_id}]`
 
