@@ -87,6 +87,7 @@ export default function AiChatPage() {
   const [editorContent, setEditorContent] = useState('')
   const [isCopied, setIsCopied] = useState(false)
   const [isIdModalOpen, setIsIdModalOpen] = useState(false)
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false)
   const [showQuickPromptsMenu, setShowQuickPromptsMenu] = useState(false)
 
   const DEFAULT_QUICK_PROMPTS = [
@@ -136,6 +137,62 @@ export default function AiChatPage() {
 
   const handleNormalize = () => {
     setEditorContent(prev => normalizeQuestion(prev))
+  }
+
+  // ═══ Gán ID tự động bằng Vector RAG ═══
+  const handleAutoAssignId = async () => {
+    if (!editorContent.trim() || isAutoAssigning) return
+
+    // Tách từng block \begin{ex}...\end{ex}
+    const blocks = editorContent.match(/\\begin\{ex\}[\s\S]*?\\end\{ex\}/g)
+    if (!blocks || blocks.length === 0) {
+      alert('Không tìm thấy câu hỏi nào trong Editor (cần có \\begin{ex}...\\end{ex})')
+      return
+    }
+
+    setIsAutoAssigning(true)
+    let updatedContent = editorContent
+    let assignedCount = 0
+
+    try {
+      for (const block of blocks) {
+        try {
+          const res = await fetch('/api/ai/suggest-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ latex_content: block }),
+          })
+          if (!res.ok) continue
+
+          const data = await res.json()
+          if (!data.best_id || data.similarity < 0.6) continue
+
+          const newId = `%[${data.best_id}]`
+
+          if (block.includes('%[')) {
+            // Câu đã có ID → thay thế
+            const newBlock = block.replace(/%\[[^\]]+\]/, newId)
+            updatedContent = updatedContent.replace(block, newBlock)
+          } else {
+            // Câu chưa có ID → chèn sau \begin{ex}
+            const newBlock = block.replace('\\begin{ex}', `\\begin{ex}${newId}`)
+            updatedContent = updatedContent.replace(block, newBlock)
+          }
+          assignedCount++
+        } catch {
+          // Bỏ qua lỗi từng câu, tiếp tục xử lý câu khác
+          continue
+        }
+      }
+
+      setEditorContent(updatedContent)
+      alert(`✅ Đã gán ID cho ${assignedCount}/${blocks.length} câu hỏi`)
+    } catch (err) {
+      console.error('Auto assign ID error:', err)
+      alert('❌ Lỗi khi gán ID tự động')
+    } finally {
+      setIsAutoAssigning(false)
+    }
   }
 
   const handleCopyToClipboard = async () => {
@@ -331,44 +388,9 @@ export default function AiChatPage() {
       }
 
       // Add AI message
-      let finalText = fullText
-
-      // ═══ AUTO SUGGEST ID bằng Vector RAG ═══
-      // Nếu phản hồi chứa \begin{ex}, tách từng câu và tìm ID cho mỗi câu
-      if (fullText.includes('\\begin{ex}')) {
-        try {
-          // Tách từng block \begin{ex}...\end{ex}
-          const blocks = fullText.match(/\\begin\{ex\}[\s\S]*?\\end\{ex\}/g) || []
-          let updatedText = fullText
-
-          for (const block of blocks) {
-            const suggestRes = await fetch('/api/ai/suggest-id', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ latex_content: block }),
-            })
-            if (suggestRes.ok) {
-              const suggestData = await suggestRes.json()
-              if (suggestData.best_id && suggestData.similarity > 0.6) {
-                // Thay ID cũ trong đúng block này
-                const newBlock = block.replace(
-                  /%\[[^\]]+\]/,
-                  `%[${suggestData.best_id}]`
-                )
-                updatedText = updatedText.replace(block, newBlock)
-              }
-            }
-          }
-
-          finalText = updatedText
-        } catch (suggestErr) {
-          console.warn('Auto suggest ID failed:', suggestErr)
-        }
-      }
-
       const aiMessage: ChatMessage = {
         role: 'model',
-        content: finalText,
+        content: fullText,
         timestamp: Date.now(),
       }
       setMessages((prev) => [...prev, aiMessage])
@@ -776,6 +798,9 @@ export default function AiChatPage() {
             <div className={styles.editorTitle}>📝 Raw LaTeX Editor</div>
             <button className={styles.btnToolbar} onClick={handleNormalize} title="Chuẩn hóa ký tự ẩn, tự động canh tab, xóa comment rác">✨ Chuẩn hóa</button>
             <button className={styles.btnToolbar} onClick={() => setIsIdModalOpen(true)} title="Gán ID cho câu hỏi đầu tiên">🏷 Gán ID</button>
+            <button className={styles.btnToolbar} onClick={handleAutoAssignId} disabled={isAutoAssigning || !editorContent.trim()} title="Tự động gán ID cho tất cả câu hỏi bằng AI Vector Search">
+              {isAutoAssigning ? '⏳ Đang gán...' : '🤖 Gán ID tự động'}
+            </button>
             <button className={styles.btnToolbar} onClick={handleCopyToClipboard} title="Copy nội dung">
               {isCopied ? '✅ Đã copy' : '📋 Copy'}
             </button>
