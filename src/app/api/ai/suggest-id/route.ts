@@ -79,6 +79,10 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase.rpc('match_questions', {
       query_embedding: vectorStr,
       match_count: 5,
+      filter_grade: null,
+      filter_chapter: null,
+      filter_lesson: null,
+      filter_variant: null
     })
 
     if (error) {
