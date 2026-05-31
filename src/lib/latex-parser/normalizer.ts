@@ -207,36 +207,6 @@ function wrapBareMathInChoice(content: string): string {
   );
 }
 
-function wrapBareFormulaInText(content: string): string {
-  // Phát hiện công thức toán trong văn bản chưa bọc $...$
-  // Cụ thể: f'(x), g'(x)=biểu_thức, y'=...
-  // VD: đạo hàm f'(x)=x(x-2)^2. → đạo hàm $f'(x)=x(x-2)^2$.
-  return processOutsideTikz(content, (text) => {
-    // Tách theo các môi trường toán học để bỏ qua: \[, \], $$, $, \begin
-    const parts = text.split(/(\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\\begin\{[a-zA-Z*]+\}[\s\S]*?\\end\{[a-zA-Z*]+\}|\$[^$]*?\$)/);
-    return parts.map((part, i) => {
-      if (i % 2 === 1) return part; // Đang ở trong môi trường toán, bỏ qua
-      let result = part;
-
-      // Pattern 1: f'(x)=biểu_thức (derivative với phương trình)
-      // Biểu thức kết thúc khi gặp dấu chấm/phẩy + khoảng trắng, hoặc cuối dòng
-      result = result.replace(
-        /([a-zA-Z]'{1,2}\([a-zA-Z]\)\s*[=<>]\s*\S+?(?<=[a-zA-Z0-9)}]))(?=\s|[.,;:]|$)/gm,
-        (_m: string, expr: string) => `$${expr.trim()}$`
-      );
-
-      // Pattern 2: f'(x) đơn lẻ (không có = phía sau)
-      // Bỏ qua nếu đã được bọc $ (từ pattern 1) hoặc đã có sẵn
-      result = result.replace(
-        /(?<!\$)([a-zA-Z]'{1,2}\([a-zA-Z]\))(?![=$<>])/g,
-        (_m: string, expr: string) => `$${expr}$`
-      );
-
-      return result;
-    }).join('');
-  });
-}
-
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -253,7 +223,6 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   removeTrailingDotInChoice, // ← bỏ dấu chấm cuối đáp án trong \choice
   wrapBareNumbersInChoice, // ← bọc số đơn lẻ trong \choice bằng $...$
   wrapBareMathInChoice, // ← bọc biểu thức toán thiếu $ trong \choice
-  wrapBareFormulaInText, // ← bọc f'(x)=... thiếu $ trong văn bản
   formatLatexIndentation, // ← canh tab tự động
 ]
 
