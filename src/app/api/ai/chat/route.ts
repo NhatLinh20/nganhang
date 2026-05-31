@@ -139,6 +139,8 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Tích phân/Nguyên hàm: \\displaystyle\\int\\limits_a^b f(x) \\mathrm{\\,d}x hoặc \\displaystyle\\int.
 - Tổng/Tích: \\displaystyle\\sum\\limits_{k=1}^n, \\displaystyle\\prod\\limits.
 - Max/Min: \\max\\limits_{x \\in \\mathscr{D}} f(x).
+- Giới hạn: LUÔN dùng \\lim\\limits_{x\\to ...} (KHÔNG dùng \\lim_{x \\to ...}). Xóa khoảng trắng thừa: x\\to+\\infty (không viết x \\to +\\infty).
+- Gạch trên: LUÔN dùng \\overline{x} (KHÔNG dùng \\bar{x}).
 - Canh giữa 1 dòng dùng \\[ ... \\] (KHÔNG dùng $$...$$). Nhiều dòng dùng \\begin{align*}...\\end{align*}.
 - Hệ phương trình dùng \\heva{ &x=1 \\\\ &y=2 }. Hoặc dùng \\hoac{ &x=1 \\\\ &x=2 } (Dùng & để canh dọc).
 - Dùng cặp \\left( \\right), \\big( \\big) hợp lý, không lạm dụng.
@@ -155,13 +157,14 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Tham số lgt: lgt=1.2 nếu tên hàm là f(x); lgt=1.0 nếu tên hàm là y.
 - Tham số espcl: espcl=4 (BBT 3 cột); espcl=3 (BBT 4 cột); espcl=2.5 (BBT >= 5 cột).
 - Phân số: Hàng x, f'(x) dùng \tfrac. Hàng f(x) dùng \dfrac.
-- Gián đoạn (hai gạch ||): Hàng y' dùng ký hiệu d trong \tkzTabLine. Hàng y BẮT BUỘC dùng cú pháp +D- / $giá_trị_1$ / $giá_trị_2$ hoặc -D+ / $giá_trị_1$ / $giá_trị_2$ trong \tkzTabVar (Tuyệt đối không dùng - / ... / + / ...).
+- Gián đoạn (hai gạch ||): Hàng y' dùng ký hiệu d trong \\tkzTabLine. Hàng y dùng cú pháp xDy / $trái$ / $phải$ trong \\tkzTabVar, trong đó x và y là + (đỉnh) hoặc - (đáy) chỉ VỊ TRÍ của giá trị, KHÔNG phải hướng mũi tên. Cụ thể: +D+ (trái ở đỉnh, phải ở đỉnh), +D- (trái ở đỉnh, phải ở đáy), -D+ (trái ở đáy, phải ở đỉnh), -D- (trái ở đáy, phải ở đáy). Ví dụ: nếu hàm giảm xuống $-\\infty$ rồi gián đoạn sang $-3$ ở đáy thì viết -D- / $-\\infty$ / $-3$.
 - BẮT BUỘC đặt các giá trị trong \tkzTabVar vào cặp dấu $...$ (ví dụ: +/$+\infty$, -/$-\infty$, +/$2$).
 - NẾU dùng \end{center} thì BẮT BUỘC phải mở \begin{center} ở trước \begin{tikzpicture}.
 
 LƯU Ý CUỐI CÙNG: 
 - Trả lời bằng tiếng Việt, ngắn gọn.
-- Khi gõ lại câu hỏi từ ảnh: LUÔN kèm ID phù hợp.`
+- Khi gõ lại câu hỏi từ ảnh: LUÔN kèm ID phù hợp.
+- Trong các \\choice, \\choiceTF: KHÔNG đặt dấu chấm (.) trước dấu đóng ngoặc } cuối mỗi đáp án. VD đúng: {Toạ độ $D(0;4;0)$}, VD sai: {Toạ độ $D(0;4;0)$.}`
 
 export async function POST(req: NextRequest) {
   try {

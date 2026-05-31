@@ -156,17 +156,42 @@ function replaceMiddleWithMid(content: string): string {
     .replace(/\\middle\s*\|/g, '\\mid');
 }
 
+function replaceLimWithLimits(content: string): string {
+  // Thay \lim_{...} thành \lim\limits_{...} (bỏ qua nếu đã có \limits)
+  // Đồng thời xóa khoảng trắng thừa: x \to → x\to, \to + → \to+
+  return content.replace(/\\lim(\\limits)?_(\{[^}]*\})/g, (_match, hasLimits, subscript) => {
+    // Chuẩn hóa khoảng trắng bên trong subscript
+    const cleaned = subscript
+      .replace(/\s*\\to\s*/g, '\\to')
+    return `\\lim\\limits_${cleaned}`;
+  });
+}
+
+function replaceBarWithOverline(content: string): string {
+  // Thay \bar{...} thành \overline{...}
+  return content.replace(/\\bar\{/g, '\\overline{');
+}
+
+function removeTrailingDotInChoice(content: string): string {
+  // Bỏ dấu chấm (.) ngay trước } ở cuối mỗi đáp án trong \choice / \choiceTF
+  // Khớp: dấu $ hoặc ) hoặc chữ/số, theo sau là dấu chấm rồi } → bỏ dấu chấm
+  return content.replace(/\.\}$/gm, '}');
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
   removeNonIdComments,    // ← sau đó mới xử lý comment
   ensureNewlineAfterBeginTag, // ← đảm bảo luôn xuống dòng sau tag
   trimTrailingWhitespace,
-  formatDecimalsWithComma, // ← chuẩn hóa số thập phân 0,975 -> 0{,}975
+  formatDecimalsWithComma, // ← chuẩn hóa số thập phân 0,975 → 0{,}975
   replaceFracWithDfrac,    // ← đổi \frac thành \dfrac
   replaceIntWithDisplaystyleInt, // ← đổi \int thành \displaystyle\int
   removeSpacesAroundOperators, // ← xóa khoảng trắng quanh +, -, =, \Leftrightarrow
   replaceMiddleWithMid, // ← đổi \middle| thành \mid
+  replaceLimWithLimits, // ← đổi \lim_{} thành \lim\limits_{}
+  replaceBarWithOverline, // ← đổi \bar{} thành \overline{}
+  removeTrailingDotInChoice, // ← bỏ dấu chấm cuối đáp án trong \choice
   formatLatexIndentation, // ← canh tab tự động
 ]
 
