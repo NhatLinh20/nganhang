@@ -611,7 +611,14 @@
   z-index: 100;
 }
 
+.quickPromptItemWrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .quickPromptMenuItem {
+  flex: 1;
   background: none;
   border: none;
   text-align: left;
@@ -626,6 +633,51 @@
 .quickPromptMenuItem:hover {
   background: #f1f5f9;
   color: #4f46e5;
+}
+
+.quickPromptActions {
+  display: flex;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.quickPromptActions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.3;
+  font-size: 12px;
+  padding: 4px;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+
+.quickPromptItemWrapper:hover .quickPromptActions button {
+  opacity: 1;
+}
+
+.quickPromptActions button:hover {
+  background: #f1f5f9;
+  transform: scale(1.1);
+}
+
+.addQuickPromptBtn {
+  background: none;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  text-align: left;
+  margin-top: 4px;
+  transition: all 0.15s;
+  border-radius: 0 0 6px 6px;
+}
+
+.addQuickPromptBtn:hover {
+  color: #4f46e5;
+  background: #f8fafc;
 }
 
 .bottomBarLeftInner {

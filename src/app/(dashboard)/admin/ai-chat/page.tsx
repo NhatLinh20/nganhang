@@ -89,11 +89,12 @@ export default function AiChatPage() {
   const [isIdModalOpen, setIsIdModalOpen] = useState(false)
   const [showQuickPromptsMenu, setShowQuickPromptsMenu] = useState(false)
 
-  const CHAT_QUICK_PROMPTS = [
+  const DEFAULT_QUICK_PROMPTS = [
     'Gõ lại câu hỏi từ ảnh/PDF thành LaTeX chuẩn.',
     'Tạo bài toán tương tự, đổi số.',
     'Thêm lời giải cho các câu hỏi sau, và gõ theo chuẩn latex.',
   ]
+  const [quickPrompts, setQuickPrompts] = useState<string[]>(DEFAULT_QUICK_PROMPTS)
   
   // ID Modal State
   const [selectedGrade, setSelectedGrade] = useState<number>(12)
@@ -112,6 +113,7 @@ export default function AiChatPage() {
         if (parsed.messages) setMessages(parsed.messages)
         if (parsed.aiModel) setAiModel(parsed.aiModel)
         if (parsed.editorContent) setEditorContent(parsed.editorContent)
+        if (parsed.quickPrompts) setQuickPrompts(parsed.quickPrompts)
       }
     } catch (e) {
       console.error('Failed to load chat state', e)
@@ -121,11 +123,11 @@ export default function AiChatPage() {
   // Save to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel, editorContent }))
+      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel, editorContent, quickPrompts }))
     } catch (e) {
       console.error('Failed to save chat state', e)
     }
-  }, [messages, aiModel, editorContent])
+  }, [messages, aiModel, editorContent, quickPrompts])
 
   // Editor Actions
   const handleCopy = (text: string) => {
@@ -629,19 +631,58 @@ export default function AiChatPage() {
                 </button>
                 {showQuickPromptsMenu && (
                   <div className={styles.quickPromptMenu}>
-                    {CHAT_QUICK_PROMPTS.map((prompt, i) => (
-                      <button 
-                        key={i} 
-                        className={styles.quickPromptMenuItem}
-                        onClick={() => {
-                          setInput(prompt);
-                          setShowQuickPromptsMenu(false);
-                          textareaRef.current?.focus();
-                        }}
-                      >
-                        {prompt}
-                      </button>
+                    {quickPrompts.map((prompt, i) => (
+                      <div key={i} className={styles.quickPromptItemWrapper}>
+                        <button 
+                          className={styles.quickPromptMenuItem}
+                          onClick={() => {
+                            setInput(prompt);
+                            setShowQuickPromptsMenu(false);
+                            textareaRef.current?.focus();
+                          }}
+                        >
+                          {prompt}
+                        </button>
+                        <div className={styles.quickPromptActions}>
+                          <button 
+                            title="Sửa" 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              const newText = window.prompt('Sửa gợi ý:', prompt); 
+                              if (newText !== null && newText.trim()) {
+                                const newArr = [...quickPrompts];
+                                newArr[i] = newText.trim();
+                                setQuickPrompts(newArr);
+                              }
+                            }}
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            title="Xóa" 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              if (window.confirm('Bạn có chắc muốn xóa gợi ý này?')) {
+                                setQuickPrompts(prev => prev.filter((_, idx) => idx !== i));
+                              }
+                            }}
+                          >
+                            ❌
+                          </button>
+                        </div>
+                      </div>
                     ))}
+                    <button 
+                      className={styles.addQuickPromptBtn}
+                      onClick={() => {
+                        const text = window.prompt('Nhập gợi ý mới:', '');
+                        if (text && text.trim()) {
+                          setQuickPrompts(prev => [...prev, text.trim()]);
+                        }
+                      }}
+                    >
+                      + Thêm gợi ý mới
+                    </button>
                   </div>
                 )}
               </div>
