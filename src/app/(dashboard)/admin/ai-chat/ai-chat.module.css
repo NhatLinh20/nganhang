@@ -10,10 +10,14 @@
   flex-direction: row;
   height: calc(100vh - var(--header-height));
   margin-top: var(--header-height);
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 .leftPane {
-  flex: 1 1 50%;
+  flex: 0 0 50%;
+  width: 50%;
   max-width: 50%;
   display: flex;
   flex-direction: column;
@@ -25,7 +29,8 @@
 }
 
 .rightPane {
-  flex: 1 1 50%;
+  flex: 0 0 50%;
+  width: 50%;
   max-width: 50%;
   display: flex;
   flex-direction: column;
@@ -38,17 +43,21 @@
 .chatWindow {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px 0;
   scroll-behavior: smooth;
+  width: 100%;
 }
 
 .chatWindowInner {
+  width: 100%;
   max-width: 100%;
   margin: 0 auto;
   padding: 0 24px;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 /* ═══ MESSAGE BUBBLES ═══ */
@@ -57,6 +66,7 @@
   gap: 12px;
   align-items: flex-start;
   min-width: 0;
+  width: 100%;
 }
 
 .messageRowUser {
@@ -185,6 +195,7 @@
   line-height: 1.5;
   border: 1px solid #334155;
   position: relative;
+  max-width: 100%;
 }
 
 .messageBubbleAI pre code {
