@@ -191,6 +191,22 @@ function wrapBareNumbersInChoice(content: string): string {
   );
 }
 
+function wrapBareMathInChoice(content: string): string {
+  // Trong đáp án \choice / \choiceTF, nếu nội dung bắt đầu bằng lệnh LaTeX
+  // (\vec, \overrightarrow, \dfrac, ...) nhưng KHÔNG có $...$ bọc ngoài → tự thêm $...$
+  // VD: {\vec{n}=(3;1;-2)} → {$\vec{n}=(3;1;-2)$}
+  // VD: {\True \overrightarrow{AB}} → {\True $\overrightarrow{AB}$}
+  // Chỉ khớp dòng riêng lẻ có dạng: { + optional \True + \command... + }
+  return content.replace(
+    /^(\s*\{)(\\True\s+)?(\\(?!True\b)[a-zA-Z].*?)(\}\s*)$/gm,
+    (match, open, trueTag, inner, close) => {
+      // Nếu nội dung đã có $ ở đầu thì bỏ qua
+      if (inner.trimStart().startsWith('$')) return match;
+      return `${open}${trueTag || ''}$${inner.trim()}$${close}`;
+    }
+  );
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -206,6 +222,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   replaceBarWithOverline, // ← đổi \bar{} thành \overline{}
   removeTrailingDotInChoice, // ← bỏ dấu chấm cuối đáp án trong \choice
   wrapBareNumbersInChoice, // ← bọc số đơn lẻ trong \choice bằng $...$
+  wrapBareMathInChoice, // ← bọc biểu thức toán thiếu $ trong \choice
   formatLatexIndentation, // ← canh tab tự động
 ]
 

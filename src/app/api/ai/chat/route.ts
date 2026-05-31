@@ -186,7 +186,7 @@ LƯU Ý CUỐI CÙNG:
 - Trả lời bằng tiếng Việt, ngắn gọn.
 - Khi gõ lại câu hỏi từ ảnh: LUÔN kèm ID phù hợp.
 - Trong các \\choice, \\choiceTF: KHÔNG đặt dấu chấm (.) trước dấu đóng ngoặc } cuối mỗi đáp án. VD đúng: {Toạ độ $D(0;4;0)$}, VD sai: {Toạ độ $D(0;4;0)$.}
-- Trong các \\choice, \\choiceTF: nếu đáp án là một con số hoặc biểu thức toán thì BẮT BUỘC bọc trong $...$. VD đúng: {$3$}, {\\True $2$}. VD sai: {3}, {\\True 2}.`
+- Trong các \\choice, \\choiceTF: nếu đáp án là một con số hoặc biểu thức toán thì BẮT BUỘC bọc trong $...$. Bao gồm cả biểu thức có lệnh LaTeX như \\vec, \\overrightarrow, \\dfrac, v.v. VD đúng: {$3$}, {$\\vec{n}=(3;1;-2)$}. VD sai: {3}, {\\vec{n}=(3;1;-2)}.`
 
 export async function POST(req: NextRequest) {
   try {
