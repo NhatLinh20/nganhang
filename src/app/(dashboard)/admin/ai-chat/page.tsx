@@ -399,9 +399,12 @@ export default function AiChatPage() {
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>💬</div>
               <div className={styles.emptyTitle}>Trợ lý AI Ngân Hàng Toán</div>
-              <div className={styles.emptySubtitle}>
-                Hỏi bất cứ điều gì về phần mềm, gửi ảnh câu hỏi để gõ lại LaTeX, hoặc nhờ gán ID cho câu hỏi.
-              </div>
+              <ul className={styles.emptySubtitleList}>
+                <li>Gõ toàn bộ đề thi từ file ảnh/PDF.</li>
+                <li>Vẽ bảng biến thiên từ file ảnh/PDF.</li>
+                <li>Bổ sung lời giải cho toàn bộ câu hỏi.</li>
+                <li>Tự động gán ID.</li>
+              </ul>
             </div>
           ) : (
             <div className={styles.chatWindowInner}>
