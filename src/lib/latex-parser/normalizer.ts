@@ -212,10 +212,10 @@ function wrapBareFormulaInText(content: string): string {
   // Cụ thể: f'(x), g'(x)=biểu_thức, y'=...
   // VD: đạo hàm f'(x)=x(x-2)^2. → đạo hàm $f'(x)=x(x-2)^2$.
   return processOutsideTikz(content, (text) => {
-    // Tách theo $...$ để bỏ qua nội dung đã trong math mode
-    const parts = text.split(/(\$[^$]*?\$)/);
+    // Tách theo các môi trường toán học để bỏ qua: \[, \], $$, $, \begin
+    const parts = text.split(/(\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\\begin\{[a-zA-Z*]+\}[\s\S]*?\\end\{[a-zA-Z*]+\}|\$[^$]*?\$)/);
     return parts.map((part, i) => {
-      if (i % 2 === 1) return part; // Trong $...$, bỏ qua
+      if (i % 2 === 1) return part; // Đang ở trong môi trường toán, bỏ qua
       let result = part;
 
       // Pattern 1: f'(x)=biểu_thức (derivative với phương trình)
