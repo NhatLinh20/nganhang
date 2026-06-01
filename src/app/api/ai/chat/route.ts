@@ -2,6 +2,9 @@
 import { NextRequest } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+// Tăng giới hạn timeout tối đa cho Vercel (Hobby tier hỗ trợ max 60s)
+export const maxDuration = 60;
+
 const SYSTEM_INSTRUCTION = `Bạn là Trợ lý AI của phần mềm Ngân Hàng Toán (nganhangtoan.vercel.app) — một hệ thống quản lý ngân hàng câu hỏi Toán THPT dành cho giáo viên.
 
 NHIỆM VỤ CHÍNH:
