@@ -25,7 +25,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \usepackage{xcolor}
 %=====
 \setcounter{secnumdepth}{4}
-\setcounter{tocdepth}{1}
+\setcounter{tocdepth}{3}
 \usepackage{titlesec}
 \usepackage{titletoc}
 \makeatletter
@@ -46,6 +46,20 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 {Bài~\thecontentslabel\quad}
 {\MakeUppercase}
 {\titlerule*[0.5pc]{.}\contentspage}
+% subsection
+\titlecontents{subsection}
+[4.8em]
+{}
+{\thecontentslabel\quad}
+{\MakeUppercase}
+{\titlerule*[0.5pc]{.}\contentspage}
+% subsubsection
+\titlecontents{subsubsection}
+[6.6em]
+{}
+{\thecontentslabel\quad}
+{\MakeUppercase}
+{\titlerule*[0.5pc]{.}\contentspage}
 % chapter
 \titleformat{\chapter}
 {\bfseries\large\color{myred}}
@@ -59,7 +73,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 {BÀI \arabic{section}.}{0.3em}{\MakeUppercase}
 \titlespacing*{\section}{0pt}{0pt}{0pt}
 % Subsection
-\renewcommand{\thesubsection}{\Alph{subsection}.}
+\renewcommand{\thesubsection}{\Alph{subsection}}
 \titleformat{\subsection}
 {\bfseries}
 {\Alph{subsection}.}{0.3em}{\MakeUppercase}
