@@ -95,9 +95,10 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [searchType, setSearchType] = useState<'id' | 'content'>('id')
+  const [searchId, setSearchId] = useState('')
+  const [debouncedSearchId, setDebouncedSearchId] = useState('')
+  const [searchContent, setSearchContent] = useState('')
+  const [debouncedSearchContent, setDebouncedSearchContent] = useState('')
   const [filter, setFilter] = useState<QuestionFilter>({})
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -115,22 +116,27 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
 
 
 
-  // Debounce search input — chờ gõ xong 300ms mới query
+  // Debounce search inputs — chờ gõ xong 300ms mới query
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    const timer = setTimeout(() => setDebouncedSearchId(searchId), 300)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [searchId])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchContent(searchContent), 300)
+    return () => clearTimeout(timer)
+  }, [searchContent])
 
   // Reset về trang 1 khi tìm kiếm thay đổi
-  const prevSearchRef = useRef(debouncedSearch)
-  const prevSearchTypeRef = useRef(searchType)
+  const prevSearchIdRef = useRef(debouncedSearchId)
+  const prevSearchContentRef = useRef(debouncedSearchContent)
   useEffect(() => {
-    if (prevSearchRef.current !== debouncedSearch || prevSearchTypeRef.current !== searchType) {
-      prevSearchRef.current = debouncedSearch
-      prevSearchTypeRef.current = searchType
+    if (prevSearchIdRef.current !== debouncedSearchId || prevSearchContentRef.current !== debouncedSearchContent) {
+      prevSearchIdRef.current = debouncedSearchId
+      prevSearchContentRef.current = debouncedSearchContent
       setPage(1)
     }
-  }, [debouncedSearch, searchType])
+  }, [debouncedSearchId, debouncedSearchContent])
 
   // Fetch questions from Supabase (with stale-response guard)
   const fetchIdRef = useRef(0)
@@ -151,10 +157,8 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     if (filter.question_type) params.set('question_type', filter.question_type)
     if (filter.has_image !== undefined) params.set('has_image', String(filter.has_image))
     if (filter.category_code) params.set('category_code', filter.category_code)
-    if (debouncedSearch) {
-      params.set('search', debouncedSearch)
-      params.set('search_type', searchType)
-    }
+    if (debouncedSearchId) params.set('search_id', debouncedSearchId)
+    if (debouncedSearchContent) params.set('search_content', debouncedSearchContent)
 
     const qs = params.toString()
 
@@ -170,7 +174,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     setQuestions((dataRes.data as Question[]) || [])
     setTotal(countRes.count || 0)
     setLoading(false)
-  }, [filter, page, debouncedSearch, searchType])
+  }, [filter, page, debouncedSearchId, debouncedSearchContent])
 
   useEffect(() => {
     fetchQuestions()
@@ -187,7 +191,8 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
 
   const resetFilters = () => {
     setFilter({})
-    setSearch('')
+    setSearchId('')
+    setSearchContent('')
     setPage(1)
   }
 
@@ -645,35 +650,29 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                   </button>
                 </>
               )}
-              <div className={styles.searchBox}>
-                <select
-                  value={searchType}
-                  onChange={e => setSearchType(e.target.value as 'id' | 'content')}
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    outline: 'none',
-                    color: 'var(--color-gray-600)',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    padding: '0 6px 0 0',
-                    marginRight: '8px',
-                    cursor: 'pointer',
-                    borderRight: '1px solid var(--color-gray-200)',
-                  }}
-                  title="Tiêu chí tìm kiếm"
-                >
-                  <option value="id">Mã ID</option>
-                  <option value="content">Nội dung</option>
-                </select>
-                <span className={styles.searchIcon}>🔍</span>
-                <input
-                  type="text"
-                  className={styles.searchInput}
-                  placeholder={searchType === 'id' ? "Tìm theo mã ID (VD: 2D1N3-1)..." : "Nhập từ khoá nội dung..."}
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
+              <div className={styles.searchBox} style={{ display: 'flex', gap: '8px', padding: '0', background: 'transparent', border: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--color-bg-base)', border: '1px solid var(--color-gray-200)', borderRadius: '8px', padding: '0 12px' }}>
+                  <span className={styles.searchIcon}>🔍</span>
+                  <input
+                    type="text"
+                    className={styles.searchInput}
+                    style={{ width: '130px', border: 'none', background: 'transparent' }}
+                    placeholder="Tìm ID (VD: 2D1)..."
+                    value={searchId}
+                    onChange={e => setSearchId(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--color-bg-base)', border: '1px solid var(--color-gray-200)', borderRadius: '8px', padding: '0 12px' }}>
+                  <span className={styles.searchIcon}>📝</span>
+                  <input
+                    type="text"
+                    className={styles.searchInput}
+                    style={{ width: '220px', border: 'none', background: 'transparent' }}
+                    placeholder="Tìm theo nội dung..."
+                    value={searchContent}
+                    onChange={e => setSearchContent(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
             <div className={styles.toolbarRight}>

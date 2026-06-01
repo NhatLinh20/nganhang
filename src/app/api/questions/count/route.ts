@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
     const question_type = searchParams.get('question_type')
     const has_image = searchParams.get('has_image')
     const category_code = searchParams.get('category_code')
-    const search = searchParams.get('search')
-    const search_type = searchParams.get('search_type') || 'id'
+    const search_id = searchParams.get('search_id')
+    const search_content = searchParams.get('search_content')
 
     if (grade) query = query.eq('grade', parseInt(grade))
     if (subject_area) query = query.eq('subject_area', subject_area)
@@ -36,13 +36,8 @@ export async function GET(request: NextRequest) {
     if (question_type) query = query.eq('question_type', question_type)
     if (has_image) query = query.eq('has_image', has_image === 'true')
     if (category_code) query = query.eq('category_code', category_code)
-    if (search) {
-      if (search_type === 'content') {
-        query = query.ilike('latex_content', `%${search}%`)
-      } else {
-        query = query.ilike('category_code', `${search}%`)
-      }
-    }
+    if (search_id) query = query.ilike('category_code', `${search_id}%`)
+    if (search_content) query = query.ilike('latex_content', `%${search_content}%`)
 
     const { count, error } = await query
 
