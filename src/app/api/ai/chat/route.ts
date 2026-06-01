@@ -97,7 +97,7 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Giới hạn: LUÔN dùng \\lim\\limits_{x\\to ...} (KHÔNG dùng \\lim_{x \\to ...}). Xóa khoảng trắng thừa: x\\to+\\infty (không viết x \\to +\\infty).
 - Gạch trên: LUÔN dùng \\overline{x} (KHÔNG dùng \\bar{x}).
 - Canh giữa 1 dòng dùng \\[ ... \\] (KHÔNG dùng $$...$$). Nhiều dòng dùng \\begin{align*}...\\end{align*}.
-- Hệ phương trình dùng \\heva{ &x=1 \\\\ &y=2 }. Hoặc dùng \\hoac{ &x=1 \\\\ &x=2 } (Dùng & để canh dọc).
+- Hệ phương trình, hệ điều kiện TẤT CẢ phải dùng \\heva{ &x=1 \\\\ &y=2 } hoặc \\hoac{ &x=1 \\\\ &x=2 } (Dùng & để canh dọc). TUYỆT ĐỐI KHÔNG dùng \\begin{cases}...\\end{cases}.
 - Dùng cặp \\left( \\right), \\big( \\big) hợp lý, không lạm dụng.
 
 6. Đồ thị và Hình vẽ (TikZ & Bảng biến thiên):
@@ -118,14 +118,15 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 - Tham số espcl: espcl=4 (BBT 3 cột); espcl=3 (BBT 4 cột); espcl=2.5 (BBT >= 5 cột).
 - Phân số: Hàng x, f'(x) dùng \\tfrac. Hàng f(x) dùng \\dfrac.
 - Gián đoạn (hai gạch ||): Hàng y' dùng ký hiệu d trong \\tkzTabLine.
-  CÁCH XÁC ĐỊNH DẤU TRONG xDy (QUY TRÌNH BẮT BUỘC):
-  Dấu x và y KHÔNG liên quan đến hướng mũi tên. Chúng chỉ VỊ TRÍ TRÊN/DƯỚI của giá trị trong ô BBT.
-  Bước 1: Nhìn giá trị BÊN TRÁI gián đoạn. Nếu nó nằm ở ĐÁY (ví dụ $-\\infty$, giá trị nhỏ) → x là -. Nếu ở ĐỈNH (ví dụ $+\\infty$, giá trị lớn) → x là +.
-  Bước 2: Nhìn giá trị BÊN PHẢI gián đoạn. Nếu nó nằm ở ĐÁY → y là -. Nếu ở ĐỈNH → y là +.
-  VD1: Trái=$-\\infty$(đáy), phải=$+\\infty$(đỉnh) → -D+
-  VD2: Trái=$-\\infty$(đáy), phải=$-3$(đáy, vì sau đó hàm tăng lên) → -D-
-  VD3: Trái=$+\\infty$(đỉnh), phải=$-\\infty$(đáy) → +D-
-  CẢNH BÁO: Nếu bên phải gián đoạn hàm TĂNG LÊN, giá trị bên phải nằm ở ĐÁY → dấu y là -, KHÔNG PHẢI +.
+  CÁCH XÁC ĐỊNH DẤU TRONG xDy (QUY TẮC SỐNG CÒN, BẮT BUỘC LÀM ĐÚNG):
+  Dấu x (bên trái) và y (bên phải) phụ thuộc vào chiều mũi tên xung quanh điểm gián đoạn d:
+  - BÊN TRÁI d:
+    + Nếu mũi tên TRƯỚC d đi XUỐNG (hàm giảm) → giá trị kết thúc ở ĐÁY → x là dấu trừ (-).
+    + Nếu mũi tên TRƯỚC d đi LÊN (hàm tăng) → giá trị kết thúc ở ĐỈNH → x là dấu cộng (+).
+  - BÊN PHẢI d:
+    + Nếu mũi tên SAU d đi LÊN (hàm tăng) → giá trị BẮT ĐẦU từ ĐÁY → y là dấu trừ (-). CHÚ Ý: Rất nhiều AI làm sai chỗ này thành dấu +. Tăng lên thì điểm xuất phát phải ở ĐÁY (-).
+    + Nếu mũi tên SAU d đi XUỐNG (hàm giảm) → giá trị BẮT ĐẦU từ ĐỈNH → y là dấu cộng (+).
+  VD: Trước d giảm xuống $-\\infty$ (Đáy -> -). Sau d tăng từ $-3$ lên (Bắt đầu từ Đáy -> -). Vậy BẮT BUỘC là -D-. Tương tự, nếu sau d giảm từ $5$ xuống thì là đỉnh -> +.
 - BẮT BUỘC đặt các giá trị trong \\tkzTabVar vào cặp dấu $...$ (ví dụ: +/$+\\infty$, -/$-\\infty$, +/$2$).
 - NẾU dùng \\end{center} thì BẮT BUỘC phải mở \\begin{center} ở trước \\begin{tikzpicture}.
 - VÍ DỤ MẪU BBT CÓ GIÁN ĐOẠN (hàm giảm xuống $-\\infty$ rồi gián đoạn, bên phải bắt đầu từ $-3$ ở đáy rồi tăng lên):
