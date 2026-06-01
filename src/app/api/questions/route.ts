@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const has_image = searchParams.get('has_image')
     const category_code = searchParams.get('category_code')
     const search = searchParams.get('search')
+    const search_type = searchParams.get('search_type') || 'id'
 
     if (grade) query = query.eq('grade', parseInt(grade))
     if (subject_area) query = query.eq('subject_area', subject_area)
@@ -39,7 +40,13 @@ export async function GET(request: NextRequest) {
     if (question_type) query = query.eq('question_type', question_type)
     if (has_image) query = query.eq('has_image', has_image === 'true')
     if (category_code) query = query.eq('category_code', category_code)
-    if (search) query = query.ilike('category_code', `${search}%`)
+    if (search) {
+      if (search_type === 'content') {
+        query = query.ilike('latex_content', `%${search}%`)
+      } else {
+        query = query.ilike('category_code', `${search}%`)
+      }
+    }
 
     // Phân trang
     const from = (page - 1) * pageSize

@@ -97,6 +97,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [searchType, setSearchType] = useState<'id' | 'content'>('id')
   const [filter, setFilter] = useState<QuestionFilter>({})
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -122,12 +123,14 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
 
   // Reset về trang 1 khi tìm kiếm thay đổi
   const prevSearchRef = useRef(debouncedSearch)
+  const prevSearchTypeRef = useRef(searchType)
   useEffect(() => {
-    if (prevSearchRef.current !== debouncedSearch) {
+    if (prevSearchRef.current !== debouncedSearch || prevSearchTypeRef.current !== searchType) {
       prevSearchRef.current = debouncedSearch
+      prevSearchTypeRef.current = searchType
       setPage(1)
     }
-  }, [debouncedSearch])
+  }, [debouncedSearch, searchType])
 
   // Fetch questions from Supabase (with stale-response guard)
   const fetchIdRef = useRef(0)
@@ -148,7 +151,10 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     if (filter.question_type) params.set('question_type', filter.question_type)
     if (filter.has_image !== undefined) params.set('has_image', String(filter.has_image))
     if (filter.category_code) params.set('category_code', filter.category_code)
-    if (debouncedSearch) params.set('search', debouncedSearch)
+    if (debouncedSearch) {
+      params.set('search', debouncedSearch)
+      params.set('search_type', searchType)
+    }
 
     const qs = params.toString()
 
@@ -164,7 +170,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
     setQuestions((dataRes.data as Question[]) || [])
     setTotal(countRes.count || 0)
     setLoading(false)
-  }, [filter, page, debouncedSearch])
+  }, [filter, page, debouncedSearch, searchType])
 
   useEffect(() => {
     fetchQuestions()
@@ -640,11 +646,31 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
                 </>
               )}
               <div className={styles.searchBox}>
+                <select
+                  value={searchType}
+                  onChange={e => setSearchType(e.target.value as 'id' | 'content')}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    color: 'var(--color-gray-600)',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    padding: '0 6px 0 0',
+                    marginRight: '8px',
+                    cursor: 'pointer',
+                    borderRight: '1px solid var(--color-gray-200)',
+                  }}
+                  title="Tiêu chí tìm kiếm"
+                >
+                  <option value="id">Mã ID</option>
+                  <option value="content">Nội dung</option>
+                </select>
                 <span className={styles.searchIcon}>🔍</span>
                 <input
                   type="text"
                   className={styles.searchInput}
-                  placeholder="Tìm theo mã ID (VD: 2D1N3-1)..."
+                  placeholder={searchType === 'id' ? "Tìm theo mã ID (VD: 2D1N3-1)..." : "Nhập từ khoá nội dung..."}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
