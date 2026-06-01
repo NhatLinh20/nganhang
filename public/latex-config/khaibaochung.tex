@@ -32,6 +32,20 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 %%%%%%%%%%%%%%======Khai báo màu
 \definecolor{myred}{RGB}{210,0,0}
 %Khai báo chapter, section, subsection, subsubsection
+% Chapter
+\titlecontents{chapter}
+[0em]
+{\bfseries}
+{CHƯƠNG~\thecontentslabel\quad}
+{\MakeUppercase}
+{\hfill\contentspage}
+% Section
+\titlecontents{section}
+[2.7em]
+{}
+{Bài~\thecontentslabel\quad}
+{\MakeUppercase}
+{\titlerule*[0.5pc]{.}\contentspage}
 % chapter
 \titleformat{\chapter}
 {\bfseries\large\color{myred}}
