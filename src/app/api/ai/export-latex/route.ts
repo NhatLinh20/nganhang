@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('Export AI LaTeX error:', err)
     return NextResponse.json(
-      { error: \`Lỗi server: \${err instanceof Error ? err.message : 'Unknown error'}\` },
+      { error: `Lỗi server: ${err instanceof Error ? err.message : 'Unknown error'}` },
       { status: 500 }
     )
   }
