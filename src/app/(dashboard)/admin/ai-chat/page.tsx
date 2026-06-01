@@ -89,6 +89,7 @@ export default function AiChatPage() {
   const [isIdModalOpen, setIsIdModalOpen] = useState(false)
   const [isAutoAssigning, setIsAutoAssigning] = useState(false)
   const [showQuickPromptsMenu, setShowQuickPromptsMenu] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const DEFAULT_QUICK_PROMPTS = [
     'Gõ lại câu hỏi từ ảnh/PDF thành LaTeX chuẩn.',
@@ -255,6 +256,39 @@ export default function AiChatPage() {
     }
     
     setIsIdModalOpen(false)
+  }
+
+  // ═══ Xuất file LaTeX ═══
+  const handleExportLatex = async () => {
+    if (!editorContent.trim() || isExporting) return
+    setIsExporting(true)
+    try {
+      const res = await fetch('/api/ai/export-latex', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ editorContent })
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || res.statusText)
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ai_latex_export.zip'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Export error:', err)
+      alert(`❌ Lỗi xuất file: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   // Auto-scroll
@@ -453,6 +487,15 @@ export default function AiChatPage() {
       <Header
         title="Trợ Lý AI"
         subtitle="Chat trực tiếp với Gemini — Hỗ trợ soạn câu hỏi, gõ LaTeX, gán ID"
+        actions={
+          <button 
+            className="btn btn-primary" 
+            onClick={handleExportLatex} 
+            disabled={isExporting || !editorContent.trim()}
+          >
+            {isExporting ? '⏳ Đang xuất...' : '📥 Xuất file LaTeX'}
+          </button>
+        }
       />
 
       <div className={styles.layout}>
