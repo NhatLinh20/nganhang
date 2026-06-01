@@ -213,6 +213,7 @@ export async function GET(request: NextRequest) {
           const lesName = getLessonName(grade, sub, ch, les)
           let tex = '\\newpage\n'
           tex += `\\section{${lesName}}\n`
+          tex += `\\subsection{Các dạng toán}\n`
 
           const variants = lessons[les]
           const sortedVariants = Object.keys(variants).map(Number).sort((a, b) => a - b)
