@@ -13,11 +13,17 @@ const { createClient } = require('@supabase/supabase-js')
 const SUPABASE_URL   = process.env.NEXT_PUBLIC_SUPABASE_URL  || 'https://emidsfdgujxlnwrqizvo.supabase.co'
 const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtaWRzZmRndWp4bG53cnFpenZvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTA3MTI1MywiZXhwIjoyMDk0NjQ3MjUzfQ.FPZvfIJ6sE4K7aI0F-4X4gt8yspyfOtTHapirBv0KYY'
 
-// DANH SÁCH API KEY (Thêm nhiều key vào đây để vượt qua giới hạn 1000 câu/ngày)
-const API_KEYS = [
-  'AIzaSyA8dg1aT8GahNPgyhihNOzBsYBj0qXUZLI',
-  'AIzaSyDgLC8YCZ02HYSl8UcQPerip0U6Zf-XvwY'
-]
+// DANH SÁCH API KEY Lấy từ biến môi trường để bảo mật, chống lộ key lên GitHub
+const API_KEYS = (process.env.GEMINI_API_KEYS || '')
+  .split(',')
+  .map(k => k.trim())
+  .filter(Boolean)
+
+if (API_KEYS.length === 0) {
+  console.error('❌ KHÔNG TÌM THẤY GEMINI_API_KEYS! Hãy thêm vào file .env.local theo định dạng:')
+  console.error('GEMINI_API_KEYS="key1,key2,key3"')
+  process.exit(1)
+}
 
 let currentKeyIndex = 0
 let genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex])
