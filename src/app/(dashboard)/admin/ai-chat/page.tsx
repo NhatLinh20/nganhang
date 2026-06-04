@@ -118,6 +118,7 @@ export default function AiChatPage() {
         if (parsed.aiModel) setAiModel(parsed.aiModel)
         if (parsed.editorContent) setEditorContent(parsed.editorContent)
         if (parsed.quickPrompts) setQuickPrompts(parsed.quickPrompts)
+        if (parsed.customApiKey) setCustomApiKey(parsed.customApiKey)
       }
     } catch (e) {
       console.error('Failed to load chat state', e)
@@ -127,11 +128,11 @@ export default function AiChatPage() {
   // Save to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel, editorContent, quickPrompts }))
+      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel, editorContent, quickPrompts, customApiKey }))
     } catch (e) {
       console.error('Failed to save chat state', e)
     }
-  }, [messages, aiModel, editorContent, quickPrompts])
+  }, [messages, aiModel, editorContent, quickPrompts, customApiKey])
 
   // Editor Actions
   const handleCopy = (text: string) => {
