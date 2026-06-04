@@ -65,17 +65,20 @@ function removeNonIdComments(content: string): string {
 
   return content.replace(
     // Bắt toàn bộ phần còn lại trên cùng dòng sau \begin{ex|bt}
-    // để xử lý mọi dạng: [optional args], % bare comments, %[tags], hỗn hợp
-    /(\\begin\{(?:ex|bt)\})([^\n]*)/g,
-    (_match, beginTag, restOfLine) => {
-      // Tìm tất cả %[...] tags trong toàn bộ phần còn lại của dòng
-      const allTags = [...restOfLine.matchAll(/%\[([^\]]*)\]/g)];
+    // VÀ các dòng comment tiếp theo bắt đầu bằng %[ (dòng metadata)
+    // để xử lý mọi dạng: [optional args], % bare comments, %[tags], hỗn hợp,
+    // và cả trường hợp %[ID] nằm ở dòng kế tiếp
+    /(\\begin\{(?:ex|bt)\})([^\n]*(?:\n[ \t]*%\[[^\n]*)*)/g,
+    (_match, beginTag, capturedBlock) => {
+      // Tìm tất cả %[...] tags trong toàn bộ phần đã bắt (cùng dòng + dòng tiếp theo)
+      const allTags = [...capturedBlock.matchAll(/%\[([^\]]*)\]/g)];
       const validTag = allTags.find(m => ID_PATTERN.test(m[1].trim()));
       // Tái tạo dòng: chỉ giữ \begin{ex}%[ID hợp lệ]
       return validTag ? `${beginTag}%[${validTag[1].trim()}]` : beginTag;
     }
   );
 }
+
 
 // Thêm rule bảo vệ: đảm bảo luôn có \n sau \begin{ex}%[ID]
 // (phòng trường hợp file gốc không có xuống dòng)
