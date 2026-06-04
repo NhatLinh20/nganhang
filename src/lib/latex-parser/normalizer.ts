@@ -64,14 +64,15 @@ function removeNonIdComments(content: string): string {
   const ID_PATTERN = /^\d+[a-zA-Z]\d+[a-zA-Z]\d+-\d+$/;
 
   return content.replace(
-    // Đổi \s* thành [^\S\n]* để không nuốt ký tự xuống dòng
-    /(\\begin\{(?:ex|bt)\})[^\S\n]*((?:%\[[^\]]*\][^\S\n]*)*)/g,
-    (_match, beginTag, comments) => {
-      // Tách tất cả %[...] tags và tìm tag ID hợp lệ đầu tiên
-      const allTags = [...comments.matchAll(/%\[([^\]]*)\]/g)];
+    // Bắt toàn bộ phần còn lại trên cùng dòng sau \begin{ex|bt}
+    // để xử lý mọi dạng: [optional args], % bare comments, %[tags], hỗn hợp
+    /(\\begin\{(?:ex|bt)\})([^\n]*)/g,
+    (_match, beginTag, restOfLine) => {
+      // Tìm tất cả %[...] tags trong toàn bộ phần còn lại của dòng
+      const allTags = [...restOfLine.matchAll(/%\[([^\]]*)\]/g)];
       const validTag = allTags.find(m => ID_PATTERN.test(m[1].trim()));
       // Tái tạo dòng: chỉ giữ \begin{ex}%[ID hợp lệ]
-      return validTag ? `${beginTag}${validTag[0]}` : beginTag;
+      return validTag ? `${beginTag}%[${validTag[1].trim()}]` : beginTag;
     }
   );
 }
