@@ -4,6 +4,8 @@ import Header from '@/components/layout/Header'
 import styles from './ai-chat.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 import { normalizeQuestion, formatLatexIndentation } from '@/lib/latex-parser/normalizer'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { SYSTEM_INSTRUCTION } from '@/lib/ai-system-instruction'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -388,54 +390,90 @@ export default function AiChatPage() {
     }
 
     try {
-      // Build messages for API (Gemini format)
-      const apiMessages = updatedMessages.map((msg) => ({
-        role: msg.role,
-        parts: [{ text: msg.content || '(ảnh đính kèm)' }],
-      }))
-
-      // Build FormData
-      const formData = new FormData()
-      formData.append('messages', JSON.stringify(apiMessages))
-      formData.append('model', aiModel)
-      if (customApiKey.trim()) {
-        formData.append('custom_api_key', customApiKey.trim())
-      }
-      if (userMessage.attachments && userMessage.attachments.length > 0) {
-        userMessage.attachments.forEach((att, i) => {
-          const arr = att.dataUrl.split(',')
-          const mime = arr[0].match(/:(.*?);/)?.[1] || att.type || 'image/png'
-          const bstr = atob(arr[1])
-          let n = bstr.length
-          const u8arr = new Uint8Array(n)
-          while (n--) u8arr[n] = bstr.charCodeAt(n)
-          const imgFile = new File([u8arr], att.name || `file_${i}`, { type: mime })
-          formData.append('files', imgFile)
-        })
-      }
-
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: 'Lỗi không xác định' }))
-        throw new Error(errData.error || `HTTP ${res.status}`)
-      }
-
-      // Read streaming response
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder()
       let fullText = ''
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-          fullText += chunk
-          setStreamingText(fullText)
+      if (customApiKey.trim()) {
+        // ═══ CLIENT-SIDE: Gọi thẳng Google API từ Trình duyệt ═══
+        // Không đi qua Server Vercel → KHÔNG bị giới hạn 60 giây
+        const genAI = new GoogleGenerativeAI(customApiKey.trim())
+        const genModel = genAI.getGenerativeModel({
+          model: aiModel,
+          systemInstruction: SYSTEM_INSTRUCTION,
+        })
+
+        // Build history (tất cả tin nhắn trừ tin cuối)
+        const history = updatedMessages.slice(0, -1).map((msg) => ({
+          role: msg.role as 'user' | 'model',
+          parts: [{ text: msg.content || '(ảnh đính kèm)' }],
+        }))
+
+        // Build parts cho tin nhắn cuối (có thể kèm ảnh/PDF)
+        const lastParts: any[] = []
+        if (userMessage.attachments && userMessage.attachments.length > 0) {
+          for (const att of userMessage.attachments) {
+            const arr = att.dataUrl.split(',')
+            const mime = arr[0].match(/:(.*?);/)?.[1] || att.type || 'image/png'
+            lastParts.push({
+              inlineData: { data: arr[1], mimeType: mime },
+            })
+          }
+        }
+        lastParts.push({ text: userMessage.content || '(ảnh đính kèm)' })
+
+        const chat = genModel.startChat({ history })
+        const result = await chat.sendMessageStream(lastParts)
+
+        for await (const chunk of result.stream) {
+          const text = chunk.text()
+          if (text) {
+            fullText += text
+            setStreamingText(fullText)
+          }
+        }
+      } else {
+        // ═══ SERVER-SIDE: Gọi qua Vercel API route (giới hạn 60s) ═══
+        const apiMessages = updatedMessages.map((msg) => ({
+          role: msg.role,
+          parts: [{ text: msg.content || '(ảnh đính kèm)' }],
+        }))
+
+        const formData = new FormData()
+        formData.append('messages', JSON.stringify(apiMessages))
+        formData.append('model', aiModel)
+        if (userMessage.attachments && userMessage.attachments.length > 0) {
+          userMessage.attachments.forEach((att, i) => {
+            const arr = att.dataUrl.split(',')
+            const mime = arr[0].match(/:(.*?);/)?.[1] || att.type || 'image/png'
+            const bstr = atob(arr[1])
+            let n = bstr.length
+            const u8arr = new Uint8Array(n)
+            while (n--) u8arr[n] = bstr.charCodeAt(n)
+            const imgFile = new File([u8arr], att.name || `file_${i}`, { type: mime })
+            formData.append('files', imgFile)
+          })
+        }
+
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: 'Lỗi không xác định' }))
+          throw new Error(errData.error || `HTTP ${res.status}`)
+        }
+
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            const chunk = decoder.decode(value, { stream: true })
+            fullText += chunk
+            setStreamingText(fullText)
+          }
         }
       }
 
