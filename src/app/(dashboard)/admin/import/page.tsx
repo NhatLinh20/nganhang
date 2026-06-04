@@ -273,27 +273,60 @@ export default function ImportPage() {
     setImporting(true)
 
     try {
-      // Gửi JSON đã parse lên server
-      const res = await fetch('/api/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: parsedQuestions }),
-      })
+      // Chia thành batch nhỏ (200 câu/batch) để tránh lỗi Request Entity Too Large
+      const BATCH_SIZE = 200
+      let totalSuccess = 0
+      let totalSkipped = 0
 
-      const json = await res.json()
+      for (let i = 0; i < parsedQuestions.length; i += BATCH_SIZE) {
+        const batch = parsedQuestions.slice(i, i + BATCH_SIZE)
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1
+        const totalBatches = Math.ceil(parsedQuestions.length / BATCH_SIZE)
 
-      if (!res.ok) {
+        // Cập nhật tiến trình
         setImportResult({
           success: false,
-          message: `❌ Lỗi: ${json.error || 'Unknown'}`,
+          message: `⏳ Đang import batch ${batchNum}/${totalBatches} (${i + 1}–${Math.min(i + BATCH_SIZE, parsedQuestions.length)} / ${parsedQuestions.length} câu)...`,
         })
-      } else {
+
+        const res = await fetch('/api/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questions: batch }),
+        })
+
+        // Xử lý response không phải JSON (VD: 413 Request Entity Too Large)
+        let json
+        try {
+          json = await res.json()
+        } catch {
+          const text = await res.text().catch(() => `HTTP ${res.status}`)
+          setImportResult({
+            success: false,
+            message: `❌ Lỗi batch ${batchNum}: Server trả về response không hợp lệ (${text.slice(0, 100)})`,
+          })
+          setImporting(false)
+          return
+        }
+
+        if (!res.ok) {
+          setImportResult({
+            success: false,
+            message: `❌ Lỗi batch ${batchNum}: ${json.error || 'Unknown'}`,
+          })
+          setImporting(false)
+          return
+        }
+
         const r = json.data?.result
-        setImportResult({
-          success: true,
-          message: `✅ Import thành công ${r?.success || 0} câu hỏi mới${r?.skipped > 0 ? ` (bỏ qua ${r.skipped} câu trùng lặp)` : ''}.`,
-        })
+        totalSuccess += r?.success || 0
+        totalSkipped += r?.skipped || 0
       }
+
+      setImportResult({
+        success: true,
+        message: `✅ Import thành công ${totalSuccess} câu hỏi mới${totalSkipped > 0 ? ` (bỏ qua ${totalSkipped} câu trùng lặp)` : ''}.`,
+      })
     } catch (err) {
       setImportResult({
         success: false,
@@ -302,6 +335,7 @@ export default function ImportPage() {
     }
     setImporting(false)
   }
+
 
   const canAnalyze = inputMode === 'code' ? codeInput.trim().length > 0 : files.length > 0
 
@@ -654,10 +688,10 @@ export default function ImportPage() {
 
         {/* ═══ STEP 4: KẾT QUẢ IMPORT ═══ */}
         {importResult && (
-          <div className={`${styles.importResult} ${importResult.success ? styles.importResultSuccess : styles.importResultError}`}>
-            <div className={styles.resultIcon}>{importResult.success ? '🎉' : '❌'}</div>
+          <div className={`${styles.importResult} ${importResult.success ? styles.importResultSuccess : importing ? '' : styles.importResultError}`}>
+            <div className={styles.resultIcon}>{importResult.success ? '🎉' : importing ? '⏳' : '❌'}</div>
             <div className={styles.resultTitle}>
-              {importResult.success ? 'Import hoàn tất!' : 'Import thất bại'}
+              {importResult.success ? 'Import hoàn tất!' : importing ? 'Đang import...' : 'Import thất bại'}
             </div>
             <div className={styles.resultDetail}>{importResult.message}</div>
             {importResult.success && (
