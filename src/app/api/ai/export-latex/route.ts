@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const standaloneTikz = remainingContent.match(centerTikzRegex) || []
 
     // 3. Generate data/content.tex
-    let contentTex = `\\begin{name}\n\t{SỞ GDĐT ...}\n\t{TRƯỜNG THPT ...}\n\t{Đề chính thức}\n\t{\\,}\n\t{ĐỀ KIỂM TRA}\n\t{Môn: TOÁN}\n\t{Thời gian làm bài: 90 phút}\n\t{(Không kể thời gian phát đề)}\n\\end{name}\n\n`
+    let contentTex = `\\begin{name}\n\t{SỞ GDĐT ...}\n\t{TRƯỜNG THPT ...}\n\t{Đề chính thức}\n\t{\\textit{(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)}}\n\t{ĐỀ KIỂM TRA}\n\t{Môn: TOÁN}\n\t{Thời gian làm bài: 90 phút}\n\t{(Không kể thời gian phát đề)}\n\\end{name}\n\n`
     
     contentTex += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n\n`
 
@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
 
     contentTex += `\\Closesolutionfile{ansbook}\n\n`
     
+    contentTex += `\\zlabel{\\made-lastpage}\n\n`
     contentTex += `\\begin{center}\n\t\\textbf{--------------- HẾT ---------------}\n\\end{center}\n\n`
     contentTex += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
 

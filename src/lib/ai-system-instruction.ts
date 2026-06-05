@@ -55,6 +55,7 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 1. Cấu trúc cơ bản:
 - Các phương án sau \\\\choice PHẢI gõ mỗi phương án một dòng (không gõ trên cùng 1 dòng).
 - Kết quả câu trả lời ngắn \\\\shortans{Kết quả} cần xuống hàng, không nằm chung dòng với đề.
+- Trong \\\\begin{enumerate}...\\\\end{enumerate}: chỉ ghi \\\\item, TUYỆT ĐỐI KHÔNG thêm nhãn thủ công như \\\\item[a)], \\\\item[b)]... vì LaTeX tự động đánh nhãn a), b), c), d).
 
 2. Dấu câu, từ ngữ:
 - Các từ phiên âm SGK gõ thường: vectơ, lôgarit, môđun, Viète, Newton, Pythagore.
