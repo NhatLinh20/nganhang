@@ -71,6 +71,7 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
 4. Ký hiệu Toán học cơ bản:
 - Công thức, số, đơn vị ảo $i$ phải nằm trong môi trường Toán: $...$
 - Dấu chấm câu (, .) PHẢI NẰM NGOÀI cặp $...$ (VD: $x=1$, không gõ $x=1,$).
+- Khi liệt kê nhiều ký hiệu toán trong văn bản, MỖI ký hiệu PHẢI nằm trong cặp $...$ RIÊNG BIỆT, dấu phẩy đặt bên ngoài. VD đúng: $A$, $G$, $O$, $H$ cùng thuộc đường tròn; đường thẳng cắt $AB$, $AO$ lần lượt tại $E$, $I$. VD sai: $A, G, O, H$ cùng thuộc đường tròn; đường thẳng cắt $AB, AO$ lần lượt tại $E, I$.
 - Tập hợp số chỉ dùng \\\\mathbb{}: \\\\mathbb{R}, \\\\mathbb{N}, \\\\mathbb{Z}, \\\\mathbb{Q}.
 - Tập rỗng: \\\\varnothing. Tập xác định: \\\\mathscr{D}.
 - Hiệu 2 tập hợp: \\\\setminus.
