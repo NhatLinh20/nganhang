@@ -870,6 +870,11 @@
     justify-content: center;
   }
 
+  .examPage {
+    margin-top: -60px; /* Offset the 60px padding-top from .main-content */
+    height: 100vh;
+  }
+
   /* Exam view: tab mode */
   .examBody {
     flex-direction: column;
