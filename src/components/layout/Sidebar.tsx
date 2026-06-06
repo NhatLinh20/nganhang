@@ -1,6 +1,7 @@
 // src/components/layout/Sidebar.tsx
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logout } from '@/app/actions/auth'
@@ -42,6 +43,12 @@ const navItems = [
 
 export default function Sidebar({ userRole, userEmail }: SidebarProps) {
   const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(false)
+
+  // Close sidebar on path change (for mobile)
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
 
   // Lọc menu theo role
   const visibleNavItems = navItems.map(section => {
@@ -94,8 +101,29 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
   }
 
   return (
-    <aside className={styles.sidebar}>
-      {/* Logo */}
+    <>
+      {/* Mobile Header (Only visible on small screens) */}
+      <div className={styles.mobileHeader}>
+        <div className={styles.mobileHeaderLogo}>
+          <div className={styles.mobileLogoIcon}>📐</div>
+          <span className={styles.mobileLogoTitle}>Ngân Hàng Toán</span>
+        </div>
+        <button 
+          className={styles.mobileToggle} 
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label="Toggle menu"
+        >
+          {isOpen ? '✕' : '☰'}
+        </button>
+      </div>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div className={styles.overlay} onClick={() => setIsOpen(false)} />
+      )}
+
+      <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
+        {/* Logo */}
       <div className={styles.logo}>
         <div className={styles.logoIcon}>📐</div>
         <div className={styles.logoText}>
@@ -145,5 +173,6 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
         </form>
       </div>
     </aside>
+    </>
   )
 }
