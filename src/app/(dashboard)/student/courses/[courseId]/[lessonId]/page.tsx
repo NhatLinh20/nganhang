@@ -82,7 +82,6 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
   const [lesson, setLesson] = useState<LessonDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
-  const [isTheaterMode, setIsTheaterMode] = useState(false)
 
   // Fetch course data ONLY when courseId changes
   useEffect(() => {
@@ -158,7 +157,7 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
         <div className={styles.breadcrumb}>
           <div className="skeleton" style={{ width: 200, height: 24, borderRadius: 12 }}></div>
         </div>
-        <div className={`${styles.mainLayout} ${isTheaterMode ? styles.theaterMode : ''}`}>
+        <div className={styles.mainLayout}>
           <div className="skeleton" style={{ height: 500, borderRadius: 16 }}></div>
           <div className={styles.sidebar}>
             {/* Show cached sidebar during loading! */}
@@ -190,18 +189,10 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
       </div>
 
       {/* Main Layout */}
-      <div className={`${styles.mainLayout} ${isTheaterMode ? styles.theaterMode : ''}`}>
+      <div className={styles.mainLayout}>
         {/* ─── Left: Video + Content ─── */}
         <div className={styles.videoSection}>
-          <div className={styles.lessonHeader}>
-            <h1 className={styles.lessonTitle}>{lesson.lesson_name}</h1>
-            <button 
-              className={styles.theaterToggleBtn}
-              onClick={() => setIsTheaterMode(!isTheaterMode)}
-            >
-              {isTheaterMode ? 'Mặc định' : 'Góc rộng'}
-            </button>
-          </div>
+          <h1 className={styles.lessonTitle}>{lesson.lesson_name}</h1>
 
           {/* Video */}
           <div className={styles.videoWrapper}>
