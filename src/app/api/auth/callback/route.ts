@@ -70,11 +70,11 @@ export async function GET(request: NextRequest) {
       .eq('id', data.user.id)
       .single()
 
-    if (!profile) {
-      // User mới từ Google OAuth → cần chọn vai trò
+    if (!profile || !data.user.user_metadata?.role) {
+      // User mới từ Google OAuth (chưa có role trong metadata) → cần chọn vai trò
       redirectPath = '/select-role'
     } else if ((profile.role === 'teacher' || profile.role === 'student') && !profile.is_approved) {
-      // User cũ chưa được duyệt
+      // User cũ (đã có role) nhưng chưa được duyệt
       redirectPath = '/pending'
     }
   }
