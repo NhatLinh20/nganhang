@@ -84,33 +84,50 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
   const [isTheaterMode, setIsTheaterMode] = useState(false)
 
+  // Fetch course data ONLY when courseId changes
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-      try {
-        // Fetch course + chapters
-        const [courseData, lessonData] = await Promise.all([
-          getCourseWithContent(courseId),
-          getLessonDetail(lessonId),
-        ])
-
-        setCourse(courseData.course)
-        setChapters(courseData.chapters)
-        setLesson(lessonData)
-
-        // Auto-expand the chapter containing this lesson
-        if (lessonData?.chapter_id) {
-          setExpandedChapters(new Set([lessonData.chapter_id]))
-        }
-      } catch (err) {
-        console.error('Error fetching lesson data:', err)
-      } finally {
-        setLoading(false)
+    let isMounted = true
+    async function fetchCourse() {
+      const data = await getCourseWithContent(courseId)
+      if (isMounted) {
+        setCourse(data.course)
+        setChapters(data.chapters)
       }
     }
+    fetchCourse()
+    return () => { isMounted = false }
+  }, [courseId])
 
-    fetchData()
-  }, [courseId, lessonId])
+  // Fetch lesson data when lessonId changes
+  useEffect(() => {
+    let isMounted = true
+    async function fetchLesson() {
+      setLoading(true)
+      try {
+        const data = await getLessonDetail(lessonId)
+        if (isMounted) {
+          setLesson(data)
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+    fetchLesson()
+    return () => { isMounted = false }
+  }, [lessonId])
+
+  // Expand chapter when lesson is loaded
+  useEffect(() => {
+    if (lesson?.chapter_id) {
+      setExpandedChapters(prev => {
+        const next = new Set(prev)
+        next.add(lesson.chapter_id)
+        return next
+      })
+    }
+  }, [lesson?.chapter_id])
 
   const toggleChapter = (chapterId: string) => {
     setExpandedChapters(prev => {
@@ -127,27 +144,29 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
   const totalLessons = chapters.reduce((sum, ch) => sum + ch.lessons.length, 0)
   const embedUrl = lesson?.video_url ? getYouTubeEmbedUrl(lesson.video_url) : null
 
-  if (loading) {
+  if (!course || !chapters) {
     return (
       <div className={styles.container}>
-        <div className={styles.notFound}>
-          <div className={styles.notFoundIcon}>⏳</div>
-          <h2 className={styles.notFoundTitle}>Đang tải bài học...</h2>
-        </div>
+        <div className="skeleton" style={{ height: 400, borderRadius: 16 }}></div>
       </div>
     )
   }
 
-  if (!lesson || !course) {
+  if (loading || !lesson) {
     return (
       <div className={styles.container}>
-        <div className={styles.notFound}>
-          <div className={styles.notFoundIcon}>😕</div>
-          <h2 className={styles.notFoundTitle}>Không tìm thấy bài học</h2>
-          <p className={styles.notFoundDesc}>Bài học này không tồn tại hoặc đã bị xóa.</p>
-          <Link href="/student/courses" className={styles.notFoundBtn}>
-            ← Quay lại danh sách
-          </Link>
+        <div className={styles.breadcrumb}>
+          <div className="skeleton" style={{ width: 200, height: 24, borderRadius: 12 }}></div>
+        </div>
+        <div className={`${styles.mainLayout} ${isTheaterMode ? styles.theaterMode : ''}`}>
+          <div className="skeleton" style={{ height: 500, borderRadius: 16 }}></div>
+          <div className={styles.sidebar}>
+            {/* Show cached sidebar during loading! */}
+            <div className={styles.sidebarHeader}>
+              <span className={styles.sidebarTitle}>Nội dung khóa học</span>
+            </div>
+            <div className="skeleton" style={{ height: 400, borderRadius: 16 }}></div>
+          </div>
         </div>
       </div>
     )
@@ -273,25 +292,30 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
                   <div className={styles.lessonList}>
                     {ch.lessons.map((l) => {
                       const isActive = l.id === lessonId
-
                       return (
-                        <Link
-                          key={l.id}
-                          href={`/student/courses/${courseId}/${l.id}`}
-                          className={`${styles.lessonItem} ${isActive ? styles.lessonItemActive : ''}`}
-                        >
-                          <span className={styles.lessonIcon}>
-                            {isActive ? '▶' : '○'}
-                          </span>
-                          <span className={styles.lessonName}>
-                            Bài {l.lesson_number}: {l.lesson_name}
-                          </span>
-                          {l.duration_minutes > 0 && (
-                            <span className={styles.lessonDuration}>
-                              {l.duration_minutes}p
-                            </span>
+                        <div key={l.id}>
+                          {isActive ? (
+                            <div className={`${styles.lessonItem} ${styles.lessonItemActive}`}>
+                              <div className={styles.lessonIcon}>▶</div>
+                              <span className={styles.lessonName}>{l.lesson_name}</span>
+                              {l.duration_minutes > 0 && (
+                                <span className={styles.lessonDuration}>{l.duration_minutes} phút</span>
+                              )}
+                            </div>
+                          ) : (
+                            <Link
+                              href={`/student/courses/${courseId}/${l.id}`}
+                              className={styles.lessonItem}
+                              prefetch={true}
+                            >
+                              <div className={styles.lessonIcon}>○</div>
+                              <span className={styles.lessonName}>{l.lesson_name}</span>
+                              {l.duration_minutes > 0 && (
+                                <span className={styles.lessonDuration}>{l.duration_minutes} phút</span>
+                              )}
+                            </Link>
                           )}
-                        </Link>
+                        </div>
                       )
                     })}
                   </div>

@@ -70,7 +70,13 @@ export async function getCourses(includeUnpublished = false): Promise<Course[]> 
 
   let query = supabase
     .from('courses')
-    .select('*')
+    .select(`
+      *,
+      course_chapters (
+        id,
+        course_lessons (id)
+      )
+    `)
     .order('sort_order', { ascending: true })
 
   if (!includeUnpublished) {
@@ -84,32 +90,19 @@ export async function getCourses(includeUnpublished = false): Promise<Course[]> 
     return []
   }
 
-  // Count lessons per course
   const courses: Course[] = []
   for (const course of data || []) {
-    const { count: chapterCount } = await supabase
-      .from('course_chapters')
-      .select('*', { count: 'exact', head: true })
-      .eq('course_id', course.id)
-
-    const { data: chapters } = await supabase
-      .from('course_chapters')
-      .select('id')
-      .eq('course_id', course.id)
-
+    const chapters = course.course_chapters || []
     let lessonCount = 0
-    if (chapters && chapters.length > 0) {
-      const chapterIds = chapters.map((c: any) => c.id as string)
-      const { count } = await supabase
-        .from('course_lessons')
-        .select('*', { count: 'exact', head: true })
-        .in('chapter_id', chapterIds)
-      lessonCount = count || 0
+    for (const ch of chapters) {
+      lessonCount += (ch.course_lessons || []).length
     }
+    
+    const { course_chapters, ...rest } = course
 
     courses.push({
-      ...course,
-      total_chapters: chapterCount || 0,
+      ...rest,
+      total_chapters: chapters.length,
       total_lessons: lessonCount,
     })
   }
@@ -137,24 +130,26 @@ export async function getCourseWithContent(courseId: string): Promise<{
     return { course: null, chapters: [] }
   }
 
-  // Fetch chapters
+  // Fetch chapters and all lessons in one query
   const { data: chaptersRaw } = await supabase
     .from('course_chapters')
-    .select('*')
+    .select(`
+      *,
+      course_lessons (*)
+    `)
     .eq('course_id', courseId)
     .order('sort_order', { ascending: true })
 
   const chapters: CourseChapter[] = []
   for (const ch of chaptersRaw || []) {
-    const { data: lessons } = await supabase
-      .from('course_lessons')
-      .select('id, chapter_id, lesson_number, lesson_name, video_url, duration_minutes, description, pdf_files, sort_order')
-      .eq('chapter_id', ch.id)
-      .order('sort_order', { ascending: true })
+    const rawLessons = ch.course_lessons || []
+    rawLessons.sort((a: any, b: any) => a.sort_order - b.sort_order)
+    
+    const { course_lessons, ...restCh } = ch
 
     chapters.push({
-      ...ch,
-      lessons: (lessons || []).map((l: any) => {
+      ...restCh,
+      lessons: rawLessons.map((l: any) => {
         let parsed = l.pdf_files || []
         if (typeof parsed === 'string') {
           try { parsed = JSON.parse(parsed) } catch(e) { parsed = [] }
