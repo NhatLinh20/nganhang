@@ -40,6 +40,8 @@ export interface CourseLessonSummary {
   lesson_name: string
   video_url: string
   duration_minutes: number
+  description?: string
+  pdf_files?: any[]
   sort_order: number
 }
 
