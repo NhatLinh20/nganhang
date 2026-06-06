@@ -2,9 +2,8 @@
 // Trang xem bài học — Video (70%) + Sidebar chương/bài (30%)
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import { getCourseWithContent, getLessonDetail } from '@/app/actions/course-queries'
 import styles from '../course-detail.module.css'
 
@@ -75,10 +74,8 @@ function getYouTubeEmbedUrl(url: string): string | null {
   return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`
 }
 
-export default function LessonPage() {
-  const params = useParams()
-  const courseId = params.courseId as string
-  const lessonId = params.lessonId as string
+export default function LessonPage({ params }: { params: Promise<{ courseId: string; lessonId: string }> }) {
+  const { courseId, lessonId } = use(params)
 
   const [course, setCourse] = useState<CourseData | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
