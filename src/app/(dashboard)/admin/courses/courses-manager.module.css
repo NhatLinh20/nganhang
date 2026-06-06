@@ -1,0 +1,677 @@
+/* src/app/(dashboard)/admin/courses/courses-manager.module.css */
+/* CSS cho trang quản lý khóa học (Admin) */
+
+/* ─── Page Header ─── */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-gray-900);
+}
+
+.pageSubtitle {
+  font-size: 14px;
+  color: var(--color-gray-500);
+  margin-top: 4px;
+}
+
+.createBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--color-primary-600);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.createBtn:hover {
+  background: var(--color-primary-700);
+}
+
+/* ─── Table ─── */
+.tableWrapper {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-gray-500);
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--color-gray-700);
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: var(--color-gray-50);
+}
+
+.courseNameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.courseName {
+  font-weight: 600;
+  color: var(--color-gray-900);
+}
+
+.courseSubtext {
+  font-size: 12px;
+  color: var(--color-gray-400);
+}
+
+.gradeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusPublished {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.statusDraft {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionBtn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--color-gray-200);
+  background: white;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-300);
+}
+
+.actionBtnDanger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.toggleBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--color-gray-200);
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggleBtn:hover {
+  background: var(--color-gray-50);
+}
+
+/* ─── Empty State ─── */
+.emptyState {
+  text-align: center;
+  padding: var(--space-16) var(--space-8);
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+}
+
+.emptyText {
+  font-size: 16px;
+  color: var(--color-gray-500);
+}
+
+/* ─── Delete Modal ─── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: var(--space-8);
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modalIcon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: var(--space-2);
+}
+
+.modalDesc {
+  font-size: 14px;
+  color: var(--color-gray-500);
+  margin-bottom: var(--space-6);
+  line-height: 1.6;
+}
+
+.modalActions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.modalCancelBtn {
+  padding: 10px 20px;
+  border: 1px solid var(--color-gray-200);
+  background: white;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalCancelBtn:hover {
+  background: var(--color-gray-50);
+}
+
+.modalDeleteBtn {
+  padding: 10px 20px;
+  border: none;
+  background: #dc2626;
+  color: white;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalDeleteBtn:hover {
+  background: #b91c1c;
+}
+
+/* ═══════════════════════════════════════════════════
+   COURSE FORM (Create / Edit)
+   ═══════════════════════════════════════════════════ */
+
+.formContainer {
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.formHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.formBackBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--color-gray-500);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.formBackBtn:hover {
+  color: var(--color-primary-600);
+}
+
+.formTitle {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-gray-900);
+}
+
+.formSaveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: var(--color-primary-600);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.formSaveBtn:hover {
+  background: var(--color-primary-700);
+}
+
+.formSaveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Form Layout ─── */
+.formLayout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* ─── Sidebar Form ─── */
+.formSidebar {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 12px;
+  padding: var(--space-6);
+}
+
+.formSidebarTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: var(--space-5);
+}
+
+.formGroup {
+  margin-bottom: var(--space-4);
+}
+
+.formLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-gray-600);
+  margin-bottom: 6px;
+}
+
+.formInput {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--color-gray-800);
+  background: white;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--color-primary-400);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.formTextarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.formSelect {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23999' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+/* ─── Content Area ─── */
+.formContent {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.chapterSelector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
+  flex-wrap: wrap;
+}
+
+.chapterTab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--color-gray-200);
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.chapterTab:hover {
+  border-color: var(--color-primary-300);
+}
+
+.chapterTabActive {
+  background: var(--color-primary-600);
+  color: white;
+  border-color: var(--color-primary-600);
+}
+
+.addChapterBtn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px dashed var(--color-gray-300);
+  background: white;
+  cursor: pointer;
+  color: var(--color-gray-500);
+  transition: all 0.2s;
+}
+
+.addChapterBtn:hover {
+  border-color: var(--color-primary-400);
+  color: var(--color-primary-600);
+}
+
+.deleteChapterBtn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #dc2626;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.2s;
+}
+
+.deleteChapterBtn:hover {
+  background: #fee2e2;
+}
+
+/* ─── Chapter Name Input ─── */
+.chapterNameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.chapterNameLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chapterNameInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-gray-800);
+  font-family: inherit;
+}
+
+.chapterNameInput:focus {
+  outline: none;
+  border-color: var(--color-primary-400);
+}
+
+/* ─── Lessons Table ─── */
+.lessonsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lessonsTable th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-gray-400);
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.lessonsTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-gray-50);
+  vertical-align: top;
+}
+
+.lessonInput {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.lessonInput:focus {
+  outline: none;
+  border-color: var(--color-primary-400);
+}
+
+.lessonInputSmall {
+  width: 60px;
+}
+
+.addLessonBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed var(--color-gray-300);
+  background: white;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-gray-500);
+  cursor: pointer;
+  margin: 12px 12px;
+  transition: all 0.2s;
+}
+
+.addLessonBtn:hover {
+  border-color: var(--color-primary-400);
+  color: var(--color-primary-600);
+}
+
+.deleteLessonBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--color-gray-200);
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-gray-400);
+  transition: all 0.2s;
+}
+
+.deleteLessonBtn:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+/* ─── PDF Files in form ─── */
+.pdfFormList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pdfFormRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pdfFormInput {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.pdfFormInput:focus {
+  outline: none;
+  border-color: var(--color-primary-400);
+}
+
+.addPdfBtn {
+  font-size: 12px;
+  color: var(--color-primary-600);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.addPdfBtn:hover {
+  text-decoration: underline;
+}
+
+.removePdfBtn {
+  font-size: 14px;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 2px;
+}
+
+.removePdfBtn:hover {
+  color: #dc2626;
+}
+
+/* ─── Toast ─── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  z-index: 1000;
+  animation: slideUp 0.3s ease;
+}
+
+.toastSuccess { background: #16a34a; }
+.toastError { background: #dc2626; }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .formLayout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -19,6 +19,7 @@ const navItems = [
       { href: '/admin/import', icon: '📥', label: 'Import file .tex' },
       { href: '/admin/stats', icon: '📊', label: 'Thống kê' },
       { href: '/admin/users', icon: '👥', label: 'Quản lý người dùng' },
+      { href: '/admin/courses', icon: '📚', label: 'Quản lý khóa học' },
     ],
   },
   {
