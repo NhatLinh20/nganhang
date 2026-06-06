@@ -21,6 +21,7 @@ const navItems = [
       { href: '/admin/stats', icon: '📊', label: 'Thống kê' },
       { href: '/admin/users', icon: '👥', label: 'Quản lý người dùng' },
       { href: '/admin/courses', icon: '📚', label: 'Quản lý khóa học' },
+      { href: '/admin/practice-exams', icon: '🏋️', label: 'Đề luyện tập' },
     ],
   },
   {
@@ -37,6 +38,7 @@ const navItems = [
     section: 'Học tập',
     items: [
       { href: '/student/courses', icon: '📖', label: 'Khóa học' },
+      { href: '/student/practice', icon: '📝', label: 'Luyện thi' },
     ],
   },
 ]
