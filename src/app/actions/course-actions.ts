@@ -256,7 +256,7 @@ export async function saveCourseContent(
           video_url: lesson.video_url || '',
           duration_minutes: lesson.duration_minutes || 0,
           description: lesson.description || '',
-          pdf_files: JSON.stringify(lesson.pdf_files || []),
+          pdf_files: lesson.pdf_files || [],
           sort_order: lesson.sort_order,
         }
 

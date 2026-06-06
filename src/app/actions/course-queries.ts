@@ -154,7 +154,14 @@ export async function getCourseWithContent(courseId: string): Promise<{
 
     chapters.push({
       ...ch,
-      lessons: lessons || [],
+      lessons: (lessons || []).map((l: any) => {
+        let parsed = l.pdf_files || []
+        if (typeof parsed === 'string') {
+          try { parsed = JSON.parse(parsed) } catch(e) { parsed = [] }
+        }
+        if (!Array.isArray(parsed)) parsed = []
+        return { ...l, pdf_files: parsed }
+      }),
     })
   }
 
@@ -201,7 +208,14 @@ export async function getLessonDetail(lessonId: string): Promise<CourseLessonDet
 
   return {
     ...lesson,
-    pdf_files: lesson.pdf_files || [],
+    pdf_files: (function() {
+      let parsed = lesson.pdf_files || []
+      if (typeof parsed === 'string') {
+        try { parsed = JSON.parse(parsed) } catch(e) { parsed = [] }
+      }
+      if (!Array.isArray(parsed)) parsed = []
+      return parsed
+    })(),
     chapter_name: chapter?.chapter_name || '',
     chapter_number: chapter?.chapter_number || 0,
     course_id: chapter?.course_id || '',
