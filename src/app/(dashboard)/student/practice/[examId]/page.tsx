@@ -299,14 +299,11 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
         {/* Answer Panel */}
         <div className={`${styles.answerPanel} ${mobileTab === 'answers' ? styles.answerPanelVisible : ''}`}>
           <div className={styles.answerPanelHeader}>
-            <div className={styles.answerPanelTitle}>
-              {exam.title}
-              {submitted && (
-                <span style={{ fontSize: '14px', color: '#16a34a', marginLeft: '8px' }}>
-                  ✅ Đã nộp
-                </span>
-              )}
-            </div>
+            {submitted && (
+              <div style={{ marginBottom: '12px', fontSize: '14px', color: '#16a34a', fontWeight: 'bold' }}>
+                ✅ Đã nộp
+              </div>
+            )}
 
             {/* Question Navigator */}
             <div className={styles.questionNav}>
