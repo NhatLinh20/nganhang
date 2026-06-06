@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import { getCourseWithContent, getLessonDetail } from '@/app/actions/course-queries'
 import styles from '../course-detail.module.css'
 
 interface PdfFile {
@@ -90,7 +91,6 @@ export default function LessonPage() {
       setLoading(true)
       try {
         // Fetch course + chapters
-        const { getCourseWithContent, getLessonDetail } = await import('@/app/actions/course-queries')
         const [courseData, lessonData] = await Promise.all([
           getCourseWithContent(courseId),
           getLessonDetail(lessonId),
