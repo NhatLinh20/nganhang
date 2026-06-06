@@ -82,6 +82,7 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
   const [lesson, setLesson] = useState<LessonDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
+  const [isTheaterMode, setIsTheaterMode] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -170,10 +171,18 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
       </div>
 
       {/* Main Layout */}
-      <div className={styles.mainLayout}>
+      <div className={`${styles.mainLayout} ${isTheaterMode ? styles.theaterMode : ''}`}>
         {/* ─── Left: Video + Content ─── */}
         <div className={styles.videoSection}>
-          <h1 className={styles.lessonTitle}>{lesson.lesson_name}</h1>
+          <div className={styles.lessonHeader}>
+            <h1 className={styles.lessonTitle}>{lesson.lesson_name}</h1>
+            <button 
+              className={styles.theaterToggleBtn}
+              onClick={() => setIsTheaterMode(!isTheaterMode)}
+            >
+              {isTheaterMode ? 'Mặc định' : 'Góc rộng'}
+            </button>
+          </div>
 
           {/* Video */}
           <div className={styles.videoWrapper}>
