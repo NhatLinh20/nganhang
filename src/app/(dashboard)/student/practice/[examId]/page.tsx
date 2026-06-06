@@ -506,9 +506,19 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
                     {r.type === 'multiple_choice' && (
                       <>Chọn: {(r.student_answer as string) || '—'} | Đáp án: {r.correct_answer as string}</>
                     )}
-                    {r.type === 'true_false' && (
-                      <>Đ/S: {r.score_earned > 0 ? `+${r.score_earned}đ` : '0đ'}</>
-                    )}
+                    {r.type === 'true_false' && (() => {
+                      const studentTF = (r.student_answer as Record<string, string>) || {}
+                      const correctArr = (r.correct_answer as string[]) || []
+                      const total = correctArr.length || 4
+                      let correctCount = 0
+                      for (let i = 0; i < total; i++) {
+                        const key = String.fromCharCode(97 + i)
+                        const sAns = studentTF[key]?.trim().toUpperCase()
+                        const cAns = correctArr[i]?.trim().toUpperCase()
+                        if (sAns && cAns && sAns === cAns) correctCount++
+                      }
+                      return <>{correctCount}/{total} ý đúng</>
+                    })()}
                     {r.type === 'short_answer' && (
                       <>Trả lời: {(r.student_answer as string) || '—'} | Đáp án: {r.correct_answer as string}</>
                     )}
