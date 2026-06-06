@@ -47,6 +47,9 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
+  // Hide mobile header on exam taking page
+  const isExamPage = pathname?.match(/^\/student\/practice\/[a-zA-Z0-9-]+$/)
+
   // Close sidebar on path change (for mobile)
   useEffect(() => {
     setIsOpen(false)
@@ -105,19 +108,21 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
   return (
     <>
       {/* Mobile Header (Only visible on small screens) */}
-      <div className={styles.mobileHeader}>
-        <div className={styles.mobileHeaderLogo}>
-          <div className={styles.mobileLogoIcon}>📐</div>
-          <span className={styles.mobileLogoTitle}>Ngân Hàng Toán</span>
+      {!isExamPage && (
+        <div className={styles.mobileHeader}>
+          <div className={styles.mobileHeaderLogo}>
+            <div className={styles.mobileLogoIcon}>📐</div>
+            <span className={styles.mobileLogoTitle}>Ngân Hàng Toán</span>
+          </div>
+          <button 
+            className={styles.mobileToggle} 
+            onClick={() => setIsOpen(!isOpen)}
+            aria-label="Toggle menu"
+          >
+            {isOpen ? '✕' : '☰'}
+          </button>
         </div>
-        <button 
-          className={styles.mobileToggle} 
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label="Toggle menu"
-        >
-          {isOpen ? '✕' : '☰'}
-        </button>
-      </div>
+      )}
 
       {/* Overlay for mobile */}
       {isOpen && (

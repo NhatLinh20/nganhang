@@ -45,7 +45,6 @@ interface SubmitResponse {
 }
 
 type MobileTab = 'pdf' | 'answers'
-type BottomNavTab = 'exam' | 'questions' | 'flagged' | 'submit'
 
 const TYPE_SHORT: Record<string, string> = {
   multiple_choice: 'TRẮC NGHIỆM',
@@ -64,9 +63,6 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
 
   // Student answers: { "1": "A", "2": {"a":"Đ","b":"S",...}, "15": "-3" }
   const [answers, setAnswers] = useState<Record<string, string | Record<string, string>>>({})
-  
-  // Flagged questions
-  const [flagged, setFlagged] = useState<Set<number>>(new Set())
 
   // Timer
   const [timeLeft, setTimeLeft] = useState(0) // seconds
@@ -76,7 +72,6 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
   // UI state
   const [activeQuestion, setActiveQuestion] = useState(1)
   const [mobileTab, setMobileTab] = useState<MobileTab>('pdf')
-  const [bottomNav, setBottomNav] = useState<BottomNavTab>('exam')
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState<SubmitResponse | null>(null)
@@ -161,15 +156,6 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
     setAnswers(prev => ({ ...prev, [String(order)]: value }))
   }
 
-  const toggleFlag = (order: number) => {
-    setFlagged(prev => {
-      const next = new Set(prev)
-      if (next.has(order)) next.delete(order)
-      else next.add(order)
-      return next
-    })
-  }
-
   // Check if question is answered
   const isAnswered = (q: QuestionConfig) => {
     const ans = answers[String(q.order)]
@@ -189,7 +175,6 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
     questionRefs.current[order]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     // On mobile, switch to answers tab
     setMobileTab('answers')
-    setBottomNav('questions')
   }
 
   // Submit
@@ -234,17 +219,6 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
     return submitResult?.results.find(r => r.order === order)
   }
 
-  // Bottom nav handler for mobile
-  const handleBottomNav = (tab: BottomNavTab) => {
-    setBottomNav(tab)
-    if (tab === 'exam') setMobileTab('pdf')
-    else if (tab === 'questions') setMobileTab('answers')
-    else if (tab === 'flagged') setMobileTab('answers')
-    else if (tab === 'submit') {
-      handleSubmit(false)
-    }
-  }
-
   if (loading || !exam) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
@@ -262,7 +236,24 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
     <div className={styles.examPage}>
       {/* Header */}
       <div className={styles.examHeader}>
+        {/* Mobile Tab Bar (Inline in header) */}
+        <div className={styles.mobileTabBarInline}>
+          <button
+            className={`${styles.mobileTabInline} ${mobileTab === 'pdf' ? styles.mobileTabInlineActive : ''}`}
+            onClick={() => { setMobileTab('pdf') }}
+          >
+            Đề thi
+          </button>
+          <button
+            className={`${styles.mobileTabInline} ${mobileTab === 'answers' ? styles.mobileTabInlineActive : ''}`}
+            onClick={() => { setMobileTab('answers') }}
+          >
+            Đáp án
+          </button>
+        </div>
+
         <div className={styles.examHeaderTitle}>{exam.title}</div>
+        
         <div className={styles.examHeaderRight}>
           <div className={`${styles.timerBadge} ${getTimerClass()}`}>
             ⏱ {formatTime(timeLeft)}
@@ -282,26 +273,10 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
               style={{ background: '#16a34a' }}
               onClick={() => setShowResult(true)}
             >
-              📊 Xem kết quả
+              📊 Kết quả
             </button>
           )}
         </div>
-      </div>
-
-      {/* Mobile Tab Bar */}
-      <div className={styles.mobileTabBar}>
-        <button
-          className={`${styles.mobileTab} ${mobileTab === 'pdf' ? styles.mobileTabActive : ''}`}
-          onClick={() => { setMobileTab('pdf'); setBottomNav('exam') }}
-        >
-          Đề thi
-        </button>
-        <button
-          className={`${styles.mobileTab} ${mobileTab === 'answers' ? styles.mobileTabActive : ''}`}
-          onClick={() => { setMobileTab('answers'); setBottomNav('questions') }}
-        >
-          Đáp án
-        </button>
       </div>
 
       {/* Main Body */}
@@ -340,8 +315,7 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
                   key={q.order}
                   className={`${styles.navDot} 
                     ${isAnswered(q) ? styles.navDotAnswered : ''} 
-                    ${activeQuestion === q.order ? styles.navDotActive : ''} 
-                    ${flagged.has(q.order) ? styles.navDotFlagged : ''}`}
+                    ${activeQuestion === q.order ? styles.navDotActive : ''}`}
                   onClick={() => scrollToQuestion(q.order)}
                   title={`Câu ${q.order}`}
                 >
@@ -373,22 +347,6 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
                     }`}>
                       {TYPE_SHORT[q.type]}
                     </span>
-                    {!submitted && (
-                      <button
-                        onClick={() => toggleFlag(q.order)}
-                        style={{
-                          marginLeft: 'auto',
-                          fontSize: '16px',
-                          cursor: 'pointer',
-                          background: 'none',
-                          border: 'none',
-                          padding: '2px',
-                        }}
-                        title={flagged.has(q.order) ? 'Bỏ đánh dấu' : 'Đánh dấu câu này'}
-                      >
-                        {flagged.has(q.order) ? '🚩' : '⚑'}
-                      </button>
-                    )}
                     {result && (
                       <span style={{
                         marginLeft: 'auto',
@@ -511,38 +469,6 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
             )}
           </div>
         </div>
-      </div>
-
-      {/* Mobile Bottom Nav */}
-      <div className={styles.bottomNav}>
-        <button
-          className={`${styles.bottomNavItem} ${bottomNav === 'exam' ? styles.bottomNavItemActive : ''}`}
-          onClick={() => handleBottomNav('exam')}
-        >
-          <span className={styles.bottomNavIcon}>📖</span>
-          Đề thi
-        </button>
-        <button
-          className={`${styles.bottomNavItem} ${bottomNav === 'questions' ? styles.bottomNavItemActive : ''}`}
-          onClick={() => handleBottomNav('questions')}
-        >
-          <span className={styles.bottomNavIcon}>≡</span>
-          Câu hỏi
-        </button>
-        <button
-          className={`${styles.bottomNavItem} ${bottomNav === 'flagged' ? styles.bottomNavItemActive : ''}`}
-          onClick={() => handleBottomNav('flagged')}
-        >
-          <span className={styles.bottomNavIcon}>🚩</span>
-          Đánh dấu
-        </button>
-        <button
-          className={`${styles.bottomNavItem}`}
-          onClick={() => handleBottomNav('submit')}
-        >
-          <span className={styles.bottomNavIcon}>▶</span>
-          {submitted ? 'Kết quả' : 'Nộp bài'}
-        </button>
       </div>
 
       {/* Result Modal */}
