@@ -187,8 +187,8 @@ export async function saveCourseContent(
       .select('id')
       .eq('course_id', courseId)
 
-    const existingChapterIds = new Set((existingChapters || []).map((c: any) => c.id))
-    const keepChapterIds = new Set(chapters.filter(c => c.id).map(c => c.id!))
+    const existingChapterIds = new Set<string>((existingChapters || []).map((c: any) => c.id as string))
+    const keepChapterIds = new Set<string>(chapters.filter(c => c.id).map(c => c.id as string))
 
     // Delete removed chapters (cascade deletes lessons)
     for (const id of existingChapterIds) {
@@ -237,8 +237,8 @@ export async function saveCourseContent(
         .select('id')
         .eq('chapter_id', chapterId)
 
-      const existingLessonIds = new Set((existingLessons || []).map((l: any) => l.id))
-      const keepLessonIds = new Set(ch.lessons.filter(l => l.id).map(l => l.id!))
+      const existingLessonIds = new Set<string>((existingLessons || []).map((l: any) => l.id as string))
+      const keepLessonIds = new Set<string>(ch.lessons.filter(l => l.id).map(l => l.id as string))
 
       // Delete removed lessons
       for (const id of existingLessonIds) {

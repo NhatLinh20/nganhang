@@ -99,7 +99,7 @@ export async function getCourses(includeUnpublished = false): Promise<Course[]> 
 
     let lessonCount = 0
     if (chapters && chapters.length > 0) {
-      const chapterIds = chapters.map((c: any) => c.id)
+      const chapterIds = chapters.map((c: any) => c.id as string)
       const { count } = await supabase
         .from('course_lessons')
         .select('*', { count: 'exact', head: true })
