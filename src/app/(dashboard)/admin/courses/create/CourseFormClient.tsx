@@ -85,7 +85,7 @@ export default function CourseFormClient({ mode, courseId, initialData, initialC
   }
 
   const deleteChapter = (idx: number) => {
-    if (!confirm('Xóa chương này và tất cả bài bên trong?')) return
+    if (!window.confirm('Xóa chương này và tất cả bài bên trong?')) return
     setChapters(prev => prev.filter((_, i) => i !== idx))
     if (activeChapterIdx >= idx && activeChapterIdx > 0) {
       setActiveChapterIdx(activeChapterIdx - 1)
@@ -116,6 +116,7 @@ export default function CourseFormClient({ mode, courseId, initialData, initialC
   }
 
   const deleteLesson = (lessonIdx: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài học này?')) return
     setChapters(prev => prev.map((c, i) => i === activeChapterIdx ? {
       ...c,
       lessons: c.lessons.filter((_, li) => li !== lessonIdx),
@@ -137,6 +138,7 @@ export default function CourseFormClient({ mode, courseId, initialData, initialC
   }
 
   const removePdf = (lessonIdx: number, pdfIdx: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa file PDF này?')) return
     const lesson = chapters[activeChapterIdx]?.lessons[lessonIdx]
     if (!lesson) return
     updateLesson(lessonIdx, 'pdf_files', lesson.pdf_files.filter((_, i) => i !== pdfIdx))
@@ -193,9 +195,14 @@ export default function CourseFormClient({ mode, courseId, initialData, initialC
       }
 
       setToast({ type: 'success', message: mode === 'create' ? 'Tạo khóa học thành công!' : 'Cập nhật thành công!' })
-      setTimeout(() => {
-        router.push('/admin/courses')
-      }, 1000)
+      
+      if (mode === 'create') {
+        setTimeout(() => {
+          router.push(`/admin/courses/${targetCourseId}/edit`)
+        }, 1000)
+      } else {
+        setTimeout(() => setToast(null), 3000)
+      }
     } catch {
       setToast({ type: 'error', message: 'Đã xảy ra lỗi.' })
       setTimeout(() => setToast(null), 3000)
