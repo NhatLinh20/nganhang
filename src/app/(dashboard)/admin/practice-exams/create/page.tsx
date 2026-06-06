@@ -49,13 +49,13 @@ export default function CreatePracticeExamPage() {
 
   // Step 3: Cấu hình câu hỏi
   const [mcCount, setMcCount] = useState(12)
-  const [mcScore, setMcScore] = useState(0.25)
+  const [mcSectionScore, setMcSectionScore] = useState(3)
   const [tfCount, setTfCount] = useState(4)
-  const [tfScore, setTfScore] = useState(1)
+  const [tfSectionScore, setTfSectionScore] = useState(4)
   const [saCount, setSaCount] = useState(6)
-  const [saScore, setSaScore] = useState(0.5)
+  const [saSectionScore, setSaSectionScore] = useState(3)
   const [essayCount, setEssayCount] = useState(0)
-  const [essayScore, setEssayScore] = useState(1)
+  const [essaySectionScore, setEssaySectionScore] = useState(0)
 
   // Step 4: Đáp án
   const [questions, setQuestions] = useState<QuestionConfig[]>([])
@@ -66,7 +66,7 @@ export default function CreatePracticeExamPage() {
 
   // ─── Tính toán ──────────────────────────────────
   const totalQuestions = mcCount + tfCount + saCount + essayCount
-  const totalScore = mcCount * mcScore + tfCount * tfScore + saCount * saScore + essayCount * essayScore
+  const totalScore = mcSectionScore + tfSectionScore + saSectionScore + essaySectionScore
 
   // ─── Step 3 → Step 4: Tạo danh sách câu hỏi ───
   const generateQuestionList = () => {
@@ -74,20 +74,24 @@ export default function CreatePracticeExamPage() {
     let order = 1
 
     // Trắc nghiệm
+    const mcPerQ = mcCount > 0 ? Number((mcSectionScore / mcCount).toFixed(2)) : 0
     for (let i = 0; i < mcCount; i++) {
-      list.push({ order: order++, type: 'multiple_choice', correct_answer: '', score: mcScore })
+      list.push({ order: order++, type: 'multiple_choice', correct_answer: '', score: mcPerQ })
     }
     // Đúng/Sai
+    const tfPerQ = tfCount > 0 ? Number((tfSectionScore / tfCount).toFixed(2)) : 0
     for (let i = 0; i < tfCount; i++) {
-      list.push({ order: order++, type: 'true_false', sub_answers: ['', '', '', ''], score: tfScore })
+      list.push({ order: order++, type: 'true_false', sub_answers: ['', '', '', ''], score: tfPerQ })
     }
     // Trả lời ngắn
+    const saPerQ = saCount > 0 ? Number((saSectionScore / saCount).toFixed(2)) : 0
     for (let i = 0; i < saCount; i++) {
-      list.push({ order: order++, type: 'short_answer', correct_answer: '', score: saScore })
+      list.push({ order: order++, type: 'short_answer', correct_answer: '', score: saPerQ })
     }
     // Tự luận
+    const essayPerQ = essayCount > 0 ? Number((essaySectionScore / essayCount).toFixed(2)) : 0
     for (let i = 0; i < essayCount; i++) {
-      list.push({ order: order++, type: 'essay', correct_answer: '', score: essayScore })
+      list.push({ order: order++, type: 'essay', correct_answer: '', score: essayPerQ })
     }
 
     setQuestions(list)
@@ -381,7 +385,7 @@ export default function CreatePracticeExamPage() {
                 <tr>
                   <th>Loại câu hỏi</th>
                   <th>Số lượng</th>
-                  <th>Điểm mỗi câu</th>
+                  <th>Điểm phần</th>
                 </tr>
               </thead>
               <tbody>
@@ -395,8 +399,8 @@ export default function CreatePracticeExamPage() {
                       value={mcCount} onChange={e => setMcCount(parseInt(e.target.value) || 0)} />
                   </td>
                   <td>
-                    <input type="number" className={styles.configInput} min={0} max={10} step={0.05}
-                      value={mcScore} onChange={e => setMcScore(parseFloat(e.target.value) || 0)} />
+                    <input type="number" className={styles.configInput} min={0} max={50} step={0.25}
+                      value={mcSectionScore} onChange={e => setMcSectionScore(parseFloat(e.target.value) || 0)} />
                   </td>
                 </tr>
                 <tr>
@@ -406,11 +410,15 @@ export default function CreatePracticeExamPage() {
                   </td>
                   <td>
                     <input type="number" className={styles.configInput} min={0} max={20}
-                      value={tfCount} onChange={e => setTfCount(parseInt(e.target.value) || 0)} />
+                      value={tfCount} onChange={e => {
+                        const val = parseInt(e.target.value) || 0;
+                        setTfCount(val);
+                        setTfSectionScore(val * 1); // Default 1 point per question
+                      }} />
                   </td>
                   <td>
-                    <input type="number" className={styles.configInput} min={0} max={10} step={0.05}
-                      value={tfScore} onChange={e => setTfScore(parseFloat(e.target.value) || 0)} />
+                    <input type="number" className={styles.configInput} min={0} max={50} step={0.25}
+                      value={tfSectionScore} onChange={e => setTfSectionScore(parseFloat(e.target.value) || 0)} />
                   </td>
                 </tr>
                 <tr>
@@ -423,8 +431,8 @@ export default function CreatePracticeExamPage() {
                       value={saCount} onChange={e => setSaCount(parseInt(e.target.value) || 0)} />
                   </td>
                   <td>
-                    <input type="number" className={styles.configInput} min={0} max={10} step={0.05}
-                      value={saScore} onChange={e => setSaScore(parseFloat(e.target.value) || 0)} />
+                    <input type="number" className={styles.configInput} min={0} max={50} step={0.25}
+                      value={saSectionScore} onChange={e => setSaSectionScore(parseFloat(e.target.value) || 0)} />
                   </td>
                 </tr>
                 <tr>
@@ -437,8 +445,8 @@ export default function CreatePracticeExamPage() {
                       value={essayCount} onChange={e => setEssayCount(parseInt(e.target.value) || 0)} />
                   </td>
                   <td>
-                    <input type="number" className={styles.configInput} min={0} max={10} step={0.05}
-                      value={essayScore} onChange={e => setEssayScore(parseFloat(e.target.value) || 0)} />
+                    <input type="number" className={styles.configInput} min={0} max={50} step={0.25}
+                      value={essaySectionScore} onChange={e => setEssaySectionScore(parseFloat(e.target.value) || 0)} />
                   </td>
                 </tr>
               </tbody>

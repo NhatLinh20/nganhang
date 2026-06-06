@@ -26,7 +26,8 @@ function normalizeShortAnswer(answer: string): string {
 // 1/4 đúng = 0.1đ, 2/4 = 0.25đ, 3/4 = 0.5đ, 4/4 = 1.0đ
 function calculateTFScore(
   studentAnswers: Record<string, string>,
-  correctAnswers: string[]
+  correctAnswers: string[],
+  maxScore: number
 ): { score: number; correctCount: number; total: number } {
   const total = correctAnswers.length
   let correctCount = 0
@@ -41,11 +42,13 @@ function calculateTFScore(
     }
   }
 
-  let score = 0
-  if (correctCount === 1) score = 0.1
-  else if (correctCount === 2) score = 0.25
-  else if (correctCount === 3) score = 0.5
-  else if (correctCount >= 4) score = 1.0
+  let scoreRatio = 0
+  if (correctCount === 1) scoreRatio = 0.1
+  else if (correctCount === 2) scoreRatio = 0.25
+  else if (correctCount === 3) scoreRatio = 0.5
+  else if (correctCount >= 4) scoreRatio = 1.0
+
+  const score = scoreRatio * maxScore
 
   return { score, correctCount, total }
 }
@@ -123,7 +126,7 @@ export async function POST(
           ? studentAnswer as Record<string, string>
           : {}
         const correctSubs = q.sub_answers || []
-        const tfResult = calculateTFScore(tfAnswers, correctSubs)
+        const tfResult = calculateTFScore(tfAnswers, correctSubs, q.score)
         scoreEarned = tfResult.score
         isCorrect = tfResult.correctCount === tfResult.total
         totalTFCorrect += tfResult.correctCount
