@@ -191,14 +191,13 @@ export async function saveCourseContent(
     const keepChapterIds = new Set<string>(chapters.filter(c => c.id).map(c => c.id as string))
 
     // Delete removed chapters (cascade deletes lessons)
-    for (const id of existingChapterIds) {
-      if (!keepChapterIds.has(id)) {
-        await admin.from('course_chapters').delete().eq('id', id)
-      }
+    const chapterDeleteIds = Array.from(existingChapterIds).filter(id => !keepChapterIds.has(id))
+    if (chapterDeleteIds.length > 0) {
+      await admin.from('course_chapters').delete().in('id', chapterDeleteIds)
     }
 
     // Upsert chapters and lessons
-    for (const ch of chapters) {
+    await Promise.all(chapters.map(async (ch) => {
       let chapterId = ch.id
 
       if (chapterId && existingChapterIds.has(chapterId)) {
@@ -226,7 +225,7 @@ export async function saveCourseContent(
 
         if (chErr || !newCh) {
           console.error('[saveCourseContent] Chapter insert error:', chErr?.message)
-          continue
+          return
         }
         chapterId = newCh.id
       }
@@ -241,15 +240,14 @@ export async function saveCourseContent(
       const keepLessonIds = new Set<string>(ch.lessons.filter(l => l.id).map(l => l.id as string))
 
       // Delete removed lessons
-      for (const id of existingLessonIds) {
-        if (!keepLessonIds.has(id)) {
-          await admin.from('course_lessons').delete().eq('id', id)
-        }
+      const lessonDeleteIds = Array.from(existingLessonIds).filter(id => !keepLessonIds.has(id))
+      if (lessonDeleteIds.length > 0) {
+        await admin.from('course_lessons').delete().in('id', lessonDeleteIds)
       }
 
       // Upsert lessons
-      for (const lesson of ch.lessons) {
-        const lessonData = {
+      const lessonsToUpsert = ch.lessons.map(lesson => {
+        const lessonData: any = {
           chapter_id: chapterId,
           lesson_number: lesson.lesson_number,
           lesson_name: lesson.lesson_name,
@@ -259,14 +257,16 @@ export async function saveCourseContent(
           pdf_files: lesson.pdf_files || [],
           sort_order: lesson.sort_order,
         }
-
         if (lesson.id && existingLessonIds.has(lesson.id)) {
-          await admin.from('course_lessons').update(lessonData).eq('id', lesson.id)
-        } else {
-          await admin.from('course_lessons').insert(lessonData)
+          lessonData.id = lesson.id
         }
+        return lessonData
+      })
+
+      if (lessonsToUpsert.length > 0) {
+        await admin.from('course_lessons').upsert(lessonsToUpsert)
       }
-    }
+    }))
 
     // Update course timestamp
     await admin

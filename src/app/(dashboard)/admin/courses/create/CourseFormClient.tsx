@@ -66,6 +66,14 @@ export default function CourseFormClient({ mode, courseId, initialData, initialC
   const [activeChapterIdx, setActiveChapterIdx] = useState(0)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  
+  // To track original state after saving or on initial load
+  const [savedDataStr, setSavedDataStr] = useState(() => JSON.stringify({
+    courseData: initialData || { title: '', description: '', grade: 10, category_label: '', teacher_name: '', thumbnail_url: '' },
+    chapters: initialChapters || []
+  }))
+
+  const isDirty = JSON.stringify({ courseData, chapters }) !== savedDataStr
 
   // ─── Course Data Handlers ───
   const updateField = (field: keyof CourseForm, value: any) => {
@@ -194,6 +202,9 @@ export default function CourseFormClient({ mode, courseId, initialData, initialC
         }
       }
 
+      // Update saved data snapshot to current state
+      setSavedDataStr(JSON.stringify({ courseData, chapters }))
+
       setToast({ type: 'success', message: mode === 'create' ? 'Tạo khóa học thành công!' : 'Cập nhật thành công!' })
       
       if (mode === 'create') {
@@ -226,9 +237,10 @@ export default function CourseFormClient({ mode, courseId, initialData, initialC
         <button
           className={styles.formSaveBtn}
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || !isDirty}
+          style={{ opacity: (!isDirty && !saving) ? 0.5 : 1, cursor: (!isDirty && !saving) ? 'not-allowed' : 'pointer' }}
         >
-          {saving ? '⏳ Đang lưu...' : '💾 Lưu khóa học'}
+          {saving ? '⏳ Đang lưu...' : (isDirty ? '💾 Lưu khóa học' : '✅ Đã lưu')}
         </button>
       </div>
 
