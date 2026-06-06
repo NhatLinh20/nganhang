@@ -25,15 +25,20 @@ export async function selectRole(formData: FormData): Promise<{ error?: string }
   // Kiểm tra user đã có profile chưa
   const { data: existingProfile } = await supabaseAdmin
     .from('users')
-    .select('id, role')
+    .select('id, role, is_approved')
     .eq('id', user.id)
     .single()
 
   if (existingProfile) {
-    // Đã có profile → cập nhật role
+    // Đã có profile → cập nhật role nhưng giữ nguyên trạng thái duyệt nếu đã được duyệt (trừ khi chuyển học sinh -> giáo viên)
+    let newApproved = existingProfile.is_approved
+    if (existingProfile.role === 'student' && selectedRole === 'teacher') {
+      newApproved = false // Nâng cấp role lên giáo viên cần duyệt lại
+    }
+
     await supabaseAdmin
       .from('users')
-      .update({ role: selectedRole, is_approved: false, updated_at: new Date().toISOString() })
+      .update({ role: selectedRole, is_approved: newApproved, updated_at: new Date().toISOString() })
       .eq('id', user.id)
   } else {
     // Chưa có profile → tạo mới

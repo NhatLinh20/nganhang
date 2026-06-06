@@ -70,8 +70,10 @@ export async function GET(request: NextRequest) {
       .eq('id', data.user.id)
       .single()
 
-    if (!profile || !data.user.user_metadata?.role) {
-      // User mới từ Google OAuth (chưa có role trong metadata) → cần chọn vai trò
+    const isNewUser = data.user.created_at ? new Date(data.user.created_at).getTime() > Date.now() - 60000 : false;
+
+    if (!profile || (isNewUser && !data.user.user_metadata?.role)) {
+      // User mới tinh từ Google OAuth (vừa được tạo trong vòng 1 phút và chưa có role) → cần chọn vai trò
       redirectPath = '/select-role'
     } else if ((profile.role === 'teacher' || profile.role === 'student') && !profile.is_approved) {
       // User cũ (đã có role) nhưng chưa được duyệt

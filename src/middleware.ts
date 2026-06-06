@@ -62,8 +62,8 @@ export async function middleware(request: NextRequest) {
 
     // Cho phép trang select-role (chọn vai trò sau Google OAuth)
     if (pathname === '/select-role') {
-      // Nếu user đã có profile với role hợp lệ → không cần chọn nữa
-      if (profile && (profile.role === 'admin' || profile.role === 'teacher' || profile.role === 'student')) {
+      // Nếu user đã chủ động chọn role (có trong metadata) hoặc là admin → không cần chọn nữa
+      if (user.user_metadata?.role || profile?.role === 'admin') {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
       return supabaseResponse
