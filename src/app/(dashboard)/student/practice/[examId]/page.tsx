@@ -311,7 +311,7 @@ export default function ExamViewPage({ params }: { params: Promise<{ examId: str
           {exam.pdf_url ? (
             <iframe
               className={styles.pdfIframe}
-              src={exam.pdf_url}
+              src={`https://docs.google.com/gview?url=${encodeURIComponent(exam.pdf_url)}&embedded=true`}
               title="Đề thi PDF"
             />
           ) : (
