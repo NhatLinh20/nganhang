@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
 
     const role = profile?.role || 'teacher'
 
-    // Admin và VIP không bị giới hạn
-    if (role === 'admin' || role === 'vip') {
+    // Chỉ Admin không bị giới hạn
+    if (role === 'admin') {
       return NextResponse.json({
         allowed: true,
         count: 0,
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         count: used,
         limit,
         remaining,
-        message: remaining <= 0 ? `Bạn đã hết lượt xuất bài học trong tháng này (${used}/${limit}). Nâng VIP để xuất không giới hạn.` : undefined,
+        message: remaining <= 0 ? `Bạn đã hết lượt xuất bài học trong tháng này (${used}/${limit}). Liên hệ Admin: ${TEACHER_LIMITS.ADMIN_PHONE} để được hỗ trợ.` : undefined,
       })
     }
 
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       count: used,
       limit,
       remaining,
-      message: remaining <= 0 ? `Bạn đã hết lượt xuất file hôm nay (${used}/${limit}). Nâng VIP để xuất không giới hạn. Liên hệ Admin: ${TEACHER_LIMITS.ADMIN_PHONE}` : undefined,
+      message: remaining <= 0 ? `Bạn đã hết lượt xuất file hôm nay (${used}/${limit}). Liên hệ Admin: ${TEACHER_LIMITS.ADMIN_PHONE} để được hỗ trợ.` : undefined,
     })
 
   } catch (err) {

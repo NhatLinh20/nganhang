@@ -7,7 +7,7 @@ export interface UserProfile {
   id: string
   email: string
   full_name: string
-  role: 'admin' | 'teacher' | 'vip'
+  role: 'admin' | 'teacher' | 'student'
   is_approved: boolean
   is_active: boolean
   avatar_url: string | null
@@ -46,11 +46,11 @@ export async function isTeacher(): Promise<boolean> {
 }
 
 /**
- * Kiểm tra user hiện tại có phải VIP không
+ * Kiểm tra user hiện tại có phải student không
  */
-export async function isVip(): Promise<boolean> {
+export async function isStudent(): Promise<boolean> {
   const profile = await getProfile()
-  return profile?.role === 'vip'
+  return profile?.role === 'student'
 }
 
 /**
@@ -69,8 +69,7 @@ export async function isApproved(): Promise<boolean> {
   if (!profile) return false
   // Admin luôn được coi là approved
   if (profile.role === 'admin') return true
-  // VIP luôn approved (đã được admin nâng cấp rồi)
-  if (profile.role === 'vip') return true
+  // Teacher và Student đều cần được duyệt
   return profile.is_approved === true
 }
 

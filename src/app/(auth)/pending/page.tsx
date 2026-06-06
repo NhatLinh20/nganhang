@@ -23,7 +23,7 @@ export default function PendingPage() {
         <div className={styles.contactBox}>
           <div className={styles.contactLabel}>Liên hệ hỗ trợ duyệt nhanh</div>
           <div className={styles.zaloNumber}>
-            <span style={{ color: '#0068ff' }}>Zalo:</span> 0812878792
+            <span style={{ color: '#0068ff' }}>Zalo:</span> 0812022648
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import tableStyles from '../../admin/questions/questions.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 import { CURRICULUM } from '../../admin/questions/QuestionsClient'
 import { isLimitedRole, TEACHER_LIMITS, checkExportQuota, logExport } from '@/lib/export-limiter'
-import VipModal from '@/components/VipModal'
+import LimitModal from '@/components/LimitModal'
 
 // Re-use types from AI exam
 interface ExamQuestion {
@@ -71,9 +71,9 @@ const generateUniqueExamCodes = (count: number): string[] => {
 export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const router = useRouter()
   // ─── VIP MODAL STATE ───────────────────────────────────────────────────────
-  const [showVipModal, setShowVipModal] = useState(false)
-  const [vipReason, setVipReason] = useState<'daily_limit' | 'question_limit' | 'generic'>('generic')
-  const [vipDetail, setVipDetail] = useState('')
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [limitReason, setLimitReason] = useState<'daily_limit' | 'question_limit' | 'generic'>('generic')
+  const [limitDetail, setLimitDetail] = useState('')
   // ─── MAIN LAYOUT STATE ──────────────────────────────────────────────────────
   const [mainTab, setMainTab] = useState<'config' | 'result'>('config')
 
@@ -544,9 +544,9 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       // Kiểm tra số lượng đề
       const examsToCheck = currentAllExams.length > 0 ? currentAllExams : [questions];
       if (examsToCheck.length > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
-        setVipReason('question_limit')
-        setVipDetail(`Số lượng đề: ${examsToCheck.length}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề. Giảm số đề hoặc nâng VIP.`)
-        setShowVipModal(true)
+        setLimitReason('question_limit')
+        setLimitDetail(`Số lượng đề: ${examsToCheck.length}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề. Giảm số đề hoặc liên hệ Admin.`)
+        setShowLimitModal(true)
         return;
       }
 
@@ -554,9 +554,9 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         const qs = examsToCheck[i];
         
         if (qs.length > TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM) {
-          setVipReason('question_limit')
-          setVipDetail(`Đề số ${i+1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
-          setShowVipModal(true)
+          setLimitReason('question_limit')
+          setLimitDetail(`Đề số ${i+1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
+          setShowLimitModal(true)
           return;
         }
 
@@ -566,18 +566,18 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         const esCount = qs.filter(q => q.question_type === 'essay').length;
 
         if (mcCount > TEACHER_LIMITS.MAX_MC || tfCount > TEACHER_LIMITS.MAX_TF || saCount > TEACHER_LIMITS.MAX_SA || esCount > TEACHER_LIMITS.MAX_ES) {
-          setVipReason('question_limit')
-          setVipDetail(`Đề số ${i+1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
-          setShowVipModal(true)
+          setLimitReason('question_limit')
+          setLimitDetail(`Đề số ${i+1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
+          setShowLimitModal(true)
           return;
         }
       }
 
       const quota = await checkExportQuota()
       if (!quota.allowed) {
-        setVipReason('daily_limit')
-        setVipDetail('')
-        setShowVipModal(true)
+        setLimitReason('daily_limit')
+        setLimitDetail('')
+        setShowLimitModal(true)
         return;
       }
     }
@@ -1537,7 +1537,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         </div>
       )}
 
-      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} detail={vipDetail} />
+      <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} reason={limitReason} detail={limitDetail} />
     </div>
   )
 }

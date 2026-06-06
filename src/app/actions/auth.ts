@@ -42,7 +42,8 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
 
   if (!profile) {
     const newRole = user.user_metadata?.role || 'teacher'
-    const newApproved = newRole === 'admin'
+    const validRole = (newRole === 'teacher' || newRole === 'student') ? newRole : 'teacher'
+    const newApproved = validRole === 'admin'
     
     const { data: newProfile } = await supabaseAdmin
       .from('users')
@@ -50,7 +51,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
         id: user.id,
         email: user.email,
         full_name: user.user_metadata?.full_name || 'Người dùng',
-        role: newRole,
+        role: validRole,
         is_approved: newApproved,
       })
       .select('role, is_approved')
@@ -61,11 +62,12 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
     }
   }
 
-  if (profile?.role === 'teacher' && !profile?.is_approved) {
+  // Teacher hoặc Student chưa approved → từ chối
+  if ((profile?.role === 'teacher' || profile?.role === 'student') && !profile?.is_approved) {
     // Đăng xuất trước khi reject
     await supabase.auth.signOut()
     return {
-      error: 'Tài khoản chưa được kích hoạt. Vui lòng liên hệ Zalo: 0812878792 để được hỗ trợ.',
+      error: 'Tài khoản chưa được kích hoạt. Vui lòng liên hệ Admin: 0812022648 để được hỗ trợ.',
     }
   }
 
@@ -128,13 +130,14 @@ export async function loginWithGoogle(): Promise<{ error?: string; url?: string 
 }
 
 // ═══════════════════════════════════════════════════
-// ĐĂNG KÝ tài khoản mới (mặc định role = teacher)
+// ĐĂNG KÝ tài khoản mới (cho phép chọn role: teacher hoặc student)
 // ═══════════════════════════════════════════════════
 export async function register(formData: FormData): Promise<{ error?: string }> {
   const fullName = formData.get('fullName') as string
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
+  const selectedRole = formData.get('role') as string
 
   // Validation
   if (!fullName || !email || !password) {
@@ -153,6 +156,9 @@ export async function register(formData: FormData): Promise<{ error?: string }> 
     return { error: 'Mật khẩu xác nhận không khớp.' }
   }
 
+  // Chỉ chấp nhận teacher hoặc student
+  const role = (selectedRole === 'student') ? 'student' : 'teacher'
+
   const supabase = await createClient()
 
   const { error } = await supabase.auth.signUp({
@@ -161,7 +167,7 @@ export async function register(formData: FormData): Promise<{ error?: string }> 
     options: {
       data: {
         full_name: fullName,
-        role: 'teacher', // Mặc định là giáo viên
+        role: role,
       },
     },
   })

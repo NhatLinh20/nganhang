@@ -31,6 +31,12 @@ const navItems = [
       { href: '/admin/lesson-builder', icon: '📖', label: 'Tạo bài học' },
     ],
   },
+  {
+    section: 'Học tập',
+    items: [
+      { href: '/student/courses', icon: '📖', label: 'Khóa học' },
+    ],
+  },
 ]
 
 export default function Sidebar({ userRole, userEmail }: SidebarProps) {
@@ -38,12 +44,18 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
 
   // Lọc menu theo role
   const visibleNavItems = navItems.map(section => {
-    if (userRole === 'teacher' || userRole === 'vip') {
-      // Giáo viên thấy mục AI trong Đề thi, và Ngân hàng câu hỏi trong Quản lý
+    if (userRole === 'teacher') {
+      // Giáo viên thấy Ngân hàng câu hỏi + các trang đề thi
       if (section.section === 'Đề thi') {
         return {
           ...section,
-          items: section.items.filter(item => item.href === '/admin/ai-exam' || item.href === '/admin/ai-chat' || item.href === '/teacher/exams' || item.href === '/teacher/shuffle' || item.href === '/admin/lesson-builder')
+          items: section.items.filter(item =>
+            item.href === '/admin/ai-exam' ||
+            item.href === '/admin/ai-chat' ||
+            item.href === '/teacher/exams' ||
+            item.href === '/teacher/shuffle' ||
+            item.href === '/admin/lesson-builder'
+          )
         }
       }
       if (section.section === 'Quản lý') {
@@ -52,6 +64,13 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
           items: section.items.filter(item => item.href === '/admin/questions')
         }
       }
+      // Giáo viên không thấy section Học tập
+      if (section.section === 'Học tập') return null
+      return null
+    }
+    if (userRole === 'student') {
+      // Học sinh chỉ thấy section Học tập
+      if (section.section === 'Học tập') return section
       return null
     }
     if (userRole === 'admin') {
@@ -59,9 +78,19 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
       return section
     }
     
-    // Các role khác không thấy menu admin/teacher
+    // Các role khác không thấy menu
     return null
   }).filter(Boolean) as typeof navItems
+
+  // Hiển thị tên role
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Quản trị viên'
+      case 'teacher': return 'Giáo viên'
+      case 'student': return 'Học sinh'
+      default: return role
+    }
+  }
 
   return (
     <aside className={styles.sidebar}>
@@ -105,7 +134,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
             {userEmail ? userEmail.split('@')[0] : 'User'}
           </div>
           <div className={styles.userRole}>
-            {userRole === 'admin' ? 'Quản trị viên' : userRole === 'vip' ? 'VIP 👑' : 'Giáo viên'}
+            {getRoleLabel(userRole)}
           </div>
         </div>
         <form action={logout}>

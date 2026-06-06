@@ -8,7 +8,6 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
 
   // Xác định origin chính xác trên Vercel
   const forwardedHost = request.headers.get('x-forwarded-host')
@@ -55,17 +54,35 @@ export async function GET(request: NextRequest) {
   )
 
   // Exchange code → session
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
     console.error('[OAuth Callback] Error:', error.message)
     return NextResponse.redirect(`${origin}/login?error=auth_failed`)
   }
 
+  // Kiểm tra user đã có profile trong bảng users chưa
+  let redirectPath = '/dashboard'
+  if (data?.user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('id, role, is_approved')
+      .eq('id', data.user.id)
+      .single()
+
+    if (!profile) {
+      // User mới từ Google OAuth → cần chọn vai trò
+      redirectPath = '/select-role'
+    } else if ((profile.role === 'teacher' || profile.role === 'student') && !profile.is_approved) {
+      // User cũ chưa được duyệt
+      redirectPath = '/pending'
+    }
+  }
+
   // QUAN TRỌNG: Trả về HTML 200 thay vì 307 redirect
   // Vercel/Next.js có thể drop Set-Cookie headers trên redirect responses
   // Response 200 + JavaScript redirect đảm bảo cookies luôn được browser lưu
-  const redirectUrl = `${origin}${next}`
+  const redirectUrl = `${origin}${redirectPath}`
   const html = `<!DOCTYPE html>
 <html>
 <head>

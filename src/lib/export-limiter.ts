@@ -1,10 +1,10 @@
 // src/lib/export-limiter.ts
 // Centralized constants & utility functions for teacher export limits
-// VIP và Admin không bị giới hạn — chỉ teacher bị giới hạn
+// Admin không bị giới hạn — chỉ teacher bị giới hạn
 
 export const TEACHER_LIMITS = {
   // Tạo đề thi
-  MAX_EXAMS_PER_BATCH: 12,       // Số đề tối đa / lượt (Admin/VIP: 20)
+  MAX_EXAMS_PER_BATCH: 12,       // Số đề tối đa / lượt (Admin: 20)
   MAX_QUESTIONS_PER_EXAM: 60,    // Tổng câu tối đa / đề
   MAX_MC: 30,                    // Trắc nghiệm / đề
   MAX_TF: 10,                    // Đúng/Sai / đề
@@ -23,15 +23,16 @@ export const TEACHER_LIMITS = {
   MAX_EXPORTS_PER_DAY: 20,       // Xuất file / ngày (tính chung tất cả trang)
 
   // Liên hệ
-  ADMIN_PHONE: '0812878792',
+  ADMIN_PHONE: '0812022648',
 }
 
 /**
  * Kiểm tra role có bị giới hạn hay không.
- * Chỉ teacher bị giới hạn. VIP và Admin không bị.
+ * Chỉ teacher bị giới hạn. Admin không bị.
+ * Student không sử dụng tính năng xuất file nên không cần check.
  */
 export function isLimitedRole(role: string | null | undefined): boolean {
-  return role !== 'admin' && role !== 'vip'
+  return role !== 'admin'
 }
 
 /**

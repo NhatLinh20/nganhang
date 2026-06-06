@@ -9,7 +9,7 @@ import { parseQuestion } from '@/lib/latex-parser'
 import styles from './questions.module.css'
 import Link from 'next/link'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
-import VipModal from '@/components/VipModal'
+import LimitModal from '@/components/LimitModal'
 import { isLimitedRole } from '@/lib/export-limiter'
 
 // Labels
@@ -112,7 +112,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
 
   // State for bank export
   const [exportingBank, setExportingBank] = useState(false)
-  const [showVipModal, setShowVipModal] = useState(false)
+  const [showLimitModal, setShowLimitModal] = useState(false)
 
 
 
@@ -401,7 +401,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
             <button
               onClick={() => {
                 if (isLimitedRole(userRole)) {
-                  setShowVipModal(true)
+                  setShowLimitModal(true)
                   return
                 }
                 handleExportBank()
@@ -431,7 +431,7 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
         }
       />
 
-      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason="bank_export" />
+      <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} reason="bank_export" />
 
       <div className={styles.pageWrapper}>
         {/* ═══ FILTER SIDEBAR ═══ */}

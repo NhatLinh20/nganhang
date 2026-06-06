@@ -17,15 +17,17 @@ export default async function DashboardPage() {
   const role = profile?.role || user.user_metadata?.role as string | undefined
   const isApproved = profile?.is_approved || role === 'admin'
 
-  if ((role === 'teacher' || role === 'vip') && !isApproved) {
+  if ((role === 'teacher' || role === 'student') && !isApproved) {
     redirect('/pending')
   }
 
   // Điều hướng theo role
   if (role === 'admin') {
     redirect('/admin/questions')
-  } else if (role === 'teacher' || role === 'vip') {
-    redirect('/admin/ai-exam') // Teacher/VIP mặc định vào trang AI tạo đề
+  } else if (role === 'teacher') {
+    redirect('/admin/ai-exam') // Teacher mặc định vào trang AI tạo đề
+  } else if (role === 'student') {
+    redirect('/student/courses') // Student mặc định vào trang Khóa học
   }
 
   // Fallback nếu chưa có role (có thể do lỗi đồng bộ database)

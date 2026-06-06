@@ -3,7 +3,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import styles from './shuffle.module.css'
 import { isLimitedRole, checkExportQuota, logExport, TEACHER_LIMITS } from '@/lib/export-limiter'
-import VipModal from '@/components/VipModal'
+import LimitModal from '@/components/LimitModal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -163,9 +163,9 @@ function shuffleAnswerOptions(q: ExamQuestion): ExamQuestion {
 export default function ShuffleClient({ userRole }: { userRole: string }) {
 
   // VIP Modal state
-  const [showVipModal, setShowVipModal] = useState(false)
-  const [vipReason, setVipReason] = useState<'daily_limit' | 'question_limit' | 'generic'>('generic')
-  const [vipDetail, setVipDetail] = useState('')
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [limitReason, setLimitReason] = useState<'daily_limit' | 'question_limit' | 'generic'>('generic')
+  const [limitDetail, setLimitDetail] = useState('')
 
   // Source data
   const [sourceData, setSourceData] = useState<ShuffleSourceData | null>(null)
@@ -393,9 +393,9 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
     if (isLimitedRole(userRole)) {
       const numSourceExams = sourceData?.sourceExams?.length || shuffledExams.length
       if (numSourceExams > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
-        setVipReason('question_limit')
-        setVipDetail(`Số lượng đề gốc: ${numSourceExams}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
-        setShowVipModal(true)
+        setLimitReason('question_limit')
+        setLimitDetail(`Số lượng đề gốc: ${numSourceExams}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
+        setShowLimitModal(true)
         return
       }
 
@@ -405,9 +405,9 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         const qs = examsToCheck[i].questions
 
         if (qs.length > TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM) {
-          setVipReason('question_limit')
-          setVipDetail(`Đề gốc ${i + 1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
-          setShowVipModal(true)
+          setLimitReason('question_limit')
+          setLimitDetail(`Đề gốc ${i + 1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
+          setShowLimitModal(true)
           return
         }
 
@@ -417,18 +417,18 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         const esCount = qs.filter(q => q.question_type === 'essay').length
 
         if (mcCount > TEACHER_LIMITS.MAX_MC || tfCount > TEACHER_LIMITS.MAX_TF || saCount > TEACHER_LIMITS.MAX_SA || esCount > TEACHER_LIMITS.MAX_ES) {
-          setVipReason('question_limit')
-          setVipDetail(`Đề gốc ${i + 1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
-          setShowVipModal(true)
+          setLimitReason('question_limit')
+          setLimitDetail(`Đề gốc ${i + 1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
+          setShowLimitModal(true)
           return
         }
       }
 
       const quota = await checkExportQuota()
       if (!quota.allowed) {
-        setVipReason('daily_limit')
-        setVipDetail('')
-        setShowVipModal(true)
+        setLimitReason('daily_limit')
+        setLimitDetail('')
+        setShowLimitModal(true)
         return
       }
     }
@@ -936,7 +936,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
           </div>
         </div>
       )}
-      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} detail={vipDetail} />
+      <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} reason={limitReason} detail={limitDetail} />
     </div>
   )
 }

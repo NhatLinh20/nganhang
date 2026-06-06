@@ -9,9 +9,11 @@ import styles from './register.module.css'
 export default function RegisterPage() {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const [selectedRole, setSelectedRole] = useState<'teacher' | 'student'>('teacher')
 
   const handleRegister = async (formData: FormData) => {
     setError('')
+    formData.set('role', selectedRole)
     startTransition(async () => {
       const result = await register(formData)
       if (result?.error) {
@@ -30,11 +32,34 @@ export default function RegisterPage() {
           <div className={styles.logoIcon}>
             <span className={styles.logoEmoji}>📐</span>
           </div>
-          <h1 className={styles.logoTitle}>Đăng ký Giáo viên</h1>
+          <h1 className={styles.logoTitle}>Đăng ký tài khoản</h1>
           <p className={styles.logoSub}>Tham gia Ngân Hàng Toán THPT</p>
         </div>
 
         <form action={handleRegister} className={styles.form}>
+          {/* Chọn vai trò */}
+          <div className={styles.roleSelector}>
+            <label className="form-label">Bạn là</label>
+            <div className={styles.roleToggle}>
+              <button
+                type="button"
+                className={`${styles.roleBtn} ${selectedRole === 'teacher' ? styles.roleBtnActive : ''}`}
+                onClick={() => setSelectedRole('teacher')}
+                disabled={isPending}
+              >
+                📚 Giáo viên
+              </button>
+              <button
+                type="button"
+                className={`${styles.roleBtn} ${selectedRole === 'student' ? styles.roleBtnActive : ''}`}
+                onClick={() => setSelectedRole('student')}
+                disabled={isPending}
+              >
+                🎓 Học sinh
+              </button>
+            </div>
+          </div>
+
           <div className="form-group">
             <label className="form-label" htmlFor="fullName">Họ và tên</label>
             <input

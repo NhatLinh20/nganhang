@@ -10,16 +10,16 @@ import {
   toggleUserActive, 
   getLoginLogs, 
   getUserStats,
-  upgradeToVip,
-  downgradeFromVip,
   UserManagementData,
   LoginLogData
 } from '@/app/actions/user-management'
 
 type TabType = 'pending' | 'approved' | 'logs'
+type RoleFilterType = 'all' | 'teacher' | 'student'
 
 export default function UsersClient() {
   const [activeTab, setActiveTab] = useState<TabType>('pending')
+  const [roleFilter, setRoleFilter] = useState<RoleFilterType>('all')
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   
@@ -27,15 +27,18 @@ export default function UsersClient() {
   const [pendingUsers, setPendingUsers] = useState<UserManagementData[]>([])
   const [approvedUsers, setApprovedUsers] = useState<UserManagementData[]>([])
   const [logs, setLogs] = useState<LoginLogData[]>([])
-  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, suspicious: 0 })
+  const [stats, setStats] = useState({ 
+    total: 0, pending: 0, approved: 0, suspicious: 0,
+    pendingTeachers: 0, pendingStudents: 0, approvedTeachers: 0, approvedStudents: 0
+  })
   const [logFilter, setLogFilter] = useState<'all' | 'suspicious'>('all')
 
   const fetchData = async () => {
     setIsLoading(true)
     try {
       const [pendingRes, approvedRes, logsRes, statsRes] = await Promise.all([
-        getUsers('pending'),
-        getUsers('approved'),
+        getUsers('pending', roleFilter),
+        getUsers('approved', roleFilter),
         getLoginLogs(logFilter),
         getUserStats()
       ])
@@ -51,10 +54,10 @@ export default function UsersClient() {
     }
   }
 
-  // Refetch when tab or logFilter changes
+  // Refetch when filters change
   useEffect(() => {
     fetchData()
-  }, [logFilter])
+  }, [logFilter, roleFilter])
 
   // Handlers
   const handleApprove = async (id: string) => {
@@ -82,20 +85,6 @@ export default function UsersClient() {
     fetchData()
   }
 
-  const handleUpgradeVip = async (id: string) => {
-    if (!confirm('Nâng cấp tài khoản này lên VIP? Họ sẽ không bị giới hạn xuất file và số câu hỏi.')) return
-    const res = await upgradeToVip(id)
-    if (res.error) alert('Lỗi: ' + res.error)
-    fetchData()
-  }
-
-  const handleDowngradeVip = async (id: string) => {
-    if (!confirm('Hạ tài khoản VIP này về Giáo viên? Họ sẽ bị giới hạn trở lại.')) return
-    const res = await downgradeFromVip(id)
-    if (res.error) alert('Lỗi: ' + res.error)
-    fetchData()
-  }
-
   // Format date
   const formatDate = (isoString: string) => {
     const d = new Date(isoString)
@@ -108,6 +97,25 @@ export default function UsersClient() {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
       day: '2-digit', month: '2-digit', year: 'numeric' 
     })
+  }
+
+  // Role label
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Admin'
+      case 'teacher': return 'Giáo viên'
+      case 'student': return 'Học sinh'
+      default: return role
+    }
+  }
+
+  const getRoleBadgeClass = (role: string) => {
+    switch (role) {
+      case 'admin': return 'badge badge-V'
+      case 'teacher': return 'badge badge-N'
+      case 'student': return 'badge badge-H'
+      default: return 'badge'
+    }
   }
 
   // Filtered Data based on Search
@@ -168,6 +176,38 @@ export default function UsersClient() {
         </div>
       </div>
 
+      {/* Sub-filter: Giáo viên / Học sinh */}
+      {(activeTab === 'pending' || activeTab === 'approved') && (
+        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            className={`${styles.tab} ${roleFilter === 'all' ? styles.tabActive : ''}`}
+            onClick={() => setRoleFilter('all')}
+            style={{ fontSize: '13px', padding: '6px 14px' }}
+          >
+            Tất cả
+            {activeTab === 'pending' && <span className={styles.tabBadge} style={{ marginLeft: '4px' }}>{stats.pending}</span>}
+          </button>
+          <button
+            className={`${styles.tab} ${roleFilter === 'teacher' ? styles.tabActive : ''}`}
+            onClick={() => setRoleFilter('teacher')}
+            style={{ fontSize: '13px', padding: '6px 14px' }}
+          >
+            📚 Giáo viên
+            {activeTab === 'pending' && stats.pendingTeachers > 0 && <span className={styles.tabBadge} style={{ marginLeft: '4px' }}>{stats.pendingTeachers}</span>}
+            {activeTab === 'approved' && <span className={styles.tabBadge} style={{ marginLeft: '4px', background: 'var(--color-primary-100)', color: 'var(--color-primary-700)' }}>{stats.approvedTeachers}</span>}
+          </button>
+          <button
+            className={`${styles.tab} ${roleFilter === 'student' ? styles.tabActive : ''}`}
+            onClick={() => setRoleFilter('student')}
+            style={{ fontSize: '13px', padding: '6px 14px' }}
+          >
+            🎓 Học sinh
+            {activeTab === 'pending' && stats.pendingStudents > 0 && <span className={styles.tabBadge} style={{ marginLeft: '4px' }}>{stats.pendingStudents}</span>}
+            {activeTab === 'approved' && <span className={styles.tabBadge} style={{ marginLeft: '4px', background: 'var(--color-primary-100)', color: 'var(--color-primary-700)' }}>{stats.approvedStudents}</span>}
+          </button>
+        </div>
+      )}
+
       {activeTab === 'logs' && (
         <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
           <label style={{ fontSize: '14px', cursor: 'pointer' }}>
@@ -191,6 +231,7 @@ export default function UsersClient() {
                   <tr>
                     <th>Người dùng</th>
                     <th>Email</th>
+                    <th>Vai trò</th>
                     <th>Phương thức</th>
                     <th>Ngày đăng ký</th>
                     <th>Hành động</th>
@@ -198,7 +239,7 @@ export default function UsersClient() {
                 </thead>
                 <tbody>
                   {filteredPending.length === 0 ? (
-                    <tr><td colSpan={5} className={styles.emptyState}>✨ Không có tài khoản nào chờ duyệt</td></tr>
+                    <tr><td colSpan={6} className={styles.emptyState}>✨ Không có tài khoản nào chờ duyệt</td></tr>
                   ) : filteredPending.map(u => (
                     <tr key={u.id}>
                       <td>
@@ -208,6 +249,7 @@ export default function UsersClient() {
                         </div>
                       </td>
                       <td>{u.email}</td>
+                      <td><span className={getRoleBadgeClass(u.role)}>{getRoleLabel(u.role)}</span></td>
                       <td><span className="badge badge-H">{u.provider === 'google' ? 'Google' : 'Email'}</span></td>
                       <td>{formatDate(u.created_at)}</td>
                       <td>
@@ -248,8 +290,8 @@ export default function UsersClient() {
                       </td>
                       <td>{u.email}</td>
                       <td>
-                        <span className={u.role === 'admin' ? 'badge badge-V' : u.role === 'vip' ? 'badge badge-C' : 'badge badge-N'}>
-                          {u.role === 'admin' ? 'Admin' : u.role === 'vip' ? 'VIP 👑' : 'Giáo viên'}
+                        <span className={getRoleBadgeClass(u.role)}>
+                          {getRoleLabel(u.role)}
                         </span>
                       </td>
                       <td>
@@ -260,16 +302,6 @@ export default function UsersClient() {
                       <td>
                         {u.role !== 'admin' && (
                           <div className={styles.actions}>
-                            {u.role === 'teacher' && (
-                              <button className={`${styles.actionBtn} ${styles.btnVip}`} onClick={() => handleUpgradeVip(u.id)}>
-                                ⭐ Nâng VIP
-                              </button>
-                            )}
-                            {u.role === 'vip' && (
-                              <button className={`${styles.actionBtn} ${styles.btnWarning}`} onClick={() => handleDowngradeVip(u.id)}>
-                                ↩ Hạ VIP
-                              </button>
-                            )}
                             <button 
                               className={`${styles.actionBtn} ${u.is_active ? styles.btnWarning : styles.btnApprove}`}
                               onClick={() => handleToggleActive(u.id, u.is_active)}
@@ -331,7 +363,7 @@ export default function UsersClient() {
                         )}
                       </td>
                       <td style={{ fontSize: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.user_agent}>
-                        💻 {l.user_agent.split(' ')[0]} {/* Lấy chữ đầu tiên của user-agent cho gọn */}
+                        💻 {l.user_agent.split(' ')[0]}
                       </td>
                       <td style={{ fontSize: '13px' }}>{formatDateTime(l.created_at)}</td>
                     </tr>

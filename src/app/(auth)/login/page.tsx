@@ -181,7 +181,7 @@ export default function LoginPage() {
         </p>
 
         <p className={styles.footer}>
-          Ngân Hàng Câu Hỏi Toán THPT · Dành cho Admin & Giáo viên
+          Ngân Hàng Câu Hỏi Toán THPT · Dành cho Giáo viên & Học sinh
         </p>
       </div>
     </div>

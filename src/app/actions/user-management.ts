@@ -34,17 +34,16 @@ export interface LoginLogData {
 }
 
 // ═══════════════════════════════════════════════════
-// 1. LẤY DANH SÁCH NGƯỜI DÙNG
+// 1. LẤY DANH SÁCH NGƯỜI DÙNG (hỗ trợ lọc theo role)
 // ═══════════════════════════════════════════════════
-export async function getUsers(status: 'pending' | 'approved'): Promise<{ data?: UserManagementData[], error?: string }> {
+export async function getUsers(
+  status: 'pending' | 'approved',
+  roleFilter?: 'teacher' | 'student' | 'all'
+): Promise<{ data?: UserManagementData[], error?: string }> {
   const admin = await isAdmin()
   if (!admin) return { error: 'Không có quyền truy cập.' }
 
   const supabaseAdmin = createAdminClient()
-  
-  // Chúng ta cần join với bảng auth.users để lấy thông tin provider, 
-  // nhưng supabase SQL API qua postgrest không join trực tiếp qua auth schema được dễ dàng.
-  // Tuy nhiên, ở bảng public.users đã có đủ dữ liệu cơ bản.
   
   const query = supabaseAdmin
     .from('users')
@@ -57,6 +56,11 @@ export async function getUsers(status: 'pending' | 'approved'): Promise<{ data?:
     query.eq('is_approved', true)
   }
 
+  // Lọc theo role
+  if (roleFilter && roleFilter !== 'all') {
+    query.eq('role', roleFilter)
+  }
+
   const { data, error } = await query
 
   if (error) {
@@ -64,8 +68,6 @@ export async function getUsers(status: 'pending' | 'approved'): Promise<{ data?:
     return { error: 'Lỗi tải danh sách người dùng.' }
   }
 
-  // Để đơn giản, ta sẽ mock provider là 'email' hoặc 'google' dựa trên metadata (nếu cần thiết,
-  // nhưng thực tế public.users không có auth provider. Tạm thời ta giả định từ avatar_url hoặc metadata nếu có).
   const mappedData = data.map((user: any) => ({
     ...user,
     provider: user.avatar_url?.includes('googleusercontent') ? 'google' : 'email'
@@ -181,7 +183,7 @@ export async function getLoginLogs(filter: 'all' | 'suspicious' = 'all'): Promis
       users:user_id ( full_name, email, avatar_url )
     `)
     .order('created_at', { ascending: false })
-    .limit(100) // Tạm thời limit 100 record gần nhất
+    .limit(100)
 
   if (filter === 'suspicious') {
     query.eq('is_suspicious', true)
@@ -198,9 +200,21 @@ export async function getLoginLogs(filter: 'all' | 'suspicious' = 'all'): Promis
 }
 
 // ═══════════════════════════════════════════════════
-// 7. LẤY THỐNG KÊ TỔNG QUAN
+// 7. LẤY THỐNG KÊ TỔNG QUAN (phân theo role)
 // ═══════════════════════════════════════════════════
-export async function getUserStats(): Promise<{ stats?: { total: number, pending: number, approved: number, suspicious: number }, error?: string }> {
+export async function getUserStats(): Promise<{ 
+  stats?: { 
+    total: number
+    pending: number
+    approved: number
+    suspicious: number
+    pendingTeachers: number
+    pendingStudents: number
+    approvedTeachers: number
+    approvedStudents: number
+  }, 
+  error?: string 
+}> {
   const admin = await isAdmin()
   if (!admin) return { error: 'Không có quyền truy cập.' }
 
@@ -209,66 +223,23 @@ export async function getUserStats(): Promise<{ stats?: { total: number, pending
   const { count: pendingCount } = await supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_approved', false)
   const { count: approvedCount } = await supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_approved', true)
   const { count: suspiciousCount } = await supabaseAdmin.from('login_logs').select('*', { count: 'exact', head: true }).eq('is_suspicious', true)
+  
+  // Đếm riêng theo role
+  const { count: pendingTeachers } = await supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_approved', false).eq('role', 'teacher')
+  const { count: pendingStudents } = await supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_approved', false).eq('role', 'student')
+  const { count: approvedTeachers } = await supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_approved', true).eq('role', 'teacher')
+  const { count: approvedStudents } = await supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_approved', true).eq('role', 'student')
 
   return {
     stats: {
       total: (pendingCount || 0) + (approvedCount || 0),
       pending: pendingCount || 0,
       approved: approvedCount || 0,
-      suspicious: suspiciousCount || 0
+      suspicious: suspiciousCount || 0,
+      pendingTeachers: pendingTeachers || 0,
+      pendingStudents: pendingStudents || 0,
+      approvedTeachers: approvedTeachers || 0,
+      approvedStudents: approvedStudents || 0,
     }
   }
 }
-
-// ═══════════════════════════════════════════════════
-// 8. NÂNG CẤP TEACHER → VIP
-// ═══════════════════════════════════════════════════
-export async function upgradeToVip(userId: string): Promise<{ success?: boolean, error?: string }> {
-  const admin = await isAdmin()
-  if (!admin) return { error: 'Không có quyền truy cập.' }
-
-  const supabaseAdmin = createAdminClient()
-  
-  // Chỉ nâng cấp từ teacher → vip
-  const { data: user } = await supabaseAdmin.from('users').select('role').eq('id', userId).single()
-  if (user?.role !== 'teacher') {
-    return { error: 'Chỉ có thể nâng cấp tài khoản giáo viên lên VIP.' }
-  }
-
-  const { error } = await supabaseAdmin
-    .from('users')
-    .update({ role: 'vip', updated_at: new Date().toISOString() })
-    .eq('id', userId)
-
-  if (error) return { error: 'Không thể nâng cấp tài khoản.' }
-
-  revalidatePath('/admin/users')
-  return { success: true }
-}
-
-// ═══════════════════════════════════════════════════
-// 9. HẠ VIP → TEACHER
-// ═══════════════════════════════════════════════════
-export async function downgradeFromVip(userId: string): Promise<{ success?: boolean, error?: string }> {
-  const admin = await isAdmin()
-  if (!admin) return { error: 'Không có quyền truy cập.' }
-
-  const supabaseAdmin = createAdminClient()
-  
-  // Chỉ hạ từ vip → teacher
-  const { data: user } = await supabaseAdmin.from('users').select('role').eq('id', userId).single()
-  if (user?.role !== 'vip') {
-    return { error: 'Tài khoản này không phải VIP.' }
-  }
-
-  const { error } = await supabaseAdmin
-    .from('users')
-    .update({ role: 'teacher', updated_at: new Date().toISOString() })
-    .eq('id', userId)
-
-  if (error) return { error: 'Không thể hạ tài khoản.' }
-
-  revalidatePath('/admin/users')
-  return { success: true }
-}
-

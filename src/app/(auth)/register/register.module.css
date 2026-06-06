@@ -194,3 +194,40 @@
     padding: var(--space-8) var(--space-5);
   }
 }
+
+/* Role selector */
+.roleSelector {
+  margin-bottom: var(--space-2);
+}
+
+.roleToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.roleBtn {
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-gray-50);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.roleBtn:hover {
+  border-color: var(--color-primary-300);
+  background: var(--color-primary-50);
+}
+
+.roleBtnActive {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}

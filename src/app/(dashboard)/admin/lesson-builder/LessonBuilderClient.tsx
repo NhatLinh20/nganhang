@@ -5,7 +5,7 @@ import styles from './lesson-builder.module.css'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 import { CURRICULUM } from '../questions/QuestionsClient'
 import { isLimitedRole, TEACHER_LIMITS, checkLessonQuestionLimits, checkExportQuota, logExport } from '@/lib/export-limiter'
-import VipModal from '@/components/VipModal'
+import LimitModal from '@/components/LimitModal'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface QuestionItem {
@@ -63,9 +63,9 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
   const [exporting, setExporting] = useState(false)
 
   // VIP Modal
-  const [showVipModal, setShowVipModal] = useState(false)
-  const [vipReason, setVipReason] = useState<'daily_limit' | 'question_limit' | 'lesson_limit' | 'generic'>('generic')
-  const [vipDetail, setVipDetail] = useState('')
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [limitReason, setLimitReason] = useState<'daily_limit' | 'question_limit' | 'lesson_limit' | 'generic'>('generic')
+  const [limitDetail, setLimitDetail] = useState('')
 
   // Toast
   const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success' | 'info'; title: string; message: string; visible: boolean }>({ type: 'info', title: '', message: '', visible: false })
@@ -299,9 +299,9 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
 
       const projectedTotal = currentTotal + newTotal
       if (projectedTotal > TEACHER_LIMITS.MAX_QUESTIONS_PER_LESSON) {
-        setVipReason('question_limit')
-        setVipDetail(`Tổng số câu hỏi sẽ vượt quá giới hạn bài học (${projectedTotal}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_LESSON} câu).`)
-        setShowVipModal(true)
+        setLimitReason('question_limit')
+        setLimitDetail(`Tổng số câu hỏi sẽ vượt quá giới hạn bài học (${projectedTotal}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_LESSON} câu).`)
+        setShowLimitModal(true)
         return
       }
 
@@ -311,9 +311,9 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       const esCount = currentQuestions.filter(q => q.question_type === 'essay').length + newEs
 
       if (mcCount > TEACHER_LIMITS.MAX_MC_LESSON || tfCount > TEACHER_LIMITS.MAX_TF_LESSON || saCount > TEACHER_LIMITS.MAX_SA_LESSON || esCount > TEACHER_LIMITS.MAX_ES_LESSON) {
-        setVipReason('question_limit')
-        setVipDetail(`Dự kiến vượt giới hạn bài học: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC_LESSON}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF_LESSON}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA_LESSON}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES_LESSON}.`)
-        setShowVipModal(true)
+        setLimitReason('question_limit')
+        setLimitDetail(`Dự kiến vượt giới hạn bài học: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC_LESSON}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF_LESSON}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA_LESSON}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES_LESSON}.`)
+        setShowLimitModal(true)
         return
       }
     }
@@ -381,27 +381,27 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
       const allQs = Object.values(lessonQuestions).flat()
       const limitError = checkLessonQuestionLimits(allQs)
       if (limitError) {
-        setVipReason('question_limit')
-        setVipDetail(limitError)
-        setShowVipModal(true)
+        setLimitReason('question_limit')
+        setLimitDetail(limitError)
+        setShowLimitModal(true)
         return
       }
 
       // Kiểm tra quota bài học / tháng
       const lessonQuota = await checkExportQuota('lesson')
       if (!lessonQuota.allowed) {
-        setVipReason('lesson_limit')
-        setVipDetail('')
-        setShowVipModal(true)
+        setLimitReason('lesson_limit')
+        setLimitDetail('')
+        setShowLimitModal(true)
         return
       }
 
       // Kiểm tra quota xuất file chung / ngày
       const dailyQuota = await checkExportQuota()
       if (!dailyQuota.allowed) {
-        setVipReason('daily_limit')
-        setVipDetail('')
-        setShowVipModal(true)
+        setLimitReason('daily_limit')
+        setLimitDetail('')
+        setShowLimitModal(true)
         return
       }
     }
@@ -842,7 +842,7 @@ export default function LessonBuilderClient({ userRole }: { userRole: string }) 
         </div>
       )}
 
-      <VipModal isOpen={showVipModal} onClose={() => setShowVipModal(false)} reason={vipReason} detail={vipDetail} />
+      <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} reason={limitReason} detail={limitDetail} />
 
       <style>{`
         @keyframes toastSlideIn {
