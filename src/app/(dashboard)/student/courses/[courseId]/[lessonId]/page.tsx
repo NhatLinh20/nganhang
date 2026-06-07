@@ -175,13 +175,19 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
         {/* ─── Left: Video + Content ─── */}
         <div className={styles.videoSection}>
           <h1 className={styles.lessonTitle}>
-             {loading || !lesson ? <div className="skeleton" style={{ width: '60%', height: 32, borderRadius: 8 }}></div> : lesson.lesson_name}
+             {loading || !lesson ? (
+               <div style={{ width: '60%', height: '32px', backgroundColor: '#e2e8f0', borderRadius: '8px', animation: 'pulse 1.5s infinite' }}></div>
+             ) : lesson.lesson_name}
           </h1>
 
           {/* Video */}
           <div className={styles.videoWrapper}>
             {loading || !lesson ? (
-               <div className="skeleton" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, borderRadius: 16 }}></div>
+               <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, borderRadius: '12px', backgroundColor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                 <div style={{ width: '40px', height: '40px', border: '3px solid #cbd5e1', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                 <div style={{ color: '#64748b', fontSize: '14px', fontWeight: 500 }}>Đang tải bài học...</div>
+                 <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }`}</style>
+               </div>
             ) : embedUrl ? (
               <iframe
                 className={styles.videoIframe}
