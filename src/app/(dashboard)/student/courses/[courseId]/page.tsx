@@ -48,15 +48,13 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.notFound}>
-        <div className={styles.notFoundIcon}>📖</div>
-        <h2 className={styles.notFoundTitle}>{course.title}</h2>
-        <p className={styles.notFoundDesc}>Khóa học này chưa có bài học nào. Vui lòng quay lại sau.</p>
-        <Link href="/student/courses" className={styles.notFoundBtn}>
-          ← Quay lại danh sách
-        </Link>
-      </div>
+    <div className={styles.notFound}>
+      <div className={styles.notFoundIcon}>📖</div>
+      <h2 className={styles.notFoundTitle}>{course.title}</h2>
+      <p className={styles.notFoundDesc}>Khóa học này chưa có bài học nào. Vui lòng quay lại sau.</p>
+      <Link href="/student/courses" className={styles.notFoundBtn}>
+        ← Quay lại danh sách
+      </Link>
     </div>
   )
 }

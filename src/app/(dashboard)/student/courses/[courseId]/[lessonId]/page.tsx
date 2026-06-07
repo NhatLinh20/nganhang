@@ -1,56 +1,75 @@
-// src/app/(dashboard)/student/courses/[courseId]/[lessonId]/page.tsx
-// Trang xem bài học — Video (70%) + Sidebar chương/bài (30%)
-'use client'
-
-import { useEffect, useState, use } from 'react'
-import Link from 'next/link'
-import { getCourseWithContent, getLessonDetail } from '@/app/actions/course-queries'
+import { getLessonDetail } from '@/app/actions/course-queries'
 import styles from '../course-detail.module.css'
 
-interface PdfFile {
-  name: string
-  url: string
-  description?: string
-}
+export default async function LessonPage({ params }: { params: Promise<{ courseId: string; lessonId: string }> }) {
+  const { lessonId } = await params
+  const lesson = await getLessonDetail(lessonId)
 
-interface LessonSummary {
-  id: string
-  chapter_id: string
-  lesson_number: number
-  lesson_name: string
-  video_url: string
-  duration_minutes: number
-  sort_order: number
-}
+  if (!lesson) {
+    return <div>Bài học không tồn tại.</div>
+  }
 
-interface Chapter {
-  id: string
-  course_id: string
-  chapter_number: number
-  chapter_name: string
-  sort_order: number
-  lessons: LessonSummary[]
-}
+  const embedUrl = lesson.video_url ? getYouTubeEmbedUrl(lesson.video_url) : null
 
-interface LessonDetail {
-  id: string
-  chapter_id: string
-  lesson_number: number
-  lesson_name: string
-  video_url: string
-  duration_minutes: number
-  description: string
-  pdf_files: PdfFile[]
-  chapter_name?: string
-  chapter_number?: number
-  course_id?: string
-  course_title?: string
-}
+  return (
+    <>
+      <h1 className={styles.lessonTitle}>{lesson.lesson_name}</h1>
+      {/* Video */}
+      <div className={styles.videoWrapper}>
+        {embedUrl ? (
+          <iframe
+            className={styles.videoIframe}
+            src={embedUrl}
+            title={lesson.lesson_name}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        ) : (
+          <div className={styles.videoPlaceholder}>
+            <div className={styles.videoPlaceholderIcon}>🎬</div>
+            <div className={styles.videoPlaceholderText}>
+              {lesson.video_url ? 'Link video không hợp lệ' : 'Chưa có video cho bài này'}
+            </div>
+          </div>
+        )}
+      </div>
 
-interface CourseData {
-  id: string
-  title: string
-  total_lessons?: number
+      {/* Description */}
+      {lesson.description && (
+        <div className={styles.lessonDescription}>{lesson.description}</div>
+      )}
+
+      {/* PDF Files */}
+      {lesson.pdf_files && lesson.pdf_files.length > 0 && (
+        <div className={styles.pdfSection}>
+          <h2 className={styles.pdfHeader}>
+            <span className={styles.pdfHeaderIcon}>📄</span>
+            Tài liệu PDF
+          </h2>
+          <div className={styles.pdfList}>
+            {lesson.pdf_files.map((pdf: any, idx: number) => (
+              <a
+                key={idx}
+                href={pdf.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.pdfItem}
+              >
+                <div className={styles.pdfIcon}>📕</div>
+                <div className={styles.pdfInfo}>
+                  <div className={styles.pdfName}>{pdf.name}</div>
+                  {pdf.description && (
+                    <div className={styles.pdfDesc}>{pdf.description}</div>
+                  )}
+                </div>
+                <div className={styles.pdfDownload}>⬇</div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 // Chuyển YouTube URL → embed URL
@@ -72,242 +91,4 @@ function getYouTubeEmbedUrl(url: string): string | null {
 
   if (!videoId) return null
   return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`
-}
-
-export default function LessonPage({ params }: { params: Promise<{ courseId: string; lessonId: string }> }) {
-  const { courseId, lessonId } = use(params)
-
-  const [course, setCourse] = useState<CourseData | null>(null)
-  const [chapters, setChapters] = useState<Chapter[]>([])
-  const [lesson, setLesson] = useState<LessonDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
-
-  // Fetch course data ONLY when courseId changes
-  useEffect(() => {
-    let isMounted = true
-    async function fetchCourse() {
-      const data = await getCourseWithContent(courseId)
-      if (isMounted) {
-        setCourse(data.course)
-        setChapters(data.chapters)
-      }
-    }
-    fetchCourse()
-    return () => { isMounted = false }
-  }, [courseId])
-
-  // Fetch lesson data when lessonId changes
-  useEffect(() => {
-    let isMounted = true
-    async function fetchLesson() {
-      setLoading(true)
-      try {
-        const data = await getLessonDetail(lessonId)
-        if (isMounted) {
-          setLesson(data)
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-    fetchLesson()
-    return () => { isMounted = false }
-  }, [lessonId])
-
-  // Expand chapter when lesson is loaded
-  useEffect(() => {
-    if (lesson?.chapter_id) {
-      setExpandedChapters(prev => {
-        const next = new Set(prev)
-        next.add(lesson.chapter_id)
-        return next
-      })
-    }
-  }, [lesson?.chapter_id])
-
-  const toggleChapter = (chapterId: string) => {
-    setExpandedChapters(prev => {
-      const next = new Set(prev)
-      if (next.has(chapterId)) {
-        next.delete(chapterId)
-      } else {
-        next.add(chapterId)
-      }
-      return next
-    })
-  }
-
-  const totalLessons = chapters.reduce((sum, ch) => sum + ch.lessons.length, 0)
-  const embedUrl = lesson?.video_url ? getYouTubeEmbedUrl(lesson.video_url) : null
-
-  if (!course || !chapters) {
-    return (
-      <div className={styles.container}>
-        <div className="skeleton" style={{ height: 400, borderRadius: 16 }}></div>
-      </div>
-    )
-  }
-
-
-
-  return (
-    <div className={styles.container}>
-      {/* Breadcrumb */}
-      <div className={styles.breadcrumb}>
-        <Link href="/student/courses" className={styles.backLink}>← Khóa học</Link>
-        <span className={styles.breadcrumbSep}>›</span>
-        <Link href={`/student/courses/${courseId}`} className={styles.breadcrumbBadge}>
-          {course.title}
-        </Link>
-        {lesson?.chapter_name && !loading && (
-          <>
-            <span className={styles.breadcrumbSep}>›</span>
-            <span className={styles.breadcrumbText}>Chương {lesson.chapter_number}</span>
-          </>
-        )}
-      </div>
-
-      {/* Main Layout */}
-      <div className={styles.mainLayout}>
-        {/* ─── Left: Video + Content ─── */}
-        <div className={styles.videoSection}>
-          <h1 className={styles.lessonTitle}>
-             {loading || !lesson ? (
-               <div style={{ width: '60%', height: '32px', backgroundColor: '#e2e8f0', borderRadius: '8px', animation: 'pulse 1.5s infinite' }}></div>
-             ) : lesson.lesson_name}
-          </h1>
-
-          {/* Video */}
-          <div className={styles.videoWrapper}>
-            {loading || !lesson ? (
-               <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, borderRadius: '12px', backgroundColor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                 <div style={{ width: '40px', height: '40px', border: '3px solid #cbd5e1', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                 <div style={{ color: '#64748b', fontSize: '14px', fontWeight: 500 }}>Đang tải bài học...</div>
-                 <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }`}</style>
-               </div>
-            ) : embedUrl ? (
-              <iframe
-                className={styles.videoIframe}
-                src={embedUrl}
-                title={lesson.lesson_name}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            ) : (
-              <div className={styles.videoPlaceholder}>
-                <div className={styles.videoPlaceholderIcon}>🎬</div>
-                <div className={styles.videoPlaceholderText}>
-                  {lesson.video_url ? 'Link video không hợp lệ' : 'Chưa có video cho bài này'}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Description */}
-          {lesson?.description && (
-            <div className={styles.lessonDescription}>{lesson.description}</div>
-          )}
-
-          {/* PDF Files */}
-          {lesson?.pdf_files && lesson.pdf_files.length > 0 && (
-            <div className={styles.pdfSection}>
-              <h2 className={styles.pdfHeader}>
-                <span className={styles.pdfHeaderIcon}>📄</span>
-                Tài liệu PDF
-              </h2>
-              <div className={styles.pdfList}>
-                {lesson.pdf_files.map((pdf, idx) => (
-                  <a
-                    key={idx}
-                    href={pdf.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.pdfItem}
-                  >
-                    <div className={styles.pdfIcon}>📕</div>
-                    <div className={styles.pdfInfo}>
-                      <div className={styles.pdfName}>{pdf.name}</div>
-                      {pdf.description && (
-                        <div className={styles.pdfDesc}>{pdf.description}</div>
-                      )}
-                    </div>
-                    <div className={styles.pdfDownload}>⬇</div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ─── Right: Sidebar ─── */}
-        <div className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <span className={styles.sidebarTitle}>Nội dung khóa học</span>
-            <span className={styles.sidebarBadge}>{totalLessons} bài</span>
-          </div>
-
-          {chapters.map((ch) => {
-            const isExpanded = expandedChapters.has(ch.id)
-            const hasActiveLesson = ch.lessons.some(l => l.id === lessonId)
-
-            return (
-              <div
-                key={ch.id}
-                className={`${styles.chapterItem} ${hasActiveLesson ? styles.chapterActive : ''}`}
-              >
-                <button
-                  className={styles.chapterHeader}
-                  onClick={() => toggleChapter(ch.id)}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div className={styles.chapterLabel}>Chương {ch.chapter_number}</div>
-                    <div className={styles.chapterName}>{ch.chapter_name}</div>
-                  </div>
-                  <span className={`${styles.chapterToggle} ${isExpanded ? styles.chapterToggleOpen : ''}`}>
-                    ▼
-                  </span>
-                </button>
-
-                {isExpanded && (
-                  <div className={styles.lessonList}>
-                    {ch.lessons.map((l) => {
-                      const isActive = l.id === lessonId
-                      return (
-                        <div key={l.id}>
-                          {isActive ? (
-                            <div className={`${styles.lessonItem} ${styles.lessonItemActive}`}>
-                              <div className={styles.lessonIcon}>▶</div>
-                              <span className={styles.lessonName}>{l.lesson_name}</span>
-                              {l.duration_minutes > 0 && (
-                                <span className={styles.lessonDuration}>{l.duration_minutes} phút</span>
-                              )}
-                            </div>
-                          ) : (
-                            <Link
-                              href={`/student/courses/${courseId}/${l.id}`}
-                              className={styles.lessonItem}
-                              prefetch={true}
-                            >
-                              <div className={styles.lessonIcon}>○</div>
-                              <span className={styles.lessonName}>{l.lesson_name}</span>
-                              {l.duration_minutes > 0 && (
-                                <span className={styles.lessonDuration}>{l.duration_minutes} phút</span>
-                              )}
-                            </Link>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
 }
