@@ -8,6 +8,7 @@ import {
   rejectUser, 
   revokeUser, 
   toggleUserActive, 
+  resetDevice,
   getLoginLogs, 
   getUserStats,
   UserManagementData,
@@ -85,6 +86,15 @@ export default function UsersClient() {
     fetchData()
   }
 
+  const handleResetDevice = async (id: string, name: string) => {
+    if (!confirm(`Xóa liên kết thiết bị của "${name}"?\nNgười dùng sẽ cần đăng nhập lại để gắn kết thiết bị mới.`)) return
+    const result = await resetDevice(id)
+    if (result.error) {
+      alert(result.error)
+    }
+    fetchData()
+  }
+
   // Format date
   const formatDate = (isoString: string) => {
     const d = new Date(isoString)
@@ -115,6 +125,22 @@ export default function UsersClient() {
       case 'teacher': return 'badge badge-N'
       case 'student': return 'badge badge-H'
       default: return 'badge'
+    }
+  }
+
+  // Device display helpers
+  const getDeviceDisplay = (u: UserManagementData) => {
+    if (!u.device_id) {
+      return { icon: '⚠️', text: 'Chưa gắn kết', className: styles.deviceNotBound }
+    }
+    const info = u.device_info || {}
+    const browser = info.browser || '?'
+    const os = info.os || '?'
+    const screen = info.screen || ''
+    return {
+      icon: os === 'Android' || os === 'iOS' ? '📱' : '💻',
+      text: `${browser} / ${os}${screen ? ` (${screen})` : ''}`,
+      className: styles.deviceBound
     }
   }
 
@@ -272,50 +298,71 @@ export default function UsersClient() {
                     <th>Người dùng</th>
                     <th>Email</th>
                     <th>Vai trò</th>
+                    <th>Thiết bị</th>
                     <th>Trạng thái</th>
-                    <th>Ngày duyệt</th>
                     <th>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredApproved.length === 0 ? (
                     <tr><td colSpan={6} className={styles.emptyState}>Chưa có người dùng nào</td></tr>
-                  ) : filteredApproved.map(u => (
-                    <tr key={u.id}>
-                      <td>
-                        <div className={styles.userInfo}>
-                          <div className={styles.avatar}>{u.full_name.charAt(0).toUpperCase()}</div>
-                          <div className={styles.userName}>{u.full_name}</div>
-                        </div>
-                      </td>
-                      <td>{u.email}</td>
-                      <td>
-                        <span className={getRoleBadgeClass(u.role)}>
-                          {getRoleLabel(u.role)}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`${styles.dot} ${u.is_active ? styles.dotActive : styles.dotInactive}`}></span>
-                        {u.is_active ? 'Đang hoạt động' : 'Bị khóa'}
-                      </td>
-                      <td>{formatDate(u.updated_at)}</td>
-                      <td>
-                        {u.role !== 'admin' && (
-                          <div className={styles.actions}>
-                            <button 
-                              className={`${styles.actionBtn} ${u.is_active ? styles.btnWarning : styles.btnApprove}`}
-                              onClick={() => handleToggleActive(u.id, u.is_active)}
-                            >
-                              {u.is_active ? '🔒 Khóa' : '🔓 Mở khóa'}
-                            </button>
-                            <button className={`${styles.actionBtn} ${styles.btnReject}`} onClick={() => handleRevoke(u.id)}>
-                              ❌ Thu hồi
-                            </button>
+                  ) : filteredApproved.map(u => {
+                    const device = getDeviceDisplay(u)
+                    return (
+                      <tr key={u.id}>
+                        <td>
+                          <div className={styles.userInfo}>
+                            <div className={styles.avatar}>{u.full_name.charAt(0).toUpperCase()}</div>
+                            <div className={styles.userName}>{u.full_name}</div>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>{u.email}</td>
+                        <td>
+                          <span className={getRoleBadgeClass(u.role)}>
+                            {getRoleLabel(u.role)}
+                          </span>
+                        </td>
+                        <td>
+                          <div className={device.className} title={u.device_id ? `ID: ${u.device_id.substring(0, 12)}...` : 'Chưa gắn kết'}>
+                            <span>{device.icon}</span>
+                            <span className={styles.deviceText}>{device.text}</span>
+                            {u.device_bound_at && (
+                              <div className={styles.deviceDate}>
+                                Gắn: {formatDate(u.device_bound_at)}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`${styles.dot} ${u.is_active ? styles.dotActive : styles.dotInactive}`}></span>
+                          {u.is_active ? 'Hoạt động' : 'Bị khóa'}
+                        </td>
+                        <td>
+                          {u.role !== 'admin' && (
+                            <div className={styles.actions}>
+                              <button 
+                                className={`${styles.actionBtn} ${u.is_active ? styles.btnWarning : styles.btnApprove}`}
+                                onClick={() => handleToggleActive(u.id, u.is_active)}
+                              >
+                                {u.is_active ? '🔒 Khóa' : '🔓 Mở'}
+                              </button>
+                              {u.device_id && (
+                                <button 
+                                  className={`${styles.actionBtn} ${styles.btnReset}`}
+                                  onClick={() => handleResetDevice(u.id, u.full_name)}
+                                >
+                                  🔄 Reset TB
+                                </button>
+                              )}
+                              <button className={`${styles.actionBtn} ${styles.btnReject}`} onClick={() => handleRevoke(u.id)}>
+                                ❌ Thu hồi
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </>
             )}

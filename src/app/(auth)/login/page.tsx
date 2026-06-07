@@ -7,6 +7,7 @@ import { login } from '@/app/actions/auth'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import styles from './login.module.css'
+import { getDeviceFingerprint, getDeviceInfo } from '@/lib/device-fingerprint'
 
 export default function LoginPage() {
   const [error, setError] = useState<string>('')
@@ -57,9 +58,15 @@ export default function LoginPage() {
     }
 
     try {
+      // Lấy device fingerprint trước khi đăng nhập
+      const deviceId = await getDeviceFingerprint()
+      const deviceInfo = getDeviceInfo()
+
       const newFormData = new FormData()
       newFormData.append('email', email)
       newFormData.append('password', password)
+      newFormData.append('device_id', deviceId)
+      newFormData.append('device_info', JSON.stringify(deviceInfo))
       
       const result = await login(newFormData)
       if (result?.error) {

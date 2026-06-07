@@ -69,6 +69,11 @@ export async function proxy(request: NextRequest) {
       return supabaseResponse
     }
 
+    // Cho phép trang device-check (xác minh thiết bị sau OAuth)
+    if (pathname === '/device-check') {
+      return supabaseResponse
+    }
+
     // Kiểm tra teacher/student chưa approved
     if ((role === 'teacher' || role === 'student') && !isApproved) {
       if (pathname !== '/pending' && !pathname.startsWith('/api/auth')) {

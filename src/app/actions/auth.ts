@@ -14,6 +14,8 @@ import { headers } from 'next/headers'
 export async function login(formData: FormData): Promise<{ error?: string; success?: boolean }> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+  const deviceId = formData.get('device_id') as string
+  const deviceInfoRaw = formData.get('device_info') as string
 
   if (!email || !password) {
     return { error: 'Vui lòng nhập email và mật khẩu.' }
@@ -36,7 +38,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
   const supabaseAdmin = createAdminClient()
   let { data: profile } = await supabaseAdmin
     .from('users')
-    .select('role, is_approved')
+    .select('role, is_approved, device_id')
     .eq('id', user.id)
     .single()
 
@@ -54,7 +56,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
         role: validRole,
         is_approved: newApproved,
       })
-      .select('role, is_approved')
+      .select('role, is_approved, device_id')
       .single()
       
     if (newProfile) {
@@ -68,6 +70,37 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
     await supabase.auth.signOut()
     return {
       error: 'Tài khoản chưa được kích hoạt. Vui lòng liên hệ Admin: 0812022648 để được hỗ trợ.',
+    }
+  }
+
+  // ★ DEVICE BINDING CHECK ★
+  // Admin bypass hoàn toàn — không kiểm tra thiết bị
+  if (profile?.role !== 'admin' && deviceId) {
+    const existingDeviceId = profile?.device_id
+
+    if (existingDeviceId && existingDeviceId !== deviceId) {
+      // Thiết bị KHÔNG khớp → từ chối đăng nhập
+      await supabase.auth.signOut()
+      return {
+        error: 'Tài khoản đã được liên kết với một thiết bị khác. Vui lòng liên hệ Admin để được hỗ trợ.',
+      }
+    }
+
+    if (!existingDeviceId) {
+      // Lần đầu đăng nhập → gắn kết thiết bị
+      let deviceInfo = {}
+      try {
+        if (deviceInfoRaw) deviceInfo = JSON.parse(deviceInfoRaw)
+      } catch { /* ignore */ }
+
+      await supabaseAdmin
+        .from('users')
+        .update({
+          device_id: deviceId,
+          device_bound_at: new Date().toISOString(),
+          device_info: deviceInfo,
+        })
+        .eq('id', user.id)
     }
   }
 

@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Kiểm tra user đã có profile trong bảng users chưa
-  let redirectPath = '/dashboard'
+  let redirectPath = '/device-check'  // Xác minh thiết bị trước khi vào dashboard
   if (data?.user) {
     const { data: profile } = await supabase
       .from('users')

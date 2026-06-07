@@ -12,6 +12,9 @@ export interface UserProfile {
   is_active: boolean
   avatar_url: string | null
   active_session_id: string | null
+  device_id: string | null
+  device_bound_at: string | null
+  device_info: Record<string, string> | null
   created_at: string
   updated_at: string
 }

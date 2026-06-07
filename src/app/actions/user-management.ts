@@ -14,6 +14,9 @@ export interface UserManagementData {
   created_at: string
   updated_at: string
   provider: string
+  device_id: string | null
+  device_bound_at: string | null
+  device_info: Record<string, string> | null
 }
 
 export interface LoginLogData {
@@ -242,4 +245,38 @@ export async function getUserStats(): Promise<{
       approvedStudents: approvedStudents || 0,
     }
   }
+}
+
+// ═══════════════════════════════════════════════════
+// 8. RESET THIẾT BỊ (xóa liên kết device binding)
+// ═══════════════════════════════════════════════════
+export async function resetDevice(userId: string): Promise<{ success?: boolean, error?: string }> {
+  const admin = await isAdmin()
+  if (!admin) return { error: 'Không có quyền truy cập.' }
+
+  const supabaseAdmin = createAdminClient()
+  
+  // Bảo vệ không cho reset device của admin
+  const { data: user } = await supabaseAdmin.from('users').select('role').eq('id', userId).single()
+  if (user?.role === 'admin') {
+    return { error: 'Không cần reset thiết bị cho quản trị viên.' }
+  }
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({ 
+      device_id: null, 
+      device_bound_at: null, 
+      device_info: {},
+      updated_at: new Date().toISOString() 
+    })
+    .eq('id', userId)
+
+  if (error) {
+    console.error('resetDevice error:', error)
+    return { error: 'Không thể reset thiết bị.' }
+  }
+
+  revalidatePath('/admin/users')
+  return { success: true }
 }
