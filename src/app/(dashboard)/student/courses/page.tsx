@@ -47,12 +47,10 @@ export default async function CoursesPage() {
           {courses.map((course) => {
             const isLocked = !course.is_published
             const gradeClass = `grade${course.grade}` as keyof typeof styles
+            const cardClassName = `${styles.courseCard} ${isLocked ? styles.courseCardLocked : ''} ${styles[gradeClass] || ''}`
 
-            return (
-              <div
-                key={course.id}
-                className={`${styles.courseCard} ${isLocked ? styles.courseCardLocked : ''} ${styles[gradeClass] || ''}`}
-              >
+            const CardContent = (
+              <>
                 {/* Thumbnail */}
                 <div className={styles.thumbnailWrapper}>
                   {course.thumbnail_url ? (
@@ -93,16 +91,30 @@ export default async function CoursesPage() {
                   </div>
 
                   {isLocked ? (
-                    <button className={`${styles.actionBtn} ${styles.actionBtnLocked}`} disabled>
+                    <div className={`${styles.actionBtn} ${styles.actionBtnLocked}`}>
                       🔒 Đang cập nhật
-                    </button>
+                    </div>
                   ) : (
-                    <Link href={`/student/courses/${course.id}`} className={styles.actionBtn}>
+                    <div className={styles.actionBtn}>
                       Bắt đầu học →
-                    </Link>
+                    </div>
                   )}
                 </div>
-              </div>
+              </>
+            )
+
+            if (isLocked) {
+              return (
+                <div key={course.id} className={cardClassName}>
+                  {CardContent}
+                </div>
+              )
+            }
+
+            return (
+              <Link href={`/student/courses/${course.id}`} key={course.id} className={cardClassName} style={{ textDecoration: 'none' }}>
+                {CardContent}
+              </Link>
             )
           })}
         </div>

@@ -91,7 +91,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
       // Thiết bị KHÔNG khớp → từ chối đăng nhập
       await supabase.auth.signOut()
       return {
-        error: 'Tài khoản đã được liên kết với một thiết bị khác. Vui lòng liên hệ Admin để được hỗ trợ.',
+        error: 'Tài khoản đã được đăng nhập\nVui lòng liên hệ admin để được hỗ trợ 0812022648',
       }
     }
 

@@ -113,6 +113,7 @@ const subtitleStyle: React.CSSProperties = {
   color: '#64748b',
   lineHeight: 1.6,
   marginBottom: '24px',
+  whiteSpace: 'pre-wrap',
 }
 
 const buttonStyle: React.CSSProperties = {
