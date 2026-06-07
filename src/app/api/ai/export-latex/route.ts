@@ -7,7 +7,13 @@ import { detectQuestionType } from '@/lib/latex-parser/answer-parser'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { editorContent } = body as { editorContent: string }
+    const { editorContent, headerLabels, headerStyles, examCode, includeAnswerTable } = body as { 
+      editorContent: string
+      headerLabels?: string[]
+      headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[]
+      examCode?: string
+      includeAnswerTable?: boolean
+    }
 
     if (!editorContent || !editorContent.trim()) {
       return NextResponse.json({ error: 'Nội dung rỗng' }, { status: 400 })
@@ -70,7 +76,45 @@ export async function POST(request: NextRequest) {
     const standaloneTikz = remainingContent.match(centerTikzRegex) || []
 
     // 3. Generate data/content.tex
-    let contentTex = `\\begin{name}\n\t{SỞ GDĐT ...}\n\t{TRƯỜNG THPT ...}\n\t{Đề chính thức}\n\t{\\textit{(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)}}\n\t{ĐỀ KIỂM TRA}\n\t{Môn: TOÁN}\n\t{Thời gian làm bài: 90 phút}\n\t{(Không kể thời gian phát đề)}\n\\end{name}\n\n`
+    let contentTex = ''
+    if (examCode) {
+      contentTex += `\\def\\made{${examCode}}\n`
+    }
+    contentTex += `\\begin{name}\n`
+    
+    const labels = headerLabels && headerLabels.length === 8
+      ? headerLabels
+      : [
+          'SỞ GDĐT ...',
+          'TRƯỜNG THPT ...',
+          'Đề chính thức',
+          `(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)`,
+          'ĐỀ KIỂM TRA',
+          'Môn: TOÁN',
+          'Thời gian làm bài: 90 phút',
+          '(Không kể thời gian phát đề)'
+        ]
+
+    for (let li = 0; li < labels.length; li++) {
+      let labelText = labels[li]
+      // If the label is empty/blank, output {\,} and skip styling
+      if (li !== 3 && labelText.trim() === '') {
+        contentTex += `\t{\\,}\n`
+        continue
+      }
+      // Apply formatting from headerStyles (skip index 3 — fixed zpageref)
+      if (li !== 3 && headerStyles && headerStyles[li]) {
+        const s = headerStyles[li]
+        if (s.underline) labelText = `\\underline{${labelText}}`
+        if (s.italic) labelText = `\\textit{${labelText}}`
+        if (s.bold) labelText = `\\textbf{${labelText}}`
+        if (s.color) labelText = `\\textcolor{${s.color}}{${labelText}}`
+      } else if (li === 3) {
+        labelText = `\\textit{(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)}`
+      }
+      contentTex += `\t{${labelText}}\n`
+    }
+    contentTex += `\\end{name}\n\n`
     
     contentTex += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n\n`
 
@@ -103,7 +147,11 @@ export async function POST(request: NextRequest) {
     
     contentTex += `\\zlabel{\\made-lastpage}\n\n`
     contentTex += `\\begin{center}\n\t\\textbf{--------------- HẾT ---------------}\n\\end{center}\n\n`
-    contentTex += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
+    if (includeAnswerTable !== false) {
+      contentTex += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
+    } else {
+      contentTex += `%\\begin{indapan}\n%\t{ans/ans\\currfilebase}\n%\\end{indapan}\n`
+    }
 
     zip.addFile('ans/', Buffer.alloc(0))
     zip.addFile('data/', Buffer.alloc(0))

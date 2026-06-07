@@ -64,6 +64,10 @@ function renderMarkdown(text: string): string {
 
 
 
+const generateExamCode = (): string => {
+  return String(Math.floor(1000 + Math.random() * 9000))
+}
+
 export default function AiChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -93,6 +97,26 @@ export default function AiChatPage() {
   const [showQuickPromptsMenu, setShowQuickPromptsMenu] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
+  // Export Modal States
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [headerLabels, setHeaderLabels] = useState<string[]>([
+    'SỞ GDĐT ...',
+    'TRƯỜNG THPT ...',
+    'Đề chính thức',
+    '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
+    'ĐỀ KIỂM TRA',
+    'Môn: TOÁN',
+    'Thời gian làm bài: 90 phút',
+    '(Không kể thời gian phát đề)'
+  ])
+  const [headerStyles, setHeaderStyles] = useState<{ bold: boolean; italic: boolean; underline: boolean; color: string }[]>(
+    Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' }))
+  )
+  const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
+  const [selectedLine, setSelectedLine] = useState<number | null>(null)
+  const [examCodes, setExamCodes] = useState<string[]>([''])
+  const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
+
   const DEFAULT_QUICK_PROMPTS = [
     'Gõ lại câu hỏi từ ảnh/PDF thành LaTeX chuẩn.',
     'Tạo bài toán tương tự, đổi số.',
@@ -119,6 +143,9 @@ export default function AiChatPage() {
         if (parsed.editorContent) setEditorContent(parsed.editorContent)
         if (parsed.quickPrompts) setQuickPrompts(parsed.quickPrompts)
         if (parsed.customApiKey) setCustomApiKey(parsed.customApiKey)
+        if (parsed.headerLabels) setHeaderLabels(parsed.headerLabels)
+        if (parsed.examCodes) setExamCodes(parsed.examCodes)
+        if (parsed.includeAnswerTable !== undefined) setIncludeAnswerTable(parsed.includeAnswerTable)
       }
     } catch (e) {
       console.error('Failed to load chat state', e)
@@ -128,11 +155,11 @@ export default function AiChatPage() {
   // Save to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel, editorContent, quickPrompts, customApiKey }))
+      localStorage.setItem('ai-chat-state', JSON.stringify({ messages, aiModel, editorContent, quickPrompts, customApiKey, headerLabels, examCodes, includeAnswerTable }))
     } catch (e) {
       console.error('Failed to save chat state', e)
     }
-  }, [messages, aiModel, editorContent, quickPrompts, customApiKey])
+  }, [messages, aiModel, editorContent, quickPrompts, customApiKey, headerLabels, examCodes, includeAnswerTable])
 
   // Editor Actions
   const handleCopy = (text: string) => {
@@ -269,7 +296,13 @@ export default function AiChatPage() {
       const res = await fetch('/api/ai/export-latex', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ editorContent })
+        body: JSON.stringify({ 
+          editorContent,
+          headerLabels,
+          headerStyles,
+          examCode: examCodes[0],
+          includeAnswerTable 
+        })
       })
 
       if (!res.ok) {
@@ -529,10 +562,13 @@ export default function AiChatPage() {
         actions={
           <button 
             className="btn btn-primary" 
-            onClick={handleExportLatex} 
+            onClick={() => {
+              if (!examCodes[0]) setExamCodes([generateExamCode()])
+              setShowExportModal(true)
+            }} 
             disabled={isExporting || !editorContent.trim()}
           >
-            {isExporting ? '⏳ Đang xuất...' : '📥 Xuất file LaTeX'}
+            {isExporting ? '⏳ Đang xử lý...' : '📥 Xuất file LaTeX'}
           </button>
         }
       />
@@ -914,6 +950,216 @@ export default function AiChatPage() {
           />
         </div>
       </div>
+
+      {/* Export LaTeX Modal – 8 header fields */}
+      {showExportModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 1120, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
+              </div>
+              <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24 }}>
+              {/* ── LEFT COLUMN (Main Content) ── */}
+              <div style={{ flex: '1 1 65%', display: 'flex', flexDirection: 'column' }}>
+                {/* ── Shared Formatting Toolbar ── */}
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginRight: 4 }}>Định dạng:</span>
+                  {(['bold', 'italic', 'underline'] as const).map(prop => (
+                    <button key={prop} type="button" disabled={selectedLine === null || selectedLine === 3} onClick={() => {
+                      if (selectedLine === null || selectedLine === 3) return
+                      const ns = [...headerStyles]; ns[selectedLine] = { ...ns[selectedLine], [prop]: !ns[selectedLine][prop] }; setHeaderStyles(ns)
+                    }} style={{
+                      width: 30, height: 30, borderRadius: 6, border: `1.5px solid ${selectedLine !== null && selectedLine !== 3 && headerStyles[selectedLine]?.[prop] ? '#3b82f6' : '#cbd5e1'}`,
+                      background: selectedLine !== null && selectedLine !== 3 && headerStyles[selectedLine]?.[prop] ? '#dbeafe' : 'white',
+                      cursor: selectedLine === null || selectedLine === 3 ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: prop === 'bold' ? 700 : 400, fontStyle: prop === 'italic' ? 'italic' : 'normal',
+                      textDecoration: prop === 'underline' ? 'underline' : 'none',
+                      color: selectedLine !== null && selectedLine !== 3 && headerStyles[selectedLine]?.[prop] ? '#1d4ed8' : '#94a3b8',
+                      opacity: selectedLine === null || selectedLine === 3 ? 0.5 : 1, transition: 'all 0.15s',
+                    }}>
+                      {prop === 'bold' ? 'B' : prop === 'italic' ? 'I' : 'U'}
+                    </button>
+                  ))}
+                  <select value={selectedLine !== null && selectedLine !== 3 ? headerStyles[selectedLine]?.color || '' : ''}
+                    disabled={selectedLine === null || selectedLine === 3}
+                    onChange={e => {
+                      if (selectedLine === null || selectedLine === 3) return
+                      const ns = [...headerStyles]; ns[selectedLine] = { ...ns[selectedLine], color: e.target.value }; setHeaderStyles(ns)
+                    }} style={{
+                      height: 30, padding: '0 8px', borderRadius: 6, border: '1.5px solid #cbd5e1', fontSize: 12,
+                      cursor: selectedLine === null || selectedLine === 3 ? 'not-allowed' : 'pointer',
+                      background: selectedLine !== null && selectedLine !== 3 && headerStyles[selectedLine]?.color ? headerStyles[selectedLine].color : 'white',
+                      color: selectedLine !== null && selectedLine !== 3 && headerStyles[selectedLine]?.color ? 'white' : '#64748b',
+                      opacity: selectedLine === null || selectedLine === 3 ? 0.5 : 1, transition: 'all 0.15s',
+                    }}>
+                    <option value="">🎨 Màu</option>
+                    {LATEX_COLORS.filter(c => c).map(c => <option key={c} value={c} style={{ background: c, color: 'white' }}>{c}</option>)}
+                  </select>
+                  {selectedLine !== null && selectedLine !== 3 && (
+                    <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto', fontStyle: 'italic' }}>Đang sửa dòng {selectedLine + 1}</span>
+                  )}
+                </div>
+
+                {/* ── WYSIWYG Editable Preview ── */}
+                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px', marginBottom: 16 }} onClick={e => { if (e.target === e.currentTarget) setSelectedLine(null) }}>
+                  <div style={{ display: 'flex', gap: 0 }}>
+                    <div style={{ flex: '0 0 45%', textAlign: 'center', padding: '4px 8px' }}>
+                      {[0, 1, 2, 3].map(i => {
+                        const s = headerStyles[i]; const isSelected = selectedLine === i; const isLocked = i === 3
+                        return (
+                          <div key={i} onClick={e => { e.stopPropagation(); if (!isLocked) setSelectedLine(i) }}
+                            style={{ padding: '3px 6px', borderRadius: 4, marginBottom: 2, cursor: isLocked ? 'default' : 'text',
+                              outline: isSelected ? '2px solid #3b82f6' : 'none', outlineOffset: 1,
+                              background: isSelected ? '#eff6ff' : 'transparent', transition: 'all 0.15s',
+                              fontSize: i === 0 ? '14px' : i === 1 ? '13px' : '12px',
+                              fontWeight: s.bold ? 700 : 400, fontStyle: isLocked ? 'italic' : (s.italic ? 'italic' : 'normal'),
+                              textDecoration: s.underline ? 'underline' : 'none', color: isLocked ? '#9ca3af' : (s.color || 'inherit'),
+                            }}
+                            onMouseEnter={e => { if (!isLocked && !isSelected) (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                            onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                          >
+                            {isLocked ? '(Đề thi gồm có X trang) 🔒' : (
+                              isSelected ? (
+                                <input type="text" value={headerLabels[i]} autoFocus
+                                  onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
+                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
+                                  style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
+                              ) : (headerLabels[i] || '...')
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div style={{ flex: '0 0 55%', textAlign: 'center', padding: '4px 8px' }}>
+                      {[4, 5, 6, 7].map(i => {
+                        const s = headerStyles[i]; const isSelected = selectedLine === i
+                        return (
+                          <div key={i} onClick={e => { e.stopPropagation(); setSelectedLine(i) }}
+                            style={{ padding: '3px 6px', borderRadius: 4, marginBottom: 2, cursor: 'text',
+                              outline: isSelected ? '2px solid #3b82f6' : 'none', outlineOffset: 1,
+                              background: isSelected ? '#eff6ff' : 'transparent', transition: 'all 0.15s',
+                              fontSize: i === 4 ? '14px' : i === 5 ? '13px' : '12px',
+                              fontWeight: s.bold ? 700 : 400, fontStyle: s.italic ? 'italic' : 'normal',
+                              textDecoration: s.underline ? 'underline' : 'none', color: s.color || 'inherit',
+                            }}
+                            onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                            onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                          >
+                            {isSelected ? (
+                              <input type="text" value={headerLabels[i]} autoFocus
+                                onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
+                                onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
+                                style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
+                            ) : (headerLabels[i] || '...')}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ borderTop: '2px double #94a3b8', marginTop: '8px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b' }}>
+                    <span style={{ fontStyle: 'italic' }}>Họ và tên thí sinh: .........................</span>
+                    <span style={{ fontStyle: 'italic' }}>Số báo danh: ....................</span>
+                    <span style={{ fontWeight: 700, border: '1px solid #333', padding: '2px 8px', fontSize: '13px', color: '#2563eb' }}>{examCodes[0] || '1234'}</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8', marginTop: 6 }}>💡 Click vào dòng để chỉnh sửa • Dùng toolbar phía trên để định dạng</div>
+                </div>
+
+                {/* Exam Codes */}
+                <div style={{
+                  background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px',
+                  padding: '16px', marginBottom: '16px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.03em' }}>🔢 Mã đề thi</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = generateExamCode()
+                        setExamCodes([val])
+                      }}
+                      style={{
+                        padding: '4px 12px', borderRadius: '6px', border: '1px solid #86efac',
+                        background: 'white', color: '#166534', cursor: 'pointer', fontSize: '12px', fontWeight: 600,
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.background = '#166534'; e.currentTarget.style.color = 'white' }}
+                      onMouseOut={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#166534' }}
+                    >
+                      🎲 Tạo mã ngẫu nhiên
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input
+                        type="text"
+                        value={examCodes[0]}
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                          setExamCodes([val])
+                        }}
+                        maxLength={4}
+                        style={{
+                          width: '72px', padding: '8px 10px', borderRadius: '8px',
+                          border: '2px solid #86efac', fontSize: '16px', fontWeight: 700,
+                          textAlign: 'center', background: 'white', color: '#166534',
+                          fontFamily: 'monospace', letterSpacing: '2px',
+                        }}
+                        placeholder="1234"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => setShowExportModal(false)}
+                      style={{
+                        padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                        background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: '14px', fontWeight: 500
+                      }}
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={() => { setShowExportModal(false); handleExportLatex(); }}
+                      style={{
+                        padding: '10px 24px', borderRadius: '8px', border: 'none',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white',
+                        cursor: 'pointer', fontSize: '14px', fontWeight: 700,
+                        boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      📥 Xuất file .tex
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── RIGHT COLUMN (Options) ── */}
+              <div style={{ flex: '0 0 280px', background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tùy chọn xuất</h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
+                  </label>
+                </div>
+
+                <div style={{ flex: 1, border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, minHeight: '100px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Không gian chờ cập nhật...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ GÁN ID MODAL ═══ */}
       {isIdModalOpen && (
