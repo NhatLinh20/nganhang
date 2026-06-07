@@ -48,7 +48,7 @@ export default function DeviceCheckPage() {
       <div style={containerStyle}>
         <div style={cardStyle}>
           <div style={spinnerStyle} />
-          <h2 style={titleStyle}>Đang xác minh thiết bị...</h2>
+          <h2 style={titleStyle}>Đang kết nối...</h2>
           <p style={subtitleStyle}>Vui lòng đợi trong giây lát</p>
         </div>
       </div>
