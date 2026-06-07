@@ -38,8 +38,8 @@ export default function UsersClient() {
     setIsLoading(true)
     try {
       const [pendingRes, approvedRes, logsRes, statsRes] = await Promise.all([
-        getUsers('pending', roleFilter),
-        getUsers('approved', roleFilter),
+        getUsers('pending', 'all'),
+        getUsers('approved', 'all'),
         getLoginLogs(logFilter),
         getUserStats()
       ])
@@ -55,10 +55,10 @@ export default function UsersClient() {
     }
   }
 
-  // Refetch when filters change
+  // Refetch when log filter changes, but NOT when role filter changes (client-side filtering)
   useEffect(() => {
     fetchData()
-  }, [logFilter, roleFilter])
+  }, [logFilter])
 
   // Handlers
   const handleApprove = async (id: string) => {
@@ -144,14 +144,16 @@ export default function UsersClient() {
     }
   }
 
-  // Filtered Data based on Search
+  // Filtered Data based on Search & Role
   const searchLower = search.toLowerCase()
-  const filteredPending = pendingUsers.filter(u => 
-    u.full_name.toLowerCase().includes(searchLower) || u.email.toLowerCase().includes(searchLower)
-  )
-  const filteredApproved = approvedUsers.filter(u => 
-    u.full_name.toLowerCase().includes(searchLower) || u.email.toLowerCase().includes(searchLower)
-  )
+  const filteredPending = pendingUsers.filter(u => {
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false
+    return u.full_name.toLowerCase().includes(searchLower) || u.email.toLowerCase().includes(searchLower)
+  })
+  const filteredApproved = approvedUsers.filter(u => {
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false
+    return u.full_name.toLowerCase().includes(searchLower) || u.email.toLowerCase().includes(searchLower)
+  })
   const filteredLogs = logs.filter(l => 
     l.users?.full_name?.toLowerCase().includes(searchLower) || l.users?.email?.toLowerCase().includes(searchLower) || l.ip_address.includes(searchLower)
   )

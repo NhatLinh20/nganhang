@@ -151,25 +151,7 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
     )
   }
 
-  if (loading || !lesson) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.breadcrumb}>
-          <div className="skeleton" style={{ width: 200, height: 24, borderRadius: 12 }}></div>
-        </div>
-        <div className={styles.mainLayout}>
-          <div className="skeleton" style={{ height: 500, borderRadius: 16 }}></div>
-          <div className={styles.sidebar}>
-            {/* Show cached sidebar during loading! */}
-            <div className={styles.sidebarHeader}>
-              <span className={styles.sidebarTitle}>Nội dung khóa học</span>
-            </div>
-            <div className="skeleton" style={{ height: 400, borderRadius: 16 }}></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+
 
   return (
     <div className={styles.container}>
@@ -180,7 +162,7 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
         <Link href={`/student/courses/${courseId}`} className={styles.breadcrumbBadge}>
           {course.title}
         </Link>
-        {lesson.chapter_name && (
+        {lesson?.chapter_name && !loading && (
           <>
             <span className={styles.breadcrumbSep}>›</span>
             <span className={styles.breadcrumbText}>Chương {lesson.chapter_number}</span>
@@ -192,11 +174,15 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
       <div className={styles.mainLayout}>
         {/* ─── Left: Video + Content ─── */}
         <div className={styles.videoSection}>
-          <h1 className={styles.lessonTitle}>{lesson.lesson_name}</h1>
+          <h1 className={styles.lessonTitle}>
+             {loading || !lesson ? <div className="skeleton" style={{ width: '60%', height: 32, borderRadius: 8 }}></div> : lesson.lesson_name}
+          </h1>
 
           {/* Video */}
           <div className={styles.videoWrapper}>
-            {embedUrl ? (
+            {loading || !lesson ? (
+               <div className="skeleton" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, borderRadius: 16 }}></div>
+            ) : embedUrl ? (
               <iframe
                 className={styles.videoIframe}
                 src={embedUrl}
@@ -215,12 +201,12 @@ export default function LessonPage({ params }: { params: Promise<{ courseId: str
           </div>
 
           {/* Description */}
-          {lesson.description && (
+          {lesson?.description && (
             <div className={styles.lessonDescription}>{lesson.description}</div>
           )}
 
           {/* PDF Files */}
-          {lesson.pdf_files && lesson.pdf_files.length > 0 && (
+          {lesson?.pdf_files && lesson.pdf_files.length > 0 && (
             <div className={styles.pdfSection}>
               <h2 className={styles.pdfHeader}>
                 <span className={styles.pdfHeaderIcon}>📄</span>
