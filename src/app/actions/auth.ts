@@ -38,7 +38,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
   const supabaseAdmin = createAdminClient()
   let { data: profile } = await supabaseAdmin
     .from('users')
-    .select('role, is_approved, device_id')
+    .select('role, is_approved, is_active, device_id')
     .eq('id', user.id)
     .single()
 
@@ -55,8 +55,9 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
         full_name: user.user_metadata?.full_name || 'Người dùng',
         role: validRole,
         is_approved: newApproved,
+        is_active: true,
       })
-      .select('role, is_approved, device_id')
+      .select('role, is_approved, is_active, device_id')
       .single()
       
     if (newProfile) {
@@ -70,6 +71,14 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
     await supabase.auth.signOut()
     return {
       error: 'Tài khoản chưa được kích hoạt. Vui lòng liên hệ Admin: 0812022648 để được hỗ trợ.',
+    }
+  }
+
+  // Kiểm tra tài khoản có bị khóa không
+  if (profile?.is_active === false) {
+    await supabase.auth.signOut()
+    return {
+      error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin để biết thêm chi tiết.',
     }
   }
 

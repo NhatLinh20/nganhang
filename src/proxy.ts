@@ -44,17 +44,29 @@ export async function proxy(request: NextRequest) {
 
   // Đã đăng nhập
   if (user) {
+    // Truy vấn bảng users lấy role, is_approved, is_active
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role, is_approved, is_active')
+      .eq('id', user.id)
+      .single()
+
+    const isActive = profile?.is_active ?? true
+
+    // Nếu tài khoản bị khóa, đăng xuất và đẩy về trang đăng nhập
+    if (isActive === false && !pathname.startsWith('/api/auth')) {
+      await supabase.auth.signOut()
+      const redirectResponse = NextResponse.redirect(new URL('/login?error=locked', request.url))
+      supabaseResponse.cookies.getAll().forEach(cookie => {
+        redirectResponse.cookies.set(cookie.name, cookie.value)
+      })
+      return redirectResponse
+    }
+
     // Không cần vào login/register/forgot-password nữa
     if (pathname === '/login' || pathname === '/register' || pathname === '/forgot-password') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
-
-    // Truy vấn bảng users lấy role và is_approved
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role, is_approved')
-      .eq('id', user.id)
-      .single()
       
     // Tránh lỗi khi mới đăng ký chưa kịp tạo profile
     const role = profile?.role || user.user_metadata?.role || ''

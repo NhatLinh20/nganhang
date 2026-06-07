@@ -25,12 +25,18 @@ export async function POST(request: NextRequest) {
     // Lấy profile hiện tại
     const { data: profile } = await supabaseAdmin
       .from('users')
-      .select('role, is_approved, device_id')
+      .select('role, is_approved, is_active, device_id')
       .eq('id', user.id)
       .single()
 
     if (!profile) {
       return NextResponse.json({ error: 'Không tìm thấy tài khoản.' }, { status: 404 })
+    }
+
+    // Kiểm tra tài khoản có bị khóa không
+    if (profile.is_active === false) {
+      await supabase.auth.signOut()
+      return NextResponse.json({ error: 'Tài khoản của bạn đã bị khóa.' }, { status: 403 })
     }
 
     // Admin bypass hoàn toàn

@@ -14,6 +14,18 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const errParam = urlParams.get('error')
+      if (errParam === 'locked') {
+        setError('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin để biết thêm chi tiết.')
+      } else if (errParam) {
+        setError('Đăng nhập thất bại. Vui lòng thử lại.')
+      }
+    }
+  }, [])
+
   // Google login hoàn toàn ở Client Side — tránh lỗi PKCE cookie trên Vercel
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true)
