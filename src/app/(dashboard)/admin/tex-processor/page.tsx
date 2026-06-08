@@ -1,7 +1,7 @@
 // src/app/(dashboard)/admin/tex-processor/page.tsx
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Header from '@/components/layout/Header'
 import styles from './tex-processor.module.css'
 import {
@@ -198,6 +198,117 @@ const TOOL_SECTIONS: ToolSection[] = [
   },
 ]
 
+// ═══ LaTeX Syntax Highlighter ═══
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function highlightLatex(code: string): string {
+  if (!code) return '\n'
+
+  let result = ''
+  let i = 0
+  const len = code.length
+
+  while (i < len) {
+    const ch = code[i]
+
+    // Escaped backslash \\
+    if (ch === '\\' && i + 1 < len && code[i + 1] === '\\') {
+      result += '<span style="color:#4ec9b0">\\\\</span>'
+      i += 2
+      continue
+    }
+
+    // Escaped percent \%
+    if (ch === '\\' && i + 1 < len && code[i + 1] === '%') {
+      result += escapeHtml('\\%')
+      i += 2
+      continue
+    }
+
+    // Comment: % to end of line
+    if (ch === '%') {
+      let end = code.indexOf('\n', i)
+      if (end === -1) end = len
+      result += `<span style="color:#6a9955;font-style:italic">${escapeHtml(code.slice(i, end))}</span>`
+      i = end
+      continue
+    }
+
+    // Display math $$...$$
+    if (ch === '$' && i + 1 < len && code[i + 1] === '$') {
+      let j = i + 2
+      while (j < len - 1) {
+        if (code[j] === '$' && code[j + 1] === '$') { j += 2; break }
+        j++
+      }
+      if (j >= len && !(code[len - 1] === '$' && code[len - 2] === '$')) j = len
+      result += `<span style="color:#ce9178">${escapeHtml(code.slice(i, j))}</span>`
+      i = j
+      continue
+    }
+
+    // Inline math $...$
+    if (ch === '$') {
+      let j = i + 1
+      while (j < len && code[j] !== '$' && code[j] !== '\n') j++
+      if (j < len && code[j] === '$') j++ // include closing $
+      result += `<span style="color:#ce9178">${escapeHtml(code.slice(i, j))}</span>`
+      i = j
+      continue
+    }
+
+    // LaTeX commands starting with \
+    if (ch === '\\') {
+      // \begin{...} or \end{...}
+      const rest = code.slice(i)
+      const envMatch = rest.match(/^\\(begin|end)\{([^}]*)\}/)
+      if (envMatch) {
+        result += `<span style="color:#4ec9b0">\\${escapeHtml(envMatch[1])}</span><span style="color:#808080">{</span><span style="color:#dcdcaa">${escapeHtml(envMatch[2])}</span><span style="color:#808080">}</span>`
+        i += envMatch[0].length
+        continue
+      }
+
+      // Regular command \word
+      const cmdMatch = rest.match(/^\\[a-zA-Z@]+/)
+      if (cmdMatch) {
+        result += `<span style="color:#4ec9b0">${escapeHtml(cmdMatch[0])}</span>`
+        i += cmdMatch[0].length
+        continue
+      }
+
+      // Escaped special char like \{ \} \$ etc
+      if (i + 1 < len) {
+        result += `<span style="color:#4ec9b0">${escapeHtml(code.slice(i, i + 2))}</span>`
+        i += 2
+      } else {
+        result += escapeHtml('\\')
+        i++
+      }
+      continue
+    }
+
+    // Braces
+    if (ch === '{' || ch === '}') {
+      result += `<span style="color:#808080">${ch}</span>`
+      i++
+      continue
+    }
+
+    // Regular text - batch until next special char
+    let j = i + 1
+    while (j < len && !'$%\\{}'.includes(code[j])) j++
+    result += escapeHtml(code.slice(i, j))
+    i = j
+  }
+
+  return result
+}
+
 // ═══ History management ═══
 const MAX_HISTORY = 50
 
@@ -213,6 +324,7 @@ export default function TexProcessorPage() {
   // ═══ Refs ═══
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
+  const highlightRef = useRef<HTMLPreElement>(null)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ═══ Load from localStorage ═══
@@ -233,10 +345,19 @@ export default function TexProcessorPage() {
     } catch { /* ignore */ }
   }, [editorContent])
 
-  // ═══ Sync scroll between textarea and line numbers ═══
+  // ═══ Syntax highlight (memoized) ═══
+  const highlightedHtml = useMemo(() => highlightLatex(editorContent), [editorContent])
+
+  // ═══ Sync scroll between textarea, line numbers, and highlight ═══
   const handleScroll = useCallback(() => {
-    if (textareaRef.current && lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
+    if (textareaRef.current) {
+      if (lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
+      }
+      if (highlightRef.current) {
+        highlightRef.current.scrollTop = textareaRef.current.scrollTop
+        highlightRef.current.scrollLeft = textareaRef.current.scrollLeft
+      }
     }
   }, [])
 
@@ -521,20 +642,32 @@ export default function TexProcessorPage() {
               ))}
             </div>
 
-            {/* Textarea - always rendered */}
-            <textarea
-              ref={textareaRef}
-              className={`${styles.editorTextarea} ${flashEditor ? styles.editorFlash : ''}`}
-              value={editorContent}
-              onChange={handleEditorChange}
-              onKeyDown={handleKeyDown}
-              onScroll={handleScroll}
-              placeholder=""
-              spellCheck={false}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-            />
+            {/* Editor container with highlight overlay */}
+            <div className={styles.editorContainer}>
+              {/* Syntax highlight layer (behind textarea) */}
+              <pre
+                ref={highlightRef}
+                className={styles.highlightLayer}
+                aria-hidden="true"
+              >
+                <code dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }} />
+              </pre>
+
+              {/* Textarea (transparent text, on top) */}
+              <textarea
+                ref={textareaRef}
+                className={`${styles.editorTextarea} ${flashEditor ? styles.editorFlash : ''}`}
+                value={editorContent}
+                onChange={handleEditorChange}
+                onKeyDown={handleKeyDown}
+                onScroll={handleScroll}
+                placeholder=""
+                spellCheck={false}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+              />
+            </div>
           </div>
 
           {/* Status bar */}
