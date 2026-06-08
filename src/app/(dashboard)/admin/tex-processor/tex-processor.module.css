@@ -412,7 +412,7 @@
   gap: var(--space-3);
   padding: var(--space-8);
   z-index: 2;
-  pointer-events: auto;
+  pointer-events: none;
   background: #1e293b;
 }
 

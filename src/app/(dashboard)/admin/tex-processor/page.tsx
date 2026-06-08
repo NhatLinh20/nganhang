@@ -503,17 +503,13 @@ export default function TexProcessorPage() {
           <div className={styles.editorWrapper}>
             {/* Empty state overlay */}
             {!editorContent && (
-              <div
-                className={styles.emptyState}
-                onClick={() => textareaRef.current?.focus()}
-                style={{ cursor: 'text' }}
-              >
+              <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}>📝</div>
                 <div className={styles.emptyTitle}>Paste code TeX vào đây</div>
                 <div className={styles.emptyHint}>
-                  Dán code LaTeX hoặc bắt đầu gõ, sau đó sử dụng các công cụ bên trái để xử lý.
+                  Click vào vùng tối, dán code LaTeX hoặc bắt đầu gõ.
                   <br />
-                  Hỗ trợ chuẩn hóa, thụt lề, thay thế lệnh và nhiều hơn nữa.
+                  Sau đó sử dụng các công cụ bên trái để xử lý.
                 </div>
               </div>
             )}
