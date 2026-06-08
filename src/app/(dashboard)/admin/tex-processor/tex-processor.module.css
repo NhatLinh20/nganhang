@@ -1,0 +1,540 @@
+/* src/app/(dashboard)/admin/tex-processor/tex-processor.module.css */
+
+/* ═══════════════════════════════════
+   PAGE LAYOUT
+═══════════════════════════════════ */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ═══════════════════════════════════
+   TOOL PANEL (LEFT SIDEBAR)
+═══════════════════════════════════ */
+.toolPanel {
+  width: 280px;
+  min-width: 280px;
+  background: var(--color-gray-50);
+  border-right: 1px solid var(--color-gray-200);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.toolPanelHeader {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--color-gray-200);
+  background: linear-gradient(135deg, var(--color-primary-50), var(--color-accent-50));
+}
+
+.toolPanelTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-800);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.toolPanelSubtitle {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--space-1);
+}
+
+.toolSections {
+  flex: 1;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ═══ TOOL SECTION GROUP ═══ */
+.toolSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.toolSectionLabel {
+  font-size: 0.65rem;
+  font-weight: var(--font-bold);
+  color: var(--color-gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+/* ═══ TOOL BUTTON ═══ */
+.toolBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-700);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.toolBtn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-primary-100), var(--color-accent-100));
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  border-radius: var(--radius-md);
+}
+
+.toolBtn:hover {
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-200);
+  transform: translateX(2px);
+}
+
+.toolBtn:hover::before {
+  opacity: 1;
+}
+
+.toolBtn:active {
+  transform: translateX(2px) scale(0.98);
+}
+
+.toolBtnIcon {
+  font-size: var(--text-base);
+  z-index: 1;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.toolBtnText {
+  z-index: 1;
+  flex: 1;
+}
+
+.toolBtnBadge {
+  z-index: 1;
+  font-size: 0.6rem;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  font-weight: var(--font-semibold);
+}
+
+/* Primary action button (Chuẩn hóa tất cả) */
+.toolBtnPrimary {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-accent-600));
+  color: white;
+  font-weight: var(--font-semibold);
+  border: none;
+  padding: var(--space-3) var(--space-3);
+  font-size: var(--text-sm);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.toolBtnPrimary::before {
+  background: linear-gradient(135deg, var(--color-primary-700), var(--color-accent-700));
+}
+
+.toolBtnPrimary:hover {
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  transform: translateX(0) translateY(-1px);
+}
+
+/* Disabled / coming soon */
+.toolBtnDisabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.toolBtnDisabled .toolBtnBadge {
+  background: var(--color-gray-200);
+  color: var(--color-gray-500);
+}
+
+/* Separator line between sections */
+.toolSeparator {
+  height: 1px;
+  background: var(--color-gray-200);
+  margin: var(--space-1) 0;
+}
+
+/* ═══════════════════════════════════
+   EDITOR PANEL (RIGHT)
+═══════════════════════════════════ */
+.editorPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-bg);
+}
+
+/* ═══ EDITOR TOOLBAR ═══ */
+.editorToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-gray-200);
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.editorToolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.editorToolbarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.toolbarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-600);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.toolbarBtn:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-800);
+}
+
+.toolbarBtn:active {
+  transform: scale(0.96);
+}
+
+.toolbarBtnActive {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-200);
+}
+
+.toolbarBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbarSep {
+  width: 1px;
+  height: 20px;
+  background: var(--color-gray-200);
+  margin: 0 var(--space-1);
+}
+
+/* ═══ CODE EDITOR AREA ═══ */
+.editorWrapper {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.lineNumbers {
+  width: 48px;
+  min-width: 48px;
+  background: #172033;
+  color: #475569;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  padding: var(--space-4) 0;
+  text-align: right;
+  user-select: none;
+  overflow: hidden;
+  border-right: 1px solid #1e3050;
+}
+
+.lineNumber {
+  padding: 0 var(--space-2) 0 var(--space-1);
+  display: block;
+  min-height: 1.7em;
+}
+
+.editorTextarea {
+  flex: 1;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  padding: var(--space-4);
+  color: #e2e8f0;
+  background: #1e293b;
+  caret-color: #60a5fa;
+  tab-size: 2;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.editorTextarea::placeholder {
+  color: #475569;
+  font-style: italic;
+}
+
+.editorTextarea::selection {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* ═══ Flash effect when content changes after processing ═══ */
+.editorFlash {
+  animation: editorFlash 0.5s ease;
+}
+
+@keyframes editorFlash {
+  0% { box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.6); }
+  100% { box-shadow: inset 0 0 0 2px transparent; }
+}
+
+/* ═══ STATUS BAR ═══ */
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-4);
+  background: #172033;
+  border-top: 1px solid #1e3050;
+  font-size: 0.7rem;
+  color: #64748b;
+  font-family: var(--font-mono);
+}
+
+.statusBarLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.statusBarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.statusDotIdle {
+  background: #64748b;
+}
+
+/* ═══ Processing spinner on tool button ═══ */
+.toolBtnProcessing {
+  position: relative;
+  pointer-events: none;
+}
+
+.toolBtnProcessing::after {
+  content: '';
+  position: absolute;
+  right: var(--space-3);
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══ Copy success animation ═══ */
+.copySuccess {
+  color: var(--color-success-600) !important;
+}
+
+/* ═══════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════ */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #475569;
+  gap: var(--space-3);
+  padding: var(--space-8);
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  opacity: 0.3;
+}
+
+.emptyTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: #64748b;
+}
+
+.emptyHint {
+  font-size: var(--text-sm);
+  color: #475569;
+  text-align: center;
+  max-width: 360px;
+  line-height: var(--leading-relaxed);
+}
+
+/* ═══════════════════════════════════
+   TOAST NOTIFICATION
+═══════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-gray-800);
+  color: white;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  box-shadow: var(--shadow-xl);
+  z-index: 1000;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.toastSuccess {
+  background: linear-gradient(135deg, #15803d, #166534);
+}
+
+.toastInfo {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+/* ═══════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════ */
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .toolPanel {
+    width: 100%;
+    min-width: unset;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--color-gray-200);
+  }
+
+  .toolSections {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    flex-wrap: nowrap;
+  }
+
+  .toolSection {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+    min-width: max-content;
+  }
+
+  .toolSectionLabel {
+    display: none;
+  }
+
+  .toolBtn {
+    white-space: nowrap;
+    min-width: max-content;
+  }
+
+  .toolSeparator {
+    width: 1px;
+    height: 28px;
+    margin: 0 var(--space-1);
+  }
+
+  .toolPanelHeader {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .editorToolbar {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .statusBar {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .toast {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+    justify-content: center;
+  }
+}

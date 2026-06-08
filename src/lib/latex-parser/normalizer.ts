@@ -59,7 +59,7 @@ export function formatLatexIndentation(content: string): string {
   return formattedLines.join('\n')
 }
 
-function removeNonIdComments(content: string): string {
+export function removeNonIdComments(content: string): string {
   // ID hợp lệ: dạng 2D3N1-2 (số, chữ, số, chữ, số, gạch ngang, số)
   const ID_PATTERN = /^\d+[a-zA-Z]\d+[a-zA-Z]\d+-\d+$/;
 
@@ -82,7 +82,7 @@ function removeNonIdComments(content: string): string {
 
 // Thêm rule bảo vệ: đảm bảo luôn có \n sau \begin{ex}%[ID]
 // (phòng trường hợp file gốc không có xuống dòng)
-function ensureNewlineAfterBeginTag(content: string): string {
+export function ensureNewlineAfterBeginTag(content: string): string {
   // Bỏ ? → %[ID] bắt buộc phải có, không còn khớp \begin{ex} đơn độc nữa
   return content.replace(
     /(\\begin\{(?:ex|bt)\}%\[[^\]]*\])[^\S\n]*(?!\n)/g,
@@ -90,11 +90,11 @@ function ensureNewlineAfterBeginTag(content: string): string {
   );
 }
 
-function normalizeLineEndings(content: string): string {
+export function normalizeLineEndings(content: string): string {
   return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
-function stripInvisibleChars(content: string): string {
+export function stripInvisibleChars(content: string): string {
   // Các ký tự Unicode vô hình thường xuất hiện khi copy từ Word/web/PDF
   // U+200B: Zero Width Space
   // U+200C: Zero Width Non-Joiner
@@ -105,7 +105,7 @@ function stripInvisibleChars(content: string): string {
   return content.replace(/[\u200B\u200C\u200D\uFEFF\u00AD\u2060]/g, '');
 }
 
-function trimTrailingWhitespace(content: string): string {
+export function trimTrailingWhitespace(content: string): string {
   return content
     .split('\n')
     .map(line => line.trimRight())
@@ -124,25 +124,25 @@ function processOutsideTikz(content: string, processor: (text: string) => string
   return parts.join('');
 }
 
-function formatDecimalsWithComma(content: string): string {
+export function formatDecimalsWithComma(content: string): string {
   // Chuẩn hóa số thập phân trong tiếng Việt: 0,975 -> 0{,}975 để LaTeX không bị cách chữ
   // CẢNH BÁO: Phải bỏ qua code TikZ để tránh làm hỏng tọa độ như (0,0) -> (0{,}0)
   return processOutsideTikz(content, text => text.replace(/(\d),(\d)/g, '$1{,}$2'));
 }
 
-function replaceFracWithDfrac(content: string): string {
+export function replaceFracWithDfrac(content: string): string {
   // Thay thế \frac thành \dfrac để phân số hiển thị to rõ ràng hơn
   return content.replace(/\\frac/g, '\\dfrac');
 }
 
-function replaceIntWithDisplaystyleInt(content: string): string {
+export function replaceIntWithDisplaystyleInt(content: string): string {
   // Thay thế \int thành \displaystyle\int
   return content.replace(/(\\displaystyle\s*)?\\int/g, (match, p1) => {
     return p1 ? match : '\\displaystyle\\int';
   });
 }
 
-function removeSpacesAroundOperators(content: string): string {
+export function removeSpacesAroundOperators(content: string): string {
   // Xóa khoảng trắng quanh các dấu +, -, =, <, >
   // Bỏ qua TikZ vì có thể phá hỏng các cú pháp như draw (A) + (1,0) hoặc các khai báo option
   return processOutsideTikz(content, text => {
@@ -153,14 +153,14 @@ function removeSpacesAroundOperators(content: string): string {
   });
 }
 
-function replaceMiddleWithMid(content: string): string {
+export function replaceMiddleWithMid(content: string): string {
   // Thay thế \;\middle|\; hoặc \middle| thành \mid
   return content
     .replace(/\\;\s*\\middle\s*\|\s*\\;/g, '\\mid')
     .replace(/\\middle\s*\|/g, '\\mid');
 }
 
-function replaceLimWithLimits(content: string): string {
+export function replaceLimWithLimits(content: string): string {
   // Thay \lim_{...} thành \lim\limits_{...} (bỏ qua nếu đã có \limits)
   // Đồng thời xóa khoảng trắng thừa: x \to → x\to, \to + → \to+
   return content.replace(/\\lim(\\limits)?_(\{[^}]*\})/g, (_match, hasLimits, subscript) => {
@@ -171,18 +171,18 @@ function replaceLimWithLimits(content: string): string {
   });
 }
 
-function replaceBarWithOverline(content: string): string {
+export function replaceBarWithOverline(content: string): string {
   // Thay \bar{...} thành \overline{...}
   return content.replace(/\\bar\{/g, '\\overline{');
 }
 
-function removeTrailingDotInChoice(content: string): string {
+export function removeTrailingDotInChoice(content: string): string {
   // Bỏ dấu chấm (.) ngay trước } ở cuối mỗi đáp án trong \choice / \choiceTF
   // Khớp: dấu $ hoặc ) hoặc chữ/số, theo sau là dấu chấm rồi } → bỏ dấu chấm
   return content.replace(/\.\}$/gm, '}');
 }
 
-function wrapBareNumbersInChoice(content: string): string {
+export function wrapBareNumbersInChoice(content: string): string {
   // Trong đáp án \choice / \choiceTF, nếu nội dung là số đơn lẻ (chưa có $)
   // thì tự bọc vào $...$
   // VD: {2} → {$2$}, {\True 3} → {\True $3$}
@@ -195,7 +195,7 @@ function wrapBareNumbersInChoice(content: string): string {
   );
 }
 
-function wrapBareMathInChoice(content: string): string {
+export function wrapBareMathInChoice(content: string): string {
   // Trong đáp án \choice / \choiceTF, nếu nội dung bắt đầu bằng lệnh LaTeX
   // (\vec, \overrightarrow, \dfrac, ...) nhưng KHÔNG có $...$ bọc ngoài → tự thêm $...$
   // VD: {\vec{n}=(3;1;-2)} → {$\vec{n}=(3;1;-2)$}
