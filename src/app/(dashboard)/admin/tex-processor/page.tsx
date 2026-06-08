@@ -500,26 +500,24 @@ export default function TexProcessorPage() {
           </div>
 
           {/* Editor */}
-          {!editorContent && !textareaRef.current?.matches(':focus') ? (
-            <div
-              className={styles.emptyState}
-              onClick={() => textareaRef.current?.focus()}
-              style={{ cursor: 'text' }}
-            >
-              <div className={styles.emptyIcon}>📝</div>
-              <div className={styles.emptyTitle}>Paste code TeX vào đây</div>
-              <div className={styles.emptyHint}>
-                Dán code LaTeX hoặc bắt đầu gõ, sau đó sử dụng các công cụ bên trái để xử lý.
-                <br />
-                Hỗ trợ chuẩn hóa, thụt lề, thay thế lệnh và nhiều hơn nữa.
+          <div className={styles.editorWrapper}>
+            {/* Empty state overlay */}
+            {!editorContent && (
+              <div
+                className={styles.emptyState}
+                onClick={() => textareaRef.current?.focus()}
+                style={{ cursor: 'text' }}
+              >
+                <div className={styles.emptyIcon}>📝</div>
+                <div className={styles.emptyTitle}>Paste code TeX vào đây</div>
+                <div className={styles.emptyHint}>
+                  Dán code LaTeX hoặc bắt đầu gõ, sau đó sử dụng các công cụ bên trái để xử lý.
+                  <br />
+                  Hỗ trợ chuẩn hóa, thụt lề, thay thế lệnh và nhiều hơn nữa.
+                </div>
               </div>
-            </div>
-          ) : null}
+            )}
 
-          <div
-            className={styles.editorWrapper}
-            style={!editorContent && !textareaRef.current?.matches(':focus') ? { display: 'none' } : undefined}
-          >
             {/* Line numbers */}
             <div className={styles.lineNumbers} ref={lineNumbersRef}>
               {lines.map((_, i) => (
@@ -527,7 +525,7 @@ export default function TexProcessorPage() {
               ))}
             </div>
 
-            {/* Textarea */}
+            {/* Textarea - always rendered */}
             <textarea
               ref={textareaRef}
               className={`${styles.editorTextarea} ${flashEditor ? styles.editorFlash : ''}`}
@@ -535,15 +533,11 @@ export default function TexProcessorPage() {
               onChange={handleEditorChange}
               onKeyDown={handleKeyDown}
               onScroll={handleScroll}
-              placeholder="Paste code TeX vào đây..."
+              placeholder=""
               spellCheck={false}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
-              onFocus={() => {
-                // Force re-render to show editor when focused while empty
-                if (!editorContent) setEditorContent('')
-              }}
             />
           </div>
 
