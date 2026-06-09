@@ -8,6 +8,7 @@
   padding: var(--space-6);
   max-width: 900px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .listHeader {
@@ -132,6 +133,7 @@
 .examCardBadges {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
@@ -874,8 +876,13 @@
 
   .examCard {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     padding: var(--space-4);
+  }
+
+  .examCardInfo {
+    width: 100%;
+    margin-bottom: var(--space-3);
   }
 
   .examCardMeta {
