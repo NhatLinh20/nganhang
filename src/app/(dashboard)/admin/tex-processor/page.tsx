@@ -7,6 +7,8 @@ import styles from './tex-processor.module.css'
 import {
   normalizeQuestion,
 } from '@/lib/latex-parser/normalizer'
+import { extractAndValidateBlocks } from '@/lib/latex-parser'
+import type { ErrorBlock } from '@/lib/latex-parser'
 
 // ═══ Tool definitions ═══
 interface TexTool {
@@ -162,6 +164,14 @@ export default function TexProcessorPage() {
   const [flashEditor, setFlashEditor] = useState(false)
   const [lastAction, setLastAction] = useState<string | null>(null)
 
+  // ═══ Validation state ═══
+  const [validBlocks, setValidBlocks] = useState<string[]>([])
+  const [errorBlocks, setErrorBlocks] = useState<ErrorBlock[]>([])
+  const [totalBlocks, setTotalBlocks] = useState(0)
+  const [hasValidated, setHasValidated] = useState(false)
+  const [expandedBlock, setExpandedBlock] = useState<number | null>(null)
+  const [validationTab, setValidationTab] = useState<'valid' | 'errors'>('valid')
+
   // ═══ Refs ═══
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
@@ -254,6 +264,8 @@ export default function TexProcessorPage() {
     pushHistory(result)
     setEditorContent(result)
     setLastAction(tool.label)
+    // Reset validation khi nội dung thay đổi qua tool
+    setHasValidated(false)
     setFlashEditor(true)
     setTimeout(() => setFlashEditor(false), 500)
     showToast(`✅ ${tool.label}`, 'success')
@@ -351,6 +363,24 @@ export default function TexProcessorPage() {
     }
   }, [editorContent, pushHistory, showToast])
 
+  // ═══ Validation handler ═══
+  const handleValidate = useCallback(() => {
+    if (!editorContent.trim()) return
+    const result = extractAndValidateBlocks(editorContent)
+    setValidBlocks(result.validBlocks)
+    setErrorBlocks(result.errorBlocks)
+    setTotalBlocks(result.totalBlocks)
+    setHasValidated(true)
+    setExpandedBlock(null)
+    setValidationTab(result.errorBlocks.length > 0 ? 'errors' : 'valid')
+    showToast(
+      result.errorBlocks.length === 0
+        ? `✅ ${result.validBlocks.length} câu hợp lệ`
+        : `⚠️ ${result.validBlocks.length} đạt, ${result.errorBlocks.length} lỗi`,
+      result.errorBlocks.length === 0 ? 'success' : 'info'
+    )
+  }, [editorContent, showToast])
+
   // ═══ Computed values ═══
   const lines = editorContent.split('\n')
   const lineCount = lines.length
@@ -402,6 +432,125 @@ export default function TexProcessorPage() {
                 </div>
               </div>
             ))}
+
+            {/* ═══ KIỂM TRA SECTION ═══ */}
+            <div className={styles.toolSeparator} />
+            <div className={styles.toolSection}>
+              <div className={styles.toolSectionLabel}>Kiểm tra</div>
+              <button
+                className={`${styles.toolBtn} ${styles.toolBtnValidate}`}
+                onClick={handleValidate}
+                disabled={!editorContent.trim()}
+                title="Tách block \begin{ex}...\end{ex} và kiểm tra ID phân loại"
+              >
+                <span className={styles.toolBtnIcon}>🔍</span>
+                <span className={styles.toolBtnText}>Phân tích cấu trúc</span>
+              </button>
+            </div>
+
+            {/* ═══ VALIDATION RESULTS ═══ */}
+            {hasValidated && (
+              <div className={styles.validationResults}>
+                {/* Stats summary */}
+                <div className={styles.validationStats}>
+                  <div className={`${styles.validationStat} ${styles.validationStatSuccess}`}>
+                    <span className={styles.validationStatValue}>{validBlocks.length}</span>
+                    <span className={styles.validationStatLabel}>Đạt</span>
+                  </div>
+                  <div className={`${styles.validationStat} ${styles.validationStatError}`}>
+                    <span className={styles.validationStatValue}>{errorBlocks.length}</span>
+                    <span className={styles.validationStatLabel}>Lỗi</span>
+                  </div>
+                  <div className={`${styles.validationStat} ${styles.validationStatTotal}`}>
+                    <span className={styles.validationStatValue}>{totalBlocks}</span>
+                    <span className={styles.validationStatLabel}>Tổng</span>
+                  </div>
+                </div>
+
+                {/* Tab switcher */}
+                {totalBlocks > 0 && (
+                  <>
+                    <div className={styles.validationTabs}>
+                      <button
+                        className={`${styles.validationTab} ${validationTab === 'valid' ? styles.validationTabActive : ''}`}
+                        onClick={() => { setValidationTab('valid'); setExpandedBlock(null) }}
+                      >
+                        ✅ Đạt ({validBlocks.length})
+                      </button>
+                      <button
+                        className={`${styles.validationTab} ${validationTab === 'errors' ? styles.validationTabActive : ''}`}
+                        onClick={() => { setValidationTab('errors'); setExpandedBlock(null) }}
+                      >
+                        ❌ Lỗi ({errorBlocks.length})
+                      </button>
+                    </div>
+
+                    {/* Block list */}
+                    <div className={styles.validationList}>
+                      {validationTab === 'valid' ? (
+                        validBlocks.length === 0 ? (
+                          <div className={styles.validationEmpty}>Không có câu nào hợp lệ</div>
+                        ) : (
+                          validBlocks.map((block, i) => {
+                            const firstLine = block.split('\n')[0]
+                            const idMatch = firstLine.match(/%\[([^\]]+)\]/)
+                            const id = idMatch?.[1] || '—'
+                            return (
+                              <div key={i}>
+                                <div
+                                  className={`${styles.validationItem} ${styles.validationItemValid}`}
+                                  onClick={() => setExpandedBlock(expandedBlock === i ? null : i)}
+                                >
+                                  <span className={styles.validationItemNum}>{i + 1}</span>
+                                  <span className={styles.validationItemId}>{id}</span>
+                                  <span className={styles.validationItemToggle}>
+                                    {expandedBlock === i ? '▲' : '▶'}
+                                  </span>
+                                </div>
+                                {expandedBlock === i && (
+                                  <pre className={styles.validationCode}>{block}</pre>
+                                )}
+                              </div>
+                            )
+                          })
+                        )
+                      ) : (
+                        errorBlocks.length === 0 ? (
+                          <div className={styles.validationEmpty}>Không có lỗi 🎉</div>
+                        ) : (
+                          errorBlocks.map((err, i) => {
+                            const idx = validBlocks.length + i
+                            return (
+                              <div key={i}>
+                                <div
+                                  className={`${styles.validationItem} ${styles.validationItemError}`}
+                                  onClick={() => setExpandedBlock(expandedBlock === idx ? null : idx)}
+                                >
+                                  <span className={styles.validationItemNum}>{i + 1}</span>
+                                  <span className={styles.validationItemReason}>{err.reason}</span>
+                                  <span className={styles.validationItemToggle}>
+                                    {expandedBlock === idx ? '▲' : '▶'}
+                                  </span>
+                                </div>
+                                {expandedBlock === idx && (
+                                  <pre className={styles.validationCode}>{err.content}</pre>
+                                )}
+                              </div>
+                            )
+                          })
+                        )
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {totalBlocks === 0 && (
+                  <div className={styles.validationEmpty}>
+                    Không tìm thấy block \begin{'{'}ex{'}'}...\end{'{'}ex{'}'}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </aside>
 
