@@ -25,6 +25,7 @@ body {
   line-height: var(--leading-normal);
   color: var(--color-gray-900);
   background-color: var(--color-bg);
+  overflow-x: hidden;
 }
 
 a {
@@ -70,6 +71,7 @@ input, textarea, select {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .page-body {

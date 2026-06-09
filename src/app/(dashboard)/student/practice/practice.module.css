@@ -65,6 +65,7 @@
   border: 1px solid var(--color-gray-300);
   border-radius: var(--radius-md);
   overflow: hidden;
+  max-width: 100%;
 }
 
 .gradeBtn {
@@ -78,6 +79,7 @@
   border: none;
   border-right: 1px solid var(--color-gray-200);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .gradeBtn:last-child {
@@ -848,10 +850,26 @@
 
   .searchInput {
     flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .filterSelect {
+    width: 100%;
   }
 
   .gradeFilter {
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .gradeFilter::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .gradeFilter {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
 
   .examCard {
