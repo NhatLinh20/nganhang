@@ -59,40 +59,41 @@ export async function getDeviceFingerprint(): Promise<string> {
     return ''
   }
 
-  // Thử dùng FingerprintJS trước
-  try {
-    const FingerprintJS = await import('@fingerprintjs/fingerprintjs')
-    const fp = await FingerprintJS.load()
-    const result = await fp.get()
-    const fingerprintId = result.visitorId
-
-    if (fingerprintId) {
-      // Lưu backup vào localStorage
-      try {
-        localStorage.setItem(STORAGE_KEY, fingerprintId)
-      } catch {
-        // localStorage có thể bị block trong incognito
-      }
-      return fingerprintId
-    }
-  } catch (err) {
-    console.warn('[DeviceFingerprint] FingerprintJS failed, falling back:', err)
-  }
-
-  // Fallback: dùng localStorage
+  // 1. Ưu tiên đọc từ localStorage TRƯỚC để đảm bảo tính ổn định.
+  // Tránh trường hợp FingerprintJS sinh ra mã mới (do trình duyệt update, đổi setting) làm ghi đè mã cũ.
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) return stored
   } catch {
-    // localStorage bị block
+    // localStorage bị block, bỏ qua
   }
 
-  // Cuối cùng: tạo UUID mới
-  const newId = crypto.randomUUID()
+  let deviceId = ''
+
+  // 2. Nếu chưa có, thử dùng FingerprintJS
   try {
-    localStorage.setItem(STORAGE_KEY, newId)
-  } catch {
-    // Ignore
+    const FingerprintJS = await import('@fingerprintjs/fingerprintjs')
+    const fp = await FingerprintJS.load()
+    const result = await fp.get()
+    
+    if (result.visitorId) {
+      deviceId = result.visitorId
+    }
+  } catch (err) {
+    console.warn('[DeviceFingerprint] FingerprintJS failed, falling back to UUID:', err)
   }
-  return newId
+
+  // 3. Fallback: Nếu FingerprintJS thất bại hoặc bị block, tạo UUID ngẫu nhiên
+  if (!deviceId) {
+    deviceId = crypto.randomUUID()
+  }
+
+  // 4. Lưu lại vào localStorage cho các lần đăng nhập sau
+  try {
+    localStorage.setItem(STORAGE_KEY, deviceId)
+  } catch {
+    // Ignore nếu trình duyệt block
+  }
+
+  return deviceId
 }
