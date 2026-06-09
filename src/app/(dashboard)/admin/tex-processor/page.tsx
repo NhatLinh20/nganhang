@@ -690,14 +690,14 @@ export default function TexProcessorPage() {
             {/* ═══ ID SECTION ═══ */}
             <div className={styles.toolSection}>
               <button
-                className={styles.toolBtn}
+                className={`${styles.toolBtn} ${styles.toolBtnAssignManual}`}
                 onClick={() => setIsIdModalOpen(true)}
               >
                 <span className={styles.toolBtnIcon}>🏷</span>
                 <span className={styles.toolBtnText}>Gán ID thủ công</span>
               </button>
               <button
-                className={`${styles.toolBtn} ${isAutoAssigning ? styles.toolBtnDisabled : ''}`}
+                className={`${styles.toolBtn} ${styles.toolBtnAssignAuto} ${isAutoAssigning ? styles.toolBtnDisabled : ''}`}
                 onClick={handleAutoAssignId}
                 disabled={!editorContent.trim() || isAutoAssigning}
                 title="Tự động gán ID dựa trên ngân hàng câu hỏi"
