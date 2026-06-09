@@ -640,35 +640,29 @@ export default function TexProcessorPage() {
 
           <div className={styles.toolSections}>
             {TOOL_SECTIONS.map((section, si) => (
-              <div key={si}>
-                {si > 0 && <div className={styles.toolSeparator} />}
-                <div className={styles.toolSection}>
-                  <div className={styles.toolSectionLabel}>{section.label}</div>
-                  {section.tools.map((tool) => (
-                    <button
-                      key={tool.id}
-                      className={`${styles.toolBtn} ${
-                        tool.id === 'normalize-all' ? styles.toolBtnPrimary : ''
-                      } ${tool.disabled ? styles.toolBtnDisabled : ''}`}
-                      onClick={() => handleApplyTool(tool)}
-                      disabled={tool.disabled || !editorContent.trim()}
-                      title={tool.description || tool.label}
-                    >
-                      <span className={styles.toolBtnIcon}>{tool.icon}</span>
-                      <span className={styles.toolBtnText}>{tool.label}</span>
-                      {tool.badge && (
-                        <span className={styles.toolBtnBadge}>{tool.badge}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+              <div key={si} className={styles.toolSection}>
+                {section.tools.map((tool) => (
+                  <button
+                    key={tool.id}
+                    className={`${styles.toolBtn} ${
+                      tool.id === 'normalize-all' ? styles.toolBtnPrimary : ''
+                    } ${tool.disabled ? styles.toolBtnDisabled : ''}`}
+                    onClick={() => handleApplyTool(tool)}
+                    disabled={tool.disabled || !editorContent.trim()}
+                    title={tool.description || tool.label}
+                  >
+                    <span className={styles.toolBtnIcon}>{tool.icon}</span>
+                    <span className={styles.toolBtnText}>{tool.label}</span>
+                    {tool.badge && (
+                      <span className={styles.toolBtnBadge}>{tool.badge}</span>
+                    )}
+                  </button>
+                ))}
               </div>
             ))}
 
             {/* ═══ KIỂM TRA SECTION ═══ */}
-            <div className={styles.toolSeparator} />
             <div className={styles.toolSection}>
-              <div className={styles.toolSectionLabel}>Kiểm tra</div>
               <button
                 className={`${styles.toolBtn} ${styles.toolBtnValidate}`}
                 onClick={handleValidate}
@@ -681,9 +675,7 @@ export default function TexProcessorPage() {
             </div>
 
             {/* ═══ GHÉP ĐỀ THI SECTION ═══ */}
-            <div className={styles.toolSeparator} />
             <div className={styles.toolSection}>
-              <div className={styles.toolSectionLabel}>Xuất đề</div>
               <button
                 className={`${styles.toolBtn} ${styles.toolBtnAssemble}`}
                 onClick={handleAssembleExam}
@@ -696,9 +688,7 @@ export default function TexProcessorPage() {
             </div>
 
             {/* ═══ ID SECTION ═══ */}
-            <div className={styles.toolSeparator} />
             <div className={styles.toolSection}>
-              <div className={styles.toolSectionLabel}>Mã ID</div>
               <button
                 className={styles.toolBtn}
                 onClick={() => setIsIdModalOpen(true)}
