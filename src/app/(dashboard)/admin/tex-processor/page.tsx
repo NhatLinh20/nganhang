@@ -8,6 +8,8 @@ import {
   normalizeQuestion,
 } from '@/lib/latex-parser/normalizer'
 import { extractAndValidateBlocks } from '@/lib/latex-parser'
+import { extractExBlocks } from '@/lib/latex-parser/file-parser'
+import { detectQuestionType } from '@/lib/latex-parser/answer-parser'
 import type { ErrorBlock } from '@/lib/latex-parser'
 
 // ═══ Tool definitions ═══
@@ -392,6 +394,108 @@ export default function TexProcessorPage() {
     )
   }, [editorContent, pushHistory, showToast])
 
+  // ═══ Assemble Exam handler ═══
+  const handleAssembleExam = useCallback(() => {
+    if (!editorContent.trim()) return
+
+    // 1. Tách tất cả block \begin{ex}...\end{ex}
+    const blocks = extractExBlocks(editorContent)
+    if (blocks.length === 0) {
+      showToast('⚠️ Không tìm thấy block \\begin{ex}...\\end{ex}', 'info')
+      return
+    }
+
+    // 2. Phân loại theo question type
+    const grouped: Record<string, string[]> = {
+      multiple_choice: [],
+      true_false: [],
+      short_answer: [],
+      essay: [],
+    }
+
+    for (const block of blocks) {
+      const type = detectQuestionType(block)
+      if (grouped[type]) {
+        grouped[type].push(block.trim())
+      } else {
+        grouped.essay.push(block.trim())
+      }
+    }
+
+    // 3. Ghép thành content.tex hoàn chỉnh
+    let tex = ''
+
+    // Header \begin{name}
+    tex += `\\begin{name}\n`
+    tex += `\t{SỞ GDĐT AN GIANG}\n`
+    tex += `\t{TRƯỜNG THPT VÕ VĂN KIỆT}\n`
+    tex += `\t{Đề chính thức}\n`
+    tex += `\t{\\textit{(Đề thi gồm có \\zpageref{\\made-lastpage} trang)}}\n`
+    tex += `\t{ĐỀ KIỂM TRA CUỐI KÌ I NĂM 2025-2026}\n`
+    tex += `\t{Môn: TOÁN 12}\n`
+    tex += `\t{Thời gian làm bài: 90 phút}\n`
+    tex += `\t{(Không kể thời gian phát đề)}\n`
+    tex += `\\end{name}\n\n`
+
+    // Open ansbook
+    tex += `\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n\n`
+
+    // Các phần đề
+    const parts = [
+      { type: 'multiple_choice', cmd: '\\caulc', suffix: 'Phan-I' },
+      { type: 'true_false', cmd: '\\cauds', suffix: 'Phan-II' },
+      { type: 'short_answer', cmd: '\\caukq', suffix: 'Phan-III' },
+      { type: 'essay', cmd: '\\cautl', suffix: 'Phan-IV' },
+    ]
+
+    for (const part of parts) {
+      const questions = grouped[part.type]
+      if (questions.length === 0) continue
+
+      tex += `${part.cmd}\n`
+      tex += `\\Opensolutionfile{ans}[ans/ans\\currfilebase-${part.suffix}]\n\n`
+      tex += questions.join('\n\n')
+      tex += `\n\n\\Closesolutionfile{ans}\n\n`
+    }
+
+    // Close ansbook
+    tex += `\\Closesolutionfile{ansbook}\n\n`
+
+    // Label trang cuối
+    tex += `\\zlabel{\\made-lastpage}\n\n`
+
+    // Footer HẾT
+    tex += `\\begin{center}\n`
+    tex += `\t\\textbf{--------------- HẾT ---------------}\n`
+    tex += `\\end{center}\n\n`
+
+    // Bảng đáp án
+    tex += `\\begin{indapan}\n`
+    tex += `\t{ans/ans\\currfilebase}\n`
+    tex += `\\end{indapan}\n`
+
+    // 4. Cập nhật editor
+    pushHistory(tex)
+    setEditorContent(tex)
+    setHasValidated(false)
+    setFlashEditor(true)
+    setTimeout(() => setFlashEditor(false), 500)
+
+    // Thống kê
+    const counts = parts
+      .filter(p => grouped[p.type].length > 0)
+      .map(p => {
+        const labels: Record<string, string> = {
+          multiple_choice: 'TN',
+          true_false: 'ĐS',
+          short_answer: 'TL ngắn',
+          essay: 'Tự luận',
+        }
+        return `${grouped[p.type].length} ${labels[p.type]}`
+      })
+    showToast(`📄 Đã ghép đề: ${counts.join(', ')}`, 'success')
+  }, [editorContent, pushHistory, showToast])
+
   // ═══ Computed values ═══
   const lines = editorContent.split('\n')
   const lineCount = lines.length
@@ -456,6 +560,21 @@ export default function TexProcessorPage() {
               >
                 <span className={styles.toolBtnIcon}>🔍</span>
                 <span className={styles.toolBtnText}>Phân tích cấu trúc</span>
+              </button>
+            </div>
+
+            {/* ═══ GHÉP ĐỀ THI SECTION ═══ */}
+            <div className={styles.toolSeparator} />
+            <div className={styles.toolSection}>
+              <div className={styles.toolSectionLabel}>Xuất đề</div>
+              <button
+                className={`${styles.toolBtn} ${styles.toolBtnAssemble}`}
+                onClick={handleAssembleExam}
+                disabled={!editorContent.trim()}
+                title="Ghép các câu hỏi thành file content.tex hoàn chỉnh (TN → ĐS → TL ngắn → Tự luận)"
+              >
+                <span className={styles.toolBtnIcon}>📄</span>
+                <span className={styles.toolBtnText}>Ghép đề thi</span>
               </button>
             </div>
 
