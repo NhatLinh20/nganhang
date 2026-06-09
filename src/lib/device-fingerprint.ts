@@ -49,10 +49,10 @@ export function getDeviceInfo(): DeviceInfo {
 /**
  * Lấy device fingerprint — kết hợp FingerprintJS + localStorage backup
  * 
- * Ưu tiên:
- * 1. FingerprintJS visitorId (ổn định nhất)
- * 2. localStorage backup (phòng FingerprintJS lỗi)
- * 3. Tạo UUID mới nếu cả 2 đều không có
+ * Ưu tiên (Đã cập nhật logic mới để đảm bảo tính ổn định):
+ * 1. localStorage (Nếu đã có mã lưu từ lần đăng nhập trước, dùng luôn để chống việc đổi mã do update trình duyệt)
+ * 2. FingerprintJS visitorId (Dùng để tạo mới nếu localStorage trống)
+ * 3. Tạo UUID ngẫu nhiên (Nếu FingerprintJS bị block bởi Ad-blocker)
  */
 export async function getDeviceFingerprint(): Promise<string> {
   if (typeof window === 'undefined') {
