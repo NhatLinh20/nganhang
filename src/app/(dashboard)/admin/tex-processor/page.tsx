@@ -11,6 +11,7 @@ import { extractAndValidateBlocks } from '@/lib/latex-parser'
 import { extractExBlocks } from '@/lib/latex-parser/file-parser'
 import { detectQuestionType } from '@/lib/latex-parser/answer-parser'
 import type { ErrorBlock } from '@/lib/latex-parser'
+import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 
 // ═══ Tool definitions ═══
 interface TexTool {
@@ -173,6 +174,16 @@ export default function TexProcessorPage() {
   const [hasValidated, setHasValidated] = useState(false)
   const [expandedBlock, setExpandedBlock] = useState<number | null>(null)
   const [validationTab, setValidationTab] = useState<'valid' | 'errors'>('valid')
+
+  // ═══ ID Modal State ═══
+  const [isIdModalOpen, setIsIdModalOpen] = useState(false)
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false)
+  const [selectedGrade, setSelectedGrade] = useState<number>(12)
+  const [selectedSubject, setSelectedSubject] = useState<string>('D')
+  const [selectedChapter, setSelectedChapter] = useState<number>(1)
+  const [selectedDiff, setSelectedDiff] = useState<string>('N')
+  const [selectedLesson, setSelectedLesson] = useState<number>(1)
+  const [selectedVariant, setSelectedVariant] = useState<number>(1)
 
   // ═══ Refs ═══
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -496,6 +507,112 @@ export default function TexProcessorPage() {
     showToast(`📄 Đã ghép đề: ${counts.join(', ')}`, 'success')
   }, [editorContent, pushHistory, showToast])
 
+  // ═══ Assign ID logic ═══
+  const getGeneratedId = () => {
+    let chCode = selectedChapter.toString()
+    if (selectedGrade === 10 && selectedChapter === 10) chCode = '0'
+    return `${selectedGrade % 10}${selectedSubject}${chCode}${selectedDiff}${selectedLesson}-${selectedVariant}`
+  }
+
+  const handleAssignId = () => {
+    const generatedId = getGeneratedId()
+    const idString = `%[${generatedId}]`
+    
+    if (textareaRef.current) {
+      const start = textareaRef.current.selectionStart
+      const end = textareaRef.current.selectionEnd
+      
+      const before = editorContent.substring(0, start)
+      const after = editorContent.substring(end)
+      
+      const newValue = before + idString + after
+      pushHistory(newValue)
+      setEditorContent(newValue)
+      
+      // Update cursor position
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + idString.length
+          textareaRef.current.focus()
+        }
+      }, 0)
+    } else {
+      const newValue = editorContent + idString
+      pushHistory(newValue)
+      setEditorContent(newValue)
+    }
+    
+    setIsIdModalOpen(false)
+    showToast(`✅ Đã chèn ID: ${generatedId}`, 'success')
+  }
+
+  const handleAutoAssignId = async () => {
+    if (!editorContent.trim() || isAutoAssigning) return
+
+    // Tách từng block \begin{ex}...\end{ex}
+    const blocks = editorContent.match(/\\begin\{ex\}[\s\S]*?\\end\{ex\}/g)
+    if (!blocks || blocks.length === 0) {
+      showToast('⚠️ Không tìm thấy block \\begin{ex}...\\end{ex}', 'info')
+      return
+    }
+
+    setIsAutoAssigning(true)
+    let updatedContent = editorContent
+    let assignedCount = 0
+
+    try {
+      for (const block of blocks) {
+        try {
+          const res = await fetch('/api/ai/suggest-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              latex_content: block
+            }),
+          })
+          
+          if (!res.ok) {
+            continue
+          }
+
+          const data = await res.json()
+          if (!data.best_id || data.similarity < 0.6) {
+            continue
+          }
+
+          const newId = `%[${data.best_id}]`
+
+          if (block.includes('%[')) {
+            // Câu đã có ID → thay thế
+            const newBlock = block.replace(/%\[[^\]]+\]/, newId)
+            updatedContent = updatedContent.replace(block, newBlock)
+          } else {
+            // Câu chưa có ID → chèn sau \begin{ex}
+            const newBlock = block.replace('\\begin{ex}', `\\begin{ex}${newId}`)
+            updatedContent = updatedContent.replace(block, newBlock)
+          }
+          assignedCount++
+        } catch {
+          // Bỏ qua lỗi từng câu, tiếp tục xử lý câu khác
+          continue
+        }
+      }
+
+      if (updatedContent !== editorContent) {
+        pushHistory(updatedContent)
+        setEditorContent(updatedContent)
+        setFlashEditor(true)
+        setTimeout(() => setFlashEditor(false), 500)
+      }
+      showToast(`✅ Đã gán ID cho ${assignedCount}/${blocks.length} câu hỏi`, 'success')
+    } catch (err) {
+      console.error('Auto assign ID error:', err)
+      showToast('❌ Lỗi khi gán ID tự động', 'info')
+    } finally {
+      setIsAutoAssigning(false)
+    }
+  }
+
   // ═══ Computed values ═══
   const lines = editorContent.split('\n')
   const lineCount = lines.length
@@ -575,6 +692,28 @@ export default function TexProcessorPage() {
               >
                 <span className={styles.toolBtnIcon}>📄</span>
                 <span className={styles.toolBtnText}>Ghép đề thi</span>
+              </button>
+            </div>
+
+            {/* ═══ ID SECTION ═══ */}
+            <div className={styles.toolSeparator} />
+            <div className={styles.toolSection}>
+              <div className={styles.toolSectionLabel}>Mã ID</div>
+              <button
+                className={styles.toolBtn}
+                onClick={() => setIsIdModalOpen(true)}
+              >
+                <span className={styles.toolBtnIcon}>🏷</span>
+                <span className={styles.toolBtnText}>Gán ID thủ công</span>
+              </button>
+              <button
+                className={`${styles.toolBtn} ${isAutoAssigning ? styles.toolBtnDisabled : ''}`}
+                onClick={handleAutoAssignId}
+                disabled={!editorContent.trim() || isAutoAssigning}
+                title="Tự động gán ID dựa trên ngân hàng câu hỏi"
+              >
+                <span className={styles.toolBtnIcon}>🤖</span>
+                <span className={styles.toolBtnText}>{isAutoAssigning ? 'Đang gán...' : 'Gán ID tự động'}</span>
               </button>
             </div>
 
@@ -817,6 +956,95 @@ export default function TexProcessorPage() {
       {toast && (
         <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastInfo}`}>
           {toast.message}
+        </div>
+      )}
+
+      {/* ═══ GÁN ID MODAL ═══ */}
+      {isIdModalOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsIdModalOpen(false)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>🏷 Chọn ID Câu Hỏi</div>
+              <button className={styles.modalClose} onClick={() => setIsIdModalOpen(false)}>✕</button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className={styles.formGroup}>
+                  <label>Lớp</label>
+                  <select className={styles.formSelect} value={selectedGrade} onChange={e => setSelectedGrade(Number(e.target.value))}>
+                    <option value={10}>Lớp 10</option>
+                    <option value={11}>Lớp 11</option>
+                    <option value={12}>Lớp 12</option>
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Nhóm môn</label>
+                  <select className={styles.formSelect} value={selectedSubject} onChange={e => {
+                    setSelectedSubject(e.target.value)
+                    setSelectedChapter(Number(Object.keys(CHAPTER_NAMES[selectedGrade as 10|11|12][e.target.value] || {})[0] || 1))
+                  }}>
+                    {Object.keys(CHAPTER_NAMES[selectedGrade as 10|11|12] || {}).map(sub => (
+                      <option key={sub} value={sub}>{sub === 'D' ? 'Đại số/Giải tích' : sub === 'H' ? 'Hình học' : 'Chuyên đề'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Chương</label>
+                <select className={styles.formSelect} value={selectedChapter} onChange={e => {
+                  setSelectedChapter(Number(e.target.value))
+                  setSelectedLesson(1)
+                }}>
+                  {Object.entries(CHAPTER_NAMES[selectedGrade as 10|11|12]?.[selectedSubject] || {}).map(([cId, name]) => (
+                    <option key={cId} value={Number(cId)}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Bài học</label>
+                <select className={styles.formSelect} value={selectedLesson} onChange={e => {
+                  setSelectedLesson(Number(e.target.value))
+                  setSelectedVariant(1)
+                }}>
+                  {Object.entries(LESSON_NAMES[selectedGrade as 10|11|12]?.[selectedSubject]?.[selectedChapter] || {}).map(([lId, name]) => (
+                    <option key={lId} value={Number(lId)}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className={styles.formGroup}>
+                  <label>Dạng bài (Variant)</label>
+                  <select className={styles.formSelect} value={selectedVariant} onChange={e => setSelectedVariant(Number(e.target.value))}>
+                    {Object.entries(VARIANT_NAMES[selectedGrade as 10|11|12]?.[selectedSubject]?.[selectedChapter]?.[selectedLesson] || {}).map(([vId, name]) => (
+                      <option key={vId} value={Number(vId)}>Dạng {vId}: {name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Mức độ</label>
+                  <select className={styles.formSelect} value={selectedDiff} onChange={e => setSelectedDiff(e.target.value)}>
+                    <option value="N">Nhận biết (N)</option>
+                    <option value="H">Thông hiểu (H)</option>
+                    <option value="V">Vận dụng (V)</option>
+                    <option value="C">Vận dụng cao (C)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.idPreviewBox}>
+                ID Sẽ Gán: {getGeneratedId()}
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button className={`${styles.toolBtn}`} onClick={() => setIsIdModalOpen(false)}>Hủy</button>
+              <button className={`${styles.toolBtn} ${styles.toolBtnPrimary}`} onClick={handleAssignId}>Chèn ID</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
