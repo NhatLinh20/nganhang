@@ -613,6 +613,17 @@ export default function TexProcessorPage() {
     }
   }
 
+  const handleCopyToClipboard = async () => {
+    if (!editorContent) return
+    try {
+      await navigator.clipboard.writeText(editorContent)
+      showToast('📋 Đã copy nội dung code', 'success')
+    } catch (e) {
+      console.error(e)
+      showToast('❌ Lỗi khi copy', 'info')
+    }
+  }
+
   // ═══ Computed values ═══
   const lines = editorContent.split('\n')
   const lineCount = lines.length
@@ -623,6 +634,15 @@ export default function TexProcessorPage() {
       <Header
         title="Xử lí TeX"
         subtitle="Chuẩn hóa, định dạng và xử lý code LaTeX"
+        actions={
+          <button 
+            className="btn btn-primary" 
+            onClick={handleCopyToClipboard} 
+            disabled={!editorContent.trim()}
+          >
+            📋 Copy Code
+          </button>
+        }
       />
 
       <div className={styles.layout}>
