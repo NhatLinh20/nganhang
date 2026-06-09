@@ -211,6 +211,17 @@ export function wrapBareMathInChoice(content: string): string {
   );
 }
 
+export function trimSpaceAfterChoiceBrace(content: string): string {
+  // Bỏ khoảng trắng thừa ngay sau dấu { trong các dòng đáp án của \choice / \choiceTF
+  // VD: { $\alpha=\dfrac{\pi}{2}$} → {$\alpha=\dfrac{\pi}{2}$}
+  // VD: { Đáp án A} → {Đáp án A}
+  // Giữ nguyên {\True ...} vì \True luôn sát dấu {
+  return content.replace(
+    /^(\s*\{)\s+(?!\\True\b)/gm,
+    '$1'
+  );
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -227,6 +238,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   removeTrailingDotInChoice, // ← bỏ dấu chấm cuối đáp án trong \choice
   wrapBareNumbersInChoice, // ← bọc số đơn lẻ trong \choice bằng $...$
   wrapBareMathInChoice, // ← bọc biểu thức toán thiếu $ trong \choice
+  trimSpaceAfterChoiceBrace, // ← bỏ khoảng trắng thừa sau { trong đáp án
   formatLatexIndentation, // ← canh tab tự động
 ]
 
