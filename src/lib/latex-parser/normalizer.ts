@@ -112,11 +112,12 @@ export function trimTrailingWhitespace(content: string): string {
     .join('\n');
 }
 
-function processOutsideTikz(content: string, processor: (text: string) => string): string {
-  // Tách văn bản thành mảng: [ngoài tikz, trong tikz, ngoài tikz, ...]
-  const parts = content.split(/(\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\})/);
+function processOutsideProtectedBlocks(content: string, processor: (text: string) => string): string {
+  // Tách văn bản thành mảng: [ngoài khối, trong khối, ngoài khối, ...]
+  // Bảo vệ môi trường tikzpicture và lệnh \definecolor (để tránh thay thế dấu phẩy)
+  const parts = content.split(/(\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}|\\definecolor(?:\[[^\]]*\])?\{[^}]*\}\{[^}]*\}\{[^}]*\})/);
   for (let i = 0; i < parts.length; i++) {
-    // Vị trí chẵn là văn bản ngoài tikzpicture
+    // Vị trí chẵn là văn bản bên ngoài các khối được bảo vệ
     if (i % 2 === 0) {
       parts[i] = processor(parts[i]);
     }
@@ -126,8 +127,8 @@ function processOutsideTikz(content: string, processor: (text: string) => string
 
 export function formatDecimalsWithComma(content: string): string {
   // Chuẩn hóa số thập phân trong tiếng Việt: 0,975 -> 0{,}975 để LaTeX không bị cách chữ
-  // CẢNH BÁO: Phải bỏ qua code TikZ để tránh làm hỏng tọa độ như (0,0) -> (0{,}0)
-  return processOutsideTikz(content, text => text.replace(/(\d),(\d)/g, '$1{,}$2'));
+  // CẢNH BÁO: Phải bỏ qua code TikZ và \definecolor để tránh làm hỏng tọa độ và mã màu
+  return processOutsideProtectedBlocks(content, text => text.replace(/(\d),(\d)/g, '$1{,}$2'));
 }
 
 export function replaceFracWithDfrac(content: string): string {
@@ -144,8 +145,8 @@ export function replaceIntWithDisplaystyleInt(content: string): string {
 
 export function removeSpacesAroundOperators(content: string): string {
   // Xóa khoảng trắng quanh các dấu +, -, =, <, >
-  // Bỏ qua TikZ vì có thể phá hỏng các cú pháp như draw (A) + (1,0) hoặc các khai báo option
-  return processOutsideTikz(content, text => {
+  // Bỏ qua TikZ và \definecolor vì có thể phá hỏng các cú pháp như draw (A) + (1,0) hoặc mã màu
+  return processOutsideProtectedBlocks(content, text => {
     let res = text.replace(/[ \t]*([+\-=<>])[ \t]*/g, '$1');
     // Dấu mũi tên (\Leftrightarrow, \Rightarrow...): xóa khoảng trắng phía trước, để lại đúng 1 khoảng trắng phía sau
     res = res.replace(/[ \t]*(\\Leftrightarrow|\\Rightarrow|\\Leftarrow|\\iff|\\implies)[ \t]*/g, '$1 ');
