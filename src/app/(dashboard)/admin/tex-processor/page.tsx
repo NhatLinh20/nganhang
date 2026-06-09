@@ -373,13 +373,24 @@ export default function TexProcessorPage() {
     setHasValidated(true)
     setExpandedBlock(null)
     setValidationTab(result.errorBlocks.length > 0 ? 'errors' : 'valid')
+
+    // Dọn dẹp editor: chỉ giữ lại các block \begin{ex}...\end{ex} theo thứ tự
+    const allBlocks = [...result.validBlocks, ...result.errorBlocks.map(e => e.content)]
+    // Re-order by original position in editorContent
+    allBlocks.sort((a, b) => editorContent.indexOf(a) - editorContent.indexOf(b))
+    const cleaned = allBlocks.join('\n\n')
+    if (cleaned !== editorContent) {
+      pushHistory(cleaned)
+      setEditorContent(cleaned)
+    }
+
     showToast(
       result.errorBlocks.length === 0
         ? `✅ ${result.validBlocks.length} câu hợp lệ`
         : `⚠️ ${result.validBlocks.length} đạt, ${result.errorBlocks.length} lỗi`,
       result.errorBlocks.length === 0 ? 'success' : 'info'
     )
-  }, [editorContent, showToast])
+  }, [editorContent, pushHistory, showToast])
 
   // ═══ Computed values ═══
   const lines = editorContent.split('\n')
