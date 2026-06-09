@@ -1,4 +1,4 @@
-\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,enumerate,multirow,makecell,currfile,venndiagram,fontawesome,pifont,pgf-pie,pgfplots,yhmath,twemojis}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,enumerate,multirow,makecell,currfile,venndiagram,fontawesome,pifont,pgf-pie,pgfplots,yhmath,twemojis,xparse}
 \usepackage{etoolbox}
 \usepackage{zref-lastpage}
 \usepackage{zref-user}
@@ -23,7 +23,16 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \usepackage{tcolorbox,diagbox}
 \tcbuselibrary{theorems, breakable, skins}
 \usepackage{xcolor}
-%=====
+%%%=====Định nghĩa lại \shortans thành oly
+\makeatletter
+\AtBeginDocument{%
+	\let\shortansORI\shortans
+	\RenewDocumentCommand{\shortans}{o m}{%
+		\shortansORI[oly]{#2}%
+	}%
+}
+\makeatother
+%%%%%%%%%%%%%%%%%%%
 \setcounter{secnumdepth}{4}
 \setcounter{tocdepth}{3}
 \usepackage{titlesec}
