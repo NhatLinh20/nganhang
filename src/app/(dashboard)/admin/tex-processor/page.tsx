@@ -617,7 +617,8 @@ export default function TexProcessorPage() {
         currentSubject = '' // Reset subject when grade changes
         tex += `\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
         tex += `%%%  LỚP ${b.grade}\n`
-        tex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n`
+        tex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+        tex += `\\part{LỚP ${b.grade}}\n\n`
       }
 
       if (b.subject !== currentSubject) {
