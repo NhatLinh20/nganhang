@@ -565,7 +565,8 @@ export default function TexProcessorPage() {
     const DIFF_ORDER: Record<string, number> = { N: 0, H: 1, V: 2, C: 3 }
 
     parsedBlocks.sort((a, b) => {
-      // Priority: Subject -> Chapter -> Lesson -> Variant -> Type -> Difficulty
+      // Priority: Grade -> Subject -> Chapter -> Lesson -> Variant -> Type -> Difficulty
+      if (a.grade !== b.grade) return a.grade - b.grade
       if (SUBJECT_ORDER[a.subject] !== SUBJECT_ORDER[b.subject]) return (SUBJECT_ORDER[a.subject] ?? 9) - (SUBJECT_ORDER[b.subject] ?? 9)
       if (a.chapter !== b.chapter) return a.chapter - b.chapter
       if (a.lesson !== b.lesson) return a.lesson - b.lesson
@@ -602,6 +603,7 @@ export default function TexProcessorPage() {
     let tex = '\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n'
     tex += '\\Opensolutionfile{ans}[ans/ans\\currfilebase]\n\n'
 
+    let currentGrade = -1
     let currentSubject = ''
     let currentChapter = -1
     let currentLesson = -1
@@ -610,6 +612,14 @@ export default function TexProcessorPage() {
     let currentDiff = ''
 
     for (const b of parsedBlocks) {
+      if (b.grade !== currentGrade) {
+        currentGrade = b.grade
+        currentSubject = '' // Reset subject when grade changes
+        tex += `\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+        tex += `%%%  LỚP ${b.grade}\n`
+        tex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n`
+      }
+
       if (b.subject !== currentSubject) {
         currentSubject = b.subject
         currentChapter = -1
