@@ -11,6 +11,7 @@ import { extractAndValidateBlocks } from '@/lib/latex-parser'
 import { extractExBlocks } from '@/lib/latex-parser/file-parser'
 import { detectQuestionType } from '@/lib/latex-parser/answer-parser'
 import type { ErrorBlock } from '@/lib/latex-parser'
+import { extractComments, findValidCategoryCode } from '@/lib/latex-parser/category-parser'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
 
 // ═══ Tool definitions ═══
@@ -507,6 +508,178 @@ export default function TexProcessorPage() {
     showToast(`📄 Đã ghép đề: ${counts.join(', ')}`, 'success')
   }, [editorContent, pushHistory, showToast])
 
+  // ═══ Sort and Structure Exam handler ═══
+  const handleSortAndStructureExam = useCallback(() => {
+    if (!editorContent.trim()) return
+
+    const blocks = extractExBlocks(editorContent)
+    if (blocks.length === 0) {
+      showToast('⚠️ Không tìm thấy block \\begin{ex}...\\end{ex}', 'info')
+      return
+    }
+
+    const wantAnswerTable = window.confirm('Bạn có muốn tự động chèn bảng đáp án ở cuối không?')
+
+    // Parse blocks
+    interface ParsedBlock {
+      original: string
+      grade: number
+      subject: string
+      chapter: number
+      lesson: number
+      variant: number
+      type: string
+      difficulty: string
+    }
+
+    const parsedBlocks: ParsedBlock[] = []
+    const uncategorizedBlocks: string[] = []
+
+    for (const block of blocks) {
+      const comments = extractComments(block)
+      const cat = findValidCategoryCode(comments)
+      if (cat) {
+        parsedBlocks.push({
+          original: block.trim(),
+          grade: cat.grade,
+          subject: cat.subject_area,
+          chapter: cat.chapter,
+          lesson: cat.lesson,
+          variant: cat.variant,
+          type: detectQuestionType(block),
+          difficulty: cat.difficulty
+        })
+      } else {
+        uncategorizedBlocks.push(block.trim())
+      }
+    }
+
+    if (parsedBlocks.length === 0) {
+      showToast('⚠️ Không có câu hỏi nào chứa ID phân loại hợp lệ', 'info')
+      return
+    }
+
+    // Sort blocks
+    const SUBJECT_ORDER: Record<string, number> = { D: 0, H: 1, C: 2 }
+    const TYPE_ORDER: Record<string, number> = { multiple_choice: 0, true_false: 1, short_answer: 2, essay: 3 }
+    const DIFF_ORDER: Record<string, number> = { N: 0, H: 1, V: 2, C: 3 }
+
+    parsedBlocks.sort((a, b) => {
+      // Priority: Subject -> Chapter -> Lesson -> Variant -> Type -> Difficulty
+      if (SUBJECT_ORDER[a.subject] !== SUBJECT_ORDER[b.subject]) return (SUBJECT_ORDER[a.subject] ?? 9) - (SUBJECT_ORDER[b.subject] ?? 9)
+      if (a.chapter !== b.chapter) return a.chapter - b.chapter
+      if (a.lesson !== b.lesson) return a.lesson - b.lesson
+      if (a.variant !== b.variant) return a.variant - b.variant
+      if (TYPE_ORDER[a.type] !== TYPE_ORDER[b.type]) return (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9)
+      if (DIFF_ORDER[a.difficulty] !== DIFF_ORDER[b.difficulty]) return (DIFF_ORDER[a.difficulty] ?? 9) - (DIFF_ORDER[b.difficulty] ?? 9)
+      return 0
+    })
+
+    // Helpers
+    const getChapterName = (g: number, s: string, c: number) => {
+      const raw = (CHAPTER_NAMES as any)[g]?.[s]?.[c]
+      if (!raw) return `Chương ${c}`
+      return raw.replace(/^Ch\.\d+\s*/, '').replace(/^CĐ\d+\s*/, '')
+    }
+    const getLessonName = (g: number, s: string, c: number, l: number) => {
+      const raw = (LESSON_NAMES as any)[g]?.[s]?.[c]?.[l]
+      if (!raw) return `Bài ${l}`
+      return raw.replace(/^§\d+\s*/, '')
+    }
+    const getVariantName = (g: number, s: string, c: number, l: number, v: number) => {
+      return (VARIANT_NAMES as any)?.[String(g)]?.[s]?.[String(c)]?.[String(l)]?.[String(v)] || `Dạng ${v}`
+    }
+
+    const SUBJECT_LABELS: Record<string, string> = { D: 'ĐẠI SỐ', H: 'HÌNH HỌC', C: 'CHUYÊN ĐỀ' }
+    const TYPE_COMMANDS: Record<string, string> = {
+      multiple_choice: '\\caulc',
+      true_false: '\\cauds',
+      short_answer: '\\caukq',
+      essay: '\\cautl',
+    }
+    const DIFF_LABELS: Record<string, string> = { N: 'Nhận biết', H: 'Thông hiểu', V: 'Vận dụng', C: 'Vận dụng cao' }
+
+    let tex = '\\Opensolutionfile{ansbook}[ans/ansb\\currfilebase]\n'
+    tex += '\\Opensolutionfile{ans}[ans/ans\\currfilebase]\n\n'
+
+    let currentSubject = ''
+    let currentChapter = -1
+    let currentLesson = -1
+    let currentVariant = -1
+    let currentType = ''
+    let currentDiff = ''
+
+    for (const b of parsedBlocks) {
+      if (b.subject !== currentSubject) {
+        currentSubject = b.subject
+        currentChapter = -1
+        tex += `\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+        tex += `%%%  ${SUBJECT_LABELS[b.subject] || b.subject}\n`
+        tex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n`
+      }
+
+      if (b.chapter !== currentChapter) {
+        currentChapter = b.chapter
+        currentLesson = -1
+        tex += `%%%%%-------Chương ${b.chapter}--------%%%%%%%\n`
+        tex += `\\chapter{${getChapterName(b.grade, b.subject, b.chapter)}}\n\n`
+      }
+
+      if (b.lesson !== currentLesson) {
+        currentLesson = b.lesson
+        currentVariant = -1
+        tex += `\\section{${getLessonName(b.grade, b.subject, b.chapter, b.lesson)}}\n`
+        tex += `\\subsection{Các dạng toán}\n\n`
+      }
+
+      if (b.variant !== currentVariant) {
+        currentVariant = b.variant
+        currentType = '' // Reset type and diff when variant changes
+        tex += `\\subsubsection{${getVariantName(b.grade, b.subject, b.chapter, b.lesson, b.variant)}}\n\n`
+      }
+
+      if (b.type !== currentType) {
+        currentType = b.type
+        currentDiff = '' // Reset diff when type changes
+        const cmd = TYPE_COMMANDS[b.type] || ''
+        tex += `%%%---${b.type}---\n`
+        if (cmd) tex += `${cmd}\n`
+        tex += '\n'
+      }
+
+      if (b.difficulty !== currentDiff) {
+        currentDiff = b.difficulty
+        tex += `\\begin{center}\n\\textbf{${DIFF_LABELS[b.difficulty] || b.difficulty}}\n\\end{center}\n\n`
+      }
+
+      tex += `${b.original}\n\n`
+    }
+
+    if (uncategorizedBlocks.length > 0) {
+      tex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+      tex += `%%% CÂU HỎI CHƯA PHÂN LOẠI\n`
+      tex += `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n`
+      tex += `\\begin{center}\n\\textbf{Chưa phân loại}\n\\end{center}\n\n`
+      tex += uncategorizedBlocks.join('\n\n')
+      tex += `\n\n`
+    }
+
+    tex += `\\Closesolutionfile{ans}\n`
+    tex += `\\Closesolutionfile{ansbook}\n`
+
+    if (wantAnswerTable) {
+      tex += `\n\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
+    }
+
+    pushHistory(tex)
+    setEditorContent(tex)
+    setHasValidated(false)
+    setFlashEditor(true)
+    setTimeout(() => setFlashEditor(false), 500)
+    
+    showToast(`✅ Đã sắp xếp ${parsedBlocks.length} câu (bỏ qua ${uncategorizedBlocks.length} câu)`, 'success')
+  }, [editorContent, pushHistory, showToast])
+
   // ═══ Assign ID logic ═══
   const getGeneratedId = () => {
     let chCode = selectedChapter.toString()
@@ -704,6 +877,15 @@ export default function TexProcessorPage() {
               >
                 <span className={styles.toolBtnIcon}>📄</span>
                 <span className={styles.toolBtnText}>Ghép đề thi</span>
+              </button>
+              <button
+                className={`${styles.toolBtn} ${styles.toolBtnAssemble}`}
+                onClick={handleSortAndStructureExam}
+                disabled={!editorContent.trim()}
+                title="Sắp xếp câu hỏi theo cấu trúc chương, bài, dạng toán..."
+              >
+                <span className={styles.toolBtnIcon}>📚</span>
+                <span className={styles.toolBtnText}>Sắp xếp cấu trúc</span>
               </button>
             </div>
 
