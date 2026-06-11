@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as fs from 'fs'
 import * as path from 'path'
 import AdmZip from 'adm-zip'
+import QRCode from 'qrcode'
 
 interface ExamQuestion {
   id: string
@@ -727,7 +728,7 @@ function buildMaTranTex(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOption, includeAnswerTable, includeAnswerSheet } = body as {
+    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOption, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType } = body as {
       title?: string
       duration?: number
       grade?: number
@@ -739,6 +740,8 @@ export async function POST(request: NextRequest) {
       excelOption?: string
       includeAnswerTable?: boolean
       includeAnswerSheet?: boolean
+      includeQrCode?: boolean
+      qrCodeType?: string
     }
 
     const displayTitle = title || 'ĐỀ THI TRẮC NGHIỆM'
@@ -826,6 +829,44 @@ export async function POST(request: NextRequest) {
       mainTex += '\\end{document}\n'
 
       zip.addFile('main.tex', Buffer.from(mainTex, 'utf-8'))
+    }
+
+    // ── Generate QR Codes for Apps (TNMaker, Smart Test, etc) ──
+    if (includeQrCode) {
+      try {
+        const typeNum = parseInt(qrCodeType || '3', 10)
+        
+        // Split exams into chunks of 9 (limit for TNMaker QR format)
+        const jsons: string[] = []
+        for (let i = 0; i < examSets.length; i += 9) {
+          const chunk = examSets.slice(i, i + 9)
+          const codeChunk = codes.slice(i, i + 9)
+          
+          const obj: any = { success: true, type: typeNum }
+          for (let j = 0; j < chunk.length; j++) {
+            const code = codeChunk[j]
+            let answerStr = ''
+            for (const q of chunk[j]) {
+              if (q.question_type === 'multiple_choice') {
+                const ans = q.correct_answer?.trim() || parseMCAnswer(q.latex_content) || 'A'
+                answerStr += ans.charAt(0).toUpperCase()
+              }
+            }
+            obj[code] = answerStr
+          }
+          jsons.push(JSON.stringify(obj))
+        }
+
+        // Generate PNG for each chunk
+        for (let i = 0; i < jsons.length; i++) {
+          const filename = `qrcode_dapan_${i + 1}.png`
+          const pngBuffer = await QRCode.toBuffer(jsons[i], { width: 500, margin: 2 })
+          // Save the QR Code image in the root directory alongside the Excel files
+          zip.addFile(filename, pngBuffer)
+        }
+      } catch (qrErr) {
+        console.error('QR Code generation error:', qrErr)
+      }
     }
 
     // ── Generate answer Excel files ──

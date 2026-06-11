@@ -143,6 +143,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const [excelOption, setExcelOption] = useState<string>('none')
   const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
   const [includeAnswerSheet, setIncludeAnswerSheet] = useState<boolean>(false)
+  const [includeQrCode, setIncludeQrCode] = useState<boolean>(false)
+  const [qrCodeType, setQrCodeType] = useState<string>('3') // 0 = TNMaker, 3 = Smart Test
 
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
   const [isLoaded, setIsLoaded] = useState(false)
@@ -174,6 +176,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         if (parsed.headerLabels) setHeaderLabels(parsed.headerLabels)
         if (parsed.excelOption) setExcelOption(parsed.excelOption)
         if (parsed.includeAnswerSheet !== undefined) setIncludeAnswerSheet(parsed.includeAnswerSheet)
+        if (parsed.includeQrCode !== undefined) setIncludeQrCode(parsed.includeQrCode)
+        if (parsed.qrCodeType) setQrCodeType(parsed.qrCodeType)
       }
     } catch (e) {
       console.error('Failed to load manual exam state', e)
@@ -187,7 +191,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
       selections, configTitle, configDuration, configNumExams,
       hasGenerated, activeExamIndex, questions, allExamsQuestions,
-      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet
+      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet, includeQrCode, qrCodeType
     }
     try {
       localStorage.setItem('manual-exam-state', JSON.stringify(stateToSave))
@@ -198,7 +202,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     isLoaded, mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
     selections, configTitle, configDuration, configNumExams,
     hasGenerated, activeExamIndex, questions, allExamsQuestions,
-    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet
+    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet, includeQrCode, qrCodeType
   ])
 
   const fetchStats = useCallback(async () => {
@@ -293,6 +297,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       setHeaderStyles(Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' })))
       setExcelOption('none')
       setIncludeAnswerSheet(false)
+      setIncludeQrCode(false)
+      setQrCodeType('3')
     }
   }
 
@@ -596,6 +602,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         excelOption,
         includeAnswerTable,
         includeAnswerSheet,
+        includeQrCode,
+        qrCodeType,
       };
 
       if (currentAllExams.length > 1) {
@@ -1491,6 +1499,29 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   {includeAnswerSheet && (
                     <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '0 4px', lineHeight: '1.5' }}>
                       Phiếu tô trắc nghiệm (TikZ) sẽ nằm sau mỗi đề. Số câu TN/ĐS/TLN tự động theo đề.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: includeQrCode ? '1.5px solid #10b981' : '1px solid #cbd5e1', transition: 'all 0.2s' }}>
+                    <input type="checkbox" checked={includeQrCode} onChange={e => setIncludeQrCode(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>📱 Tích hợp QR Code chấm thi</span>
+                  </label>
+                  {includeQrCode && (
+                    <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <select 
+                        value={qrCodeType} 
+                        onChange={e => setQrCodeType(e.target.value)}
+                        style={{ width: '100%', padding: '6px 8px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', cursor: 'pointer' }}
+                      >
+                        <option value="3">Smart Test</option>
+                        <option value="0">TNMaker</option>
+                        <option value="1">Young Mix</option>
+                      </select>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', lineHeight: '1.5' }}>
+                        QR Code sẽ được xuất thành file ảnh (qrcode.png) nằm cùng thư mục với bảng đáp án Excel.
+                      </div>
                     </div>
                   )}
                 </div>
