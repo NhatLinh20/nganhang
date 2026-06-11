@@ -861,8 +861,8 @@ export async function POST(request: NextRequest) {
         for (let i = 0; i < jsons.length; i++) {
           const filename = `qrcode_dapan_${i + 1}.png`
           const pngBuffer = await QRCode.toBuffer(jsons[i], { width: 500, margin: 2 })
-          // Save the QR Code image in the root directory alongside the Excel files
-          zip.addFile(filename, pngBuffer)
+          // Save the QR Code image in the DAP-AN/ directory alongside the Excel files
+          zip.addFile(`DAP-AN/${filename}`, pngBuffer)
         }
       } catch (qrErr) {
         console.error('QR Code generation error:', qrErr)
@@ -875,17 +875,17 @@ export async function POST(request: NextRequest) {
 
       if (opt === 'all' || opt === 'tnmaker') {
         const tnmakerBuf = generateTNMakerExcel(examSets, codes)
-        zip.addFile('bang_dap_an_tnmaker.xlsx', tnmakerBuf)
+        zip.addFile('DAP-AN/bang_dap_an_tnmaker.xlsx', tnmakerBuf)
       }
 
       if (opt === 'all' || opt === 'azota') {
         const azotaBuf = generateAZOTAExcel(examSets, codes)
-        zip.addFile('bang_dap_an_azota.xlsx', azotaBuf)
+        zip.addFile('DAP-AN/bang_dap_an_azota.xlsx', azotaBuf)
       }
 
       if (opt === 'all' || opt === 'olm') {
         const olmBuf = generateOLMExcel(examSets, codes)
-        zip.addFile('bang_dap_an_olm.xlsx', olmBuf)
+        zip.addFile('DAP-AN/bang_dap_an_olm.xlsx', olmBuf)
       }
     } catch (xlsxErr) {
       console.error('Excel generation error (non-fatal):', xlsxErr)

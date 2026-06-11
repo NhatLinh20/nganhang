@@ -1520,7 +1520,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                         <option value="1">Young Mix</option>
                       </select>
                       <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', lineHeight: '1.5' }}>
-                        QR Code sẽ được xuất thành file ảnh (qrcode.png) nằm cùng thư mục với bảng đáp án Excel.
+                        QR Code sẽ được xuất thành file ảnh (qrcode.png) nằm trong thư mục <b>DAP-AN</b> cùng với bảng đáp án Excel.
                       </div>
                     </div>
                   )}
