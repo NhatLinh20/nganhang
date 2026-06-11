@@ -239,6 +239,104 @@ function generateTNMakerExcel(examSets: ExamQuestion[][], examCodes: string[]): 
   return buildXlsx([{ name: 'Dữ liệu', data: dataRows }])
 }
 
+// ─── YoungMix Excel ────────────────────────────────────────────────────────────
+function generateYoungMixExcel(examSets: ExamQuestion[][], examCodes: string[]): Buffer {
+  const dataRows: CellValue[][] = []
+  
+  // Header row
+  const header: CellValue[] = ['Đề\\câu']
+  for (let i = 1; i <= 40; i++) header.push(`${i}`)
+  for (let i = 1; i <= 8; i++) {
+    header.push(`${i}a`)
+    header.push(`${i}b`)
+    header.push(`${i}c`)
+    header.push(`${i}d`)
+  }
+  for (let i = 1; i <= 6; i++) header.push(`${i}`)
+  dataRows.push(header)
+
+  for (let eIdx = 0; eIdx < examSets.length; eIdx++) {
+    const row: CellValue[] = [examCodes[eIdx]]
+    const qs = examSets[eIdx]
+    const mcQs = qs.filter(q => q.question_type === 'multiple_choice')
+    const tfQs = qs.filter(q => q.question_type === 'true_false')
+    const saQs = qs.filter(q => q.question_type === 'short_answer')
+
+    // 40 MC
+    for (let i = 0; i < 40; i++) {
+      row.push(i < mcQs.length ? getAnswer(mcQs[i]) : '')
+    }
+
+    // 8 TF * 4 = 32
+    for (let i = 0; i < 8; i++) {
+      const ansStr = i < tfQs.length ? getAnswer(tfQs[i]) : ''
+      for (let j = 0; j < 4; j++) {
+        row.push(j < ansStr.length ? ansStr.charAt(j) : '')
+      }
+    }
+
+    // 6 SA
+    for (let i = 0; i < 6; i++) {
+      row.push(i < saQs.length ? getAnswer(saQs[i]) : '')
+    }
+
+    dataRows.push(row)
+  }
+
+  return buildXlsx([{ name: 'Dữ liệu', data: dataRows }])
+}
+
+// ─── SmartTest Excel ──────────────────────────────────────────────────────────
+function generateSmartTestExcel(examSets: ExamQuestion[][], examCodes: string[]): Buffer {
+  const canonical = examSets[0] ?? []
+  const mcQs   = canonical.filter(q => q.question_type === 'multiple_choice')
+  const tfQs   = canonical.filter(q => q.question_type === 'true_false')
+  const saQs   = canonical.filter(q => q.question_type === 'short_answer')
+
+  const dataRows: CellValue[][] = []
+
+  // Header row
+  const header: CellValue[] = ['Câu\\Mã đề']
+  for (const code of examCodes) header.push(code)
+  dataRows.push(header)
+
+  let globalQ = 1
+
+  // MC rows
+  for (let qi = 0; qi < mcQs.length; qi++, globalQ++) {
+    const row: CellValue[] = [globalQ]
+    for (const qs of examSets) {
+      const q = qs.filter(x => x.question_type === 'multiple_choice')[qi]
+      row.push(q ? getAnswer(q) : '')
+    }
+    dataRows.push(row)
+  }
+
+  // TF rows
+  for (let qi = 0; qi < tfQs.length; qi++, globalQ++) {
+    const row: CellValue[] = [globalQ]
+    for (const qs of examSets) {
+      const q = qs.filter(x => x.question_type === 'true_false')[qi]
+      if (!q) { row.push(''); continue }
+      const ans = getAnswer(q) 
+      row.push(ans)
+    }
+    dataRows.push(row)
+  }
+
+  // SA rows
+  for (let qi = 0; qi < saQs.length; qi++, globalQ++) {
+    const row: CellValue[] = [globalQ]
+    for (const qs of examSets) {
+      const q = qs.filter(x => x.question_type === 'short_answer')[qi]
+      row.push(q ? getAnswer(q) : '')
+    }
+    dataRows.push(row)
+  }
+
+  return buildXlsx([{ name: 'Dữ liệu', data: dataRows }])
+}
+
 // ─── AZOTA Excel ──────────────────────────────────────────────────────────────
 /**
  * Cấu trúc AZOTA:
@@ -881,6 +979,16 @@ export async function POST(request: NextRequest) {
       if (opt === 'all' || opt === 'azota') {
         const azotaBuf = generateAZOTAExcel(examSets, codes)
         zip.addFile('DAP-AN/bang_dap_an_azota.xlsx', azotaBuf)
+      }
+
+      if (opt === 'all' || opt === 'youngmix') {
+        const ymBuf = generateYoungMixExcel(examSets, codes)
+        zip.addFile('DAP-AN/bang_dap_an_youngmix.xlsx', ymBuf)
+      }
+
+      if (opt === 'all' || opt === 'smarttest') {
+        const stBuf = generateSmartTestExcel(examSets, codes)
+        zip.addFile('DAP-AN/bang_dap_an_smarttest.xlsx', stBuf)
       }
 
       if (opt === 'all' || opt === 'olm') {

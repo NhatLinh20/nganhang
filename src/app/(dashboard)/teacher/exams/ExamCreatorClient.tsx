@@ -1480,6 +1480,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                     <option value="all">Xuất tất cả các loại bảng</option>
                     <option value="azota">Xuất bảng Azota</option>
                     <option value="tnmaker">Xuất bảng TNMaker</option>
+                    <option value="youngmix">Xuất bảng Young Mix</option>
+                    <option value="smarttest">Xuất bảng Smart Test</option>
                     <option value="olm">Xuất bảng OLM</option>
                   </select>
                 </div>
