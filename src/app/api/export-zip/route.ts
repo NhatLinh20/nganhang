@@ -826,7 +826,7 @@ function buildMaTranTex(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOption, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType } = body as {
+    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOptions, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType } = body as {
       title?: string
       duration?: number
       grade?: number
@@ -835,7 +835,7 @@ export async function POST(request: NextRequest) {
       headerLabels?: string[]
       headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[]
       examCodes?: string[]
-      excelOption?: string
+      excelOptions?: string[]
       includeAnswerTable?: boolean
       includeAnswerSheet?: boolean
       includeQrCode?: boolean
@@ -969,29 +969,30 @@ export async function POST(request: NextRequest) {
 
     // ── Generate answer Excel files ──
     try {
-      const opt = excelOption || 'none'
+      const opts = excelOptions || []
+      const isAll = opts.includes('all') || opts.length === 5
 
-      if (opt === 'all' || opt === 'tnmaker') {
+      if (isAll || opts.includes('tnmaker')) {
         const tnmakerBuf = generateTNMakerExcel(examSets, codes)
         zip.addFile('DAP-AN/bang_dap_an_tnmaker.xlsx', tnmakerBuf)
       }
 
-      if (opt === 'all' || opt === 'azota') {
+      if (isAll || opts.includes('azota')) {
         const azotaBuf = generateAZOTAExcel(examSets, codes)
         zip.addFile('DAP-AN/bang_dap_an_azota.xlsx', azotaBuf)
       }
 
-      if (opt === 'all' || opt === 'youngmix') {
+      if (isAll || opts.includes('youngmix')) {
         const ymBuf = generateYoungMixExcel(examSets, codes)
         zip.addFile('DAP-AN/bang_dap_an_youngmix.xlsx', ymBuf)
       }
 
-      if (opt === 'all' || opt === 'smarttest') {
+      if (isAll || opts.includes('smarttest')) {
         const stBuf = generateSmartTestExcel(examSets, codes)
         zip.addFile('DAP-AN/bang_dap_an_smarttest.xlsx', stBuf)
       }
 
-      if (opt === 'all' || opt === 'olm') {
+      if (isAll || opts.includes('olm')) {
         const olmBuf = generateOLMExcel(examSets, codes)
         zip.addFile('DAP-AN/bang_dap_an_olm.xlsx', olmBuf)
       }

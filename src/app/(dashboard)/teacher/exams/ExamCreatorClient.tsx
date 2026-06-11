@@ -140,7 +140,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   )
   const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
-  const [excelOption, setExcelOption] = useState<string>('none')
+  const [excelOptions, setExcelOptions] = useState<string[]>([])
+  const [showExcelDropdown, setShowExcelDropdown] = useState<boolean>(false)
   const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
   const [includeAnswerSheet, setIncludeAnswerSheet] = useState<boolean>(false)
   const [includeQrCode, setIncludeQrCode] = useState<boolean>(false)
@@ -174,7 +175,12 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         if (parsed.swappedOutIds) setSwappedOutIds(parsed.swappedOutIds)
         if (parsed.examCodes) setExamCodes(parsed.examCodes)
         if (parsed.headerLabels) setHeaderLabels(parsed.headerLabels)
-        if (parsed.excelOption) setExcelOption(parsed.excelOption)
+        if (parsed.excelOptions) setExcelOptions(parsed.excelOptions)
+        if (parsed.excelOption && !parsed.excelOptions) {
+          // migration from old format
+          if (parsed.excelOption === 'all') setExcelOptions(['all'])
+          else if (parsed.excelOption !== 'none') setExcelOptions([parsed.excelOption])
+        }
         if (parsed.includeAnswerSheet !== undefined) setIncludeAnswerSheet(parsed.includeAnswerSheet)
         if (parsed.includeQrCode !== undefined) setIncludeQrCode(parsed.includeQrCode)
         if (parsed.qrCodeType) setQrCodeType(parsed.qrCodeType)
@@ -191,7 +197,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
       selections, configTitle, configDuration, configNumExams,
       hasGenerated, activeExamIndex, questions, allExamsQuestions,
-      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet, includeQrCode, qrCodeType
+      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOptions, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType
     }
     try {
       localStorage.setItem('manual-exam-state', JSON.stringify(stateToSave))
@@ -202,7 +208,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     isLoaded, mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
     selections, configTitle, configDuration, configNumExams,
     hasGenerated, activeExamIndex, questions, allExamsQuestions,
-    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet, includeQrCode, qrCodeType
+    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOptions, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType
   ])
 
   const fetchStats = useCallback(async () => {
@@ -284,18 +290,10 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       setWarnings([])
       setSwappedOutIds([])
       setExamCodes([''])
-      setHeaderLabels([
-        'SỞ GDĐT ...',
-        'TRƯỜNG THPT ...',
-        'Đề chính thức',
-        '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
-        'ĐỀ KIỂM TRA',
-        'Môn: TOÁN',
-        'Thời gian làm bài: 90 phút',
-        '(Không kể thời gian phát đề)'
-      ])
+      setHeaderLabels(Array.from({ length: 8 }, () => ''))
       setHeaderStyles(Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' })))
-      setExcelOption('none')
+      setExcelOptions([])
+      setShowExcelDropdown(false)
       setIncludeAnswerSheet(false)
       setIncludeQrCode(false)
       setQrCodeType('3')
@@ -599,7 +597,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         examCodes,
         duration: configDuration || 90,
         grade: filterGrade || 12,
-        excelOption,
+        excelOptions,
         includeAnswerTable,
         includeAnswerSheet,
         includeQrCode,
@@ -1471,32 +1469,74 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Bảng đáp án Excel:</label>
-                  <select 
-                    value={excelOption} 
-                    onChange={e => setExcelOption(e.target.value)}
-                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: 'white' }}
-                  >
-                    <option value="none">Không xuất bảng đáp án</option>
-                    <option value="all">Xuất tất cả các loại bảng</option>
-                    <option value="azota">Xuất bảng Azota</option>
-                    <option value="tnmaker">Xuất bảng TNMaker</option>
-                    <option value="youngmix">Xuất bảng Young Mix</option>
-                    <option value="smarttest">Xuất bảng Smart Test</option>
-                    <option value="olm">Xuất bảng OLM</option>
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <div 
+                      onClick={() => setShowExcelDropdown(!showExcelDropdown)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', cursor: 'pointer' }}
+                    >
+                      <span>
+                        {excelOptions.includes('all') || excelOptions.length === 5 ? 'Xuất tất cả các loại bảng' 
+                          : excelOptions.length > 0 ? `Đã chọn ${excelOptions.length} bảng` 
+                          : 'Không xuất bảng đáp án'}
+                      </span>
+                      <span style={{ transform: showExcelDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                    </div>
+
+                    {showExcelDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {[
+                          { id: 'azota', label: 'Bảng Azota' },
+                          { id: 'tnmaker', label: 'Bảng TNMaker' },
+                          { id: 'youngmix', label: 'Bảng Young Mix' },
+                          { id: 'smarttest', label: 'Bảng Smart Test' },
+                          { id: 'olm', label: 'Bảng OLM' },
+                        ].map(opt => (
+                          <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={excelOptions.includes('all') || excelOptions.includes(opt.id)} 
+                              onChange={e => {
+                                if (excelOptions.includes('all') || excelOptions.length === 5) {
+                                  setExcelOptions(['azota', 'tnmaker', 'youngmix', 'smarttest', 'olm'].filter(x => x !== opt.id))
+                                } else {
+                                  if (e.target.checked) setExcelOptions([...excelOptions, opt.id])
+                                  else setExcelOptions(excelOptions.filter(x => x !== opt.id))
+                                }
+                              }} 
+                              style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                        <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }}></div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px', fontWeight: 600 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={excelOptions.includes('all') || excelOptions.length === 5} 
+                            onChange={e => {
+                              if (e.target.checked) setExcelOptions(['all'])
+                              else setExcelOptions([])
+                            }} 
+                            style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                          />
+                          <span>Tất cả</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                     <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
-                    <span style={{ flex: 1 }}>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
+                    <span style={{ flex: 1 }}>Đáp án cuối đề</span>
                   </label>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: includeAnswerSheet ? '1.5px solid #10b981' : '1px solid #cbd5e1', transition: 'all 0.2s' }}>
                     <input type="checkbox" checked={includeAnswerSheet} onChange={e => setIncludeAnswerSheet(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
-                    <span style={{ flex: 1 }}>📋 Xuất phiếu trả lời trắc nghiệm</span>
+                    <span style={{ flex: 1 }}>Phiếu trả lời trắc nghiệm</span>
                   </label>
                   {includeAnswerSheet && (
                     <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '0 4px', lineHeight: '1.5' }}>
@@ -1508,7 +1548,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: includeQrCode ? '1.5px solid #10b981' : '1px solid #cbd5e1', transition: 'all 0.2s' }}>
                     <input type="checkbox" checked={includeQrCode} onChange={e => setIncludeQrCode(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
-                    <span style={{ flex: 1 }}>📱 Tích hợp QR Code chấm thi</span>
+                    <span style={{ flex: 1 }}>📱 Tạo QR Code đáp án</span>
                   </label>
                   {includeQrCode && (
                     <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
