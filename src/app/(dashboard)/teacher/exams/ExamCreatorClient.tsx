@@ -142,6 +142,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
   const [excelOption, setExcelOption] = useState<string>('none')
   const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
+  const [includeAnswerSheet, setIncludeAnswerSheet] = useState<boolean>(false)
 
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
   const [isLoaded, setIsLoaded] = useState(false)
@@ -172,6 +173,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         if (parsed.examCodes) setExamCodes(parsed.examCodes)
         if (parsed.headerLabels) setHeaderLabels(parsed.headerLabels)
         if (parsed.excelOption) setExcelOption(parsed.excelOption)
+        if (parsed.includeAnswerSheet !== undefined) setIncludeAnswerSheet(parsed.includeAnswerSheet)
       }
     } catch (e) {
       console.error('Failed to load manual exam state', e)
@@ -185,7 +187,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
       selections, configTitle, configDuration, configNumExams,
       hasGenerated, activeExamIndex, questions, allExamsQuestions,
-      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption
+      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet
     }
     try {
       localStorage.setItem('manual-exam-state', JSON.stringify(stateToSave))
@@ -196,7 +198,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     isLoaded, mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
     selections, configTitle, configDuration, configNumExams,
     hasGenerated, activeExamIndex, questions, allExamsQuestions,
-    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption
+    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOption, includeAnswerSheet
   ])
 
   const fetchStats = useCallback(async () => {
@@ -290,6 +292,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       ])
       setHeaderStyles(Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' })))
       setExcelOption('none')
+      setIncludeAnswerSheet(false)
     }
   }
 
@@ -592,6 +595,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         grade: filterGrade || 12,
         excelOption,
         includeAnswerTable,
+        includeAnswerSheet,
       };
 
       if (currentAllExams.length > 1) {
@@ -1477,6 +1481,18 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                     <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
                     <span style={{ flex: 1 }}>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
                   </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: includeAnswerSheet ? '1.5px solid #10b981' : '1px solid #cbd5e1', transition: 'all 0.2s' }}>
+                    <input type="checkbox" checked={includeAnswerSheet} onChange={e => setIncludeAnswerSheet(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>📋 Xuất phiếu trả lời trắc nghiệm</span>
+                  </label>
+                  {includeAnswerSheet && (
+                    <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '0 4px', lineHeight: '1.5' }}>
+                      Phiếu tô trắc nghiệm (TikZ) sẽ nằm sau mỗi đề. Số câu TN/ĐS/TLN tự động theo đề.
+                    </div>
+                  )}
                 </div>
 
                 {/* Placeholders for future options */}

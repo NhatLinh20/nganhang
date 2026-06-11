@@ -421,6 +421,197 @@ function generateOLMExcel(examSets: ExamQuestion[][], examCodes: string[]): Buff
 }
 
 
+// ─── Answer Sheet (Phiếu trả lời trắc nghiệm) TikZ Builder ───────────────────
+
+function buildAnswerSheetTex(examCode: string, mcCount: number, tfCount: number, saCount: number): string {
+  // Convert exam code "1234" → "1,2,3,4" for TikZ \made
+  const madeDigits = examCode.split('').join(',')
+  // Clamp to limits of the template
+  const TN = Math.min(mcCount, 40)
+  const DS = Math.min(tfCount, 8)
+  const TLN = Math.min(saCount, 6)
+
+  // If nothing to show, return empty
+  if (TN === 0 && DS === 0 && TLN === 0) return ''
+
+  let tex = '\n% ─── PHIẾU TRẢ LỜI TRẮC NGHIỆM ───\n'
+  tex += '\\newpage\\thispagestyle{empty}\n'
+  tex += '\\begin{tikzpicture}[remember picture,overlay,font={\\fontfamily{ptm}\\fontsize{10pt}{0pt}\\selectfont},line width=1pt]%Phieu tra loi\n'
+
+  // === Tuỳ chọn phiếu ===
+  tex += '\t%Tùy chọn cho phiếu\n'
+  tex += `\t\\def\\mauphieu{red}\n`
+  tex += `\t\\def\\madephieu{${madeDigits}}%mã đề (dùng riêng cho phiếu, không ghi đè \\made)\n`
+  tex += `\t\\def\\TN{${TN}}%Số câu TN\n`
+  tex += `\t\\def\\DS{${DS}}%Số câu ĐS\n`
+  tex += `\t\\def\\TLN{${TLN}}%Số câu TLN\n`
+  tex += '\t\\def\\hiennhan{1} %1: hiện nhãn, 0: tắt nhãn\n'
+  tex += '\t\\def\\labeltext#1{\\ifnum\\hiennhan=1 #1 \\fi}\n'
+
+  // === Khai báo điểm ===
+  tex += '\t%Khai báo điểm\n'
+  tex += '\t\\path (current page.north west) coordinate (A);\n'
+
+  // === Nền phiếu ===
+  tex += '\t%Nền phiếu\n'
+  tex += '\t\\fill[\\mauphieu!10] ($(A)+(1.75,-9.85)$) rectangle ($(A)+(19.25,-28)$);\n'
+
+  // === Ô vuông định vị lớn ===
+  tex += '\t%Định vị phiếu (các ô vuông lớn)\n'
+  tex += '\t\\foreach \\x/\\y/\\c in {1.3/-1.28,13.74/-1.28,19.68/-1.28,%\n'
+  tex += '\t\t1.3/-9.32,13.65/-9.32,19.68/-9.32,%\n'
+  tex += '\t\t1.3/-28.42,19.68/-28.42,}{%\n'
+  tex += '\t\t\\node [fill=\\mauphieu,minimum size=0.54cm,inner sep=0pt] at ($(A)+(\\x,\\y)$) {};\n'
+  tex += '\t}\n'
+
+  // === Ô vuông định vị nhỏ ===
+  tex += '\t%Định vị phiếu (các ô vuông nhỏ)\n'
+  tex += '\t\\foreach \\x/\\y in {17.47/-5.9, 17.47/-8.79,\n'
+  tex += '\t\t6.17/-10.64, 10.49/-10.64, 14.81/-10.64,\n'
+  tex += '\t\t6.17/-15.79, 10.49/-15.79, 14.81/-15.79,\n'
+  tex += '\t\t6.17/-16.52, 10.49/-16.52, 14.81/-16.52,\n'
+  tex += '\t\t6.17/-19.55, 10.49/-19.55, 14.81/-19.55,\n'
+  tex += '\t\t4.94/-19.94, 7.71/-19.94, 13.25/-19.94, 16.02/-19.94,\n'
+  tex += '\t\t4.94/-27.73, 7.71/-27.73, 10.48/-27.73, 13.25/-27.73, 16.02/-27.73}{\n'
+  tex += '\t\t\\node [fill=\\mauphieu,minimum size=0.27cm,inner sep=0pt] at ($(A)+(\\x,\\y)$){};\n'
+  tex += '\t}\n'
+
+  // === Phần thông tin ===
+  tex += '\t%Phần thông tin\n'
+  tex += '\t\\node at ($(A)+(8,-1.5)$)[font={\\bfseries\\fontfamily{ptm}\\fontsize{15pt}{0pt}\\selectfont},\\mauphieu]{PHIẾU TRẢ LỜI TRẮC NGHIỆM};\n'
+  tex += '\t\\node[\\mauphieu] at ($(A)+(9.6,-2.3)$){Kỳ thi \\makebox[6.3cm]{\\dotfill}};\n'
+  tex += '\t\\node[\\mauphieu] at ($(A)+(1.5,-3)$)[anchor=west]{Bài thi \\makebox[7.1cm]{\\dotfill} Ngày thi:\\makebox[0.5cm]{\\dotfill}/\\makebox[0.5cm]{\\dotfill}/20\\makebox[0.5cm]{\\dotfill}};\n'
+
+  // === Ô Điểm + Cán bộ coi thi ===
+  tex += '\t\\draw [\\mauphieu,line width=1pt] ($(A)+(1.7,-3.35)$) rectangle ($(A)+(5.7,-8.8)$)\n'
+  tex += '\t($(A)+(1.7,-4)$)--($(A)+(5.7,-4)$) node [midway,above] {Điểm}\n'
+  tex += '\t($(A)+(1.7,-5.5)$)--($(A)+(5.7,-5.5)$) node [midway,shift={(0,-0.4)},text width=3.5cm,align=center,font={\\fontsize{10pt}{-5pt}\\selectfont} ] {Họ tên, chữ ký của cán bộ coi thi 1}\n'
+  tex += '\t($(A)+(1.7,-7.2)$)--($(A)+(5.7,-7.2)$)node [midway,shift={(0,-0.4)},text width=3.5cm,align=center,font={\\fontsize{10pt}{-5pt}\\selectfont} ] {Họ tên, chữ ký của cán bộ coi thi 2}\n'
+  tex += '\t;\n'
+
+  // === Thông tin thí sinh ===
+  tex += '\t\\draw [\\mauphieu,line width=1pt] ($(A)+(5.95,-3.35)$) rectangle ($(A)+(13.15,-8.8)$);\n'
+  tex += '\t\\foreach \\text [count=\\i] in {\n'
+  tex += '\t\t{Hội đồng thi: \\dotfill},\n'
+  tex += '\t\t{Điểm thi: \\dotfill},\n'
+  tex += '\t\t{Phòng thi số: \\dotfill},\n'
+  tex += '\t\t{Họ và tên thí sinh: \\dotfill},\n'
+  tex += '\t\t{Ngày sinh: \\makebox[0.5cm]{\\dotfill}/\\makebox[0.5cm]{\\dotfill}/\\makebox[2cm]{\\dotfill} (Nam/Nữ).},\n'
+  tex += '\t\t{Chữ ký của thí sinh: \\dotfill}\n'
+  tex += '\t} {\n'
+  tex += '\t\t\\node at ($(A)+(5.95, {-3.9 - (\\i-1)*0.9})$) [anchor=west, text width=7cm,\\mauphieu] {\\i. \\text};\n'
+  tex += '\t}\n'
+
+  // === Ô số báo danh (header) ===
+  tex += '\t\\foreach \\i in {0, 1, ..., 7} {\n'
+  tex += '\t\t\\draw [\\mauphieu, line width=1pt]\n'
+  tex += '\t\t($(A) + ({13.97 + \\i*0.4}, -2.3)$) rectangle ($(A) + ({14.37 + \\i*0.4}, -2.89)$);\n'
+  tex += '\t}\n'
+  tex += '\t\\node at ($(A) + (15.57, -2.3)$) [above,\\mauphieu] {7. Số báo danh};\n'
+
+  // === Ô mã đề thi (header) ===
+  tex += '\t\\foreach \\i in {0, 1, ..., 3} {\n'
+  tex += '\t\t\\draw [\\mauphieu, line width=1pt]\n'
+  tex += '\t\t($(A) + ({17.77 + \\i*0.4}, -2.3)$) rectangle ($(A) + ({18.17 + \\i*0.4}, -2.89)$);\n'
+  tex += '\t}\n'
+  tex += '\t\\node at ($(A) + (18.57, -2.3)$) [above,\\mauphieu] {8. Mã đề thi};\n'
+
+  // === Số báo danh (grid) ===
+  tex += '\t%Số báo danh\n'
+  tex += '\t\\draw [\\mauphieu]($(A)+(13.94,-3)$) rectangle ($(A)+(17.23,-8.8)$);\n'
+  tex += '\t\\foreach \\j in {0, 1, ..., 9} {\n'
+  tex += '\t\t\\draw [\\mauphieu]($(A)+(13.66, {-3.3 - \\j*0.575})$) circle (5pt)\n'
+  tex += '\t\tnode [font={\\fontsize{8pt}{9.6pt}\\selectfont}] {\\j};\n'
+  tex += '\t\t\\foreach \\i in {0, 1, ..., 7} {\n'
+  tex += '\t\t\t\\draw [\\mauphieu]($(A) + ({14.16 + \\i*0.405}, {-3.3 - \\j*0.575})$) circle (5pt)node[font=\\fontsize{7pt}{0pt}\\selectfont,\\mauphieu!80]{\\labeltext{\\j}} ;\n'
+  tex += '\t\t}\n'
+  tex += '\t}\n'
+
+  // === Mã đề (grid + tô sẵn) ===
+  tex += '\t%Mã đề\n'
+  tex += '\t\\draw [\\mauphieu]($(A)+(17.75,-3)$) rectangle ($(A)+(19.43,-8.8)$);\n'
+  tex += '\t\\foreach \\j in {0, 1, ..., 9} {\n'
+  tex += '\t\t\\draw [\\mauphieu]($(A)+(19.74, {-3.3 - \\j*0.575})$) circle (5pt)\n'
+  tex += '\t\tnode [font={\\fontsize{8pt}{9.6pt}\\selectfont}] {\\j};\n'
+  tex += '\t\t\\foreach \\i in {0, 1, ..., 3} {\n'
+  tex += '\t\t\t\\draw [\\mauphieu]($(A) + ({17.975 + \\i*0.405}, {-3.3 - \\j*0.575})$) circle (5pt);\n'
+  tex += '\t\t\t\\path ($(A) + ({17.975 + \\i*0.405}, {-3.3 - \\j*0.575})$) coordinate (A\\i\\j)\n'
+  tex += '\t\t\tnode[font=\\fontsize{7pt}{0pt}\\selectfont,\\mauphieu!80]{\\labeltext{\\j}};\n'
+  tex += '\t\t}\n'
+  tex += '\t}\n'
+  // Tô mã đề
+  tex += '\t\\foreach \\val [count=\\col from 0] in \\madephieu{\n'
+  tex += '\t\t\\fill[\\mauphieu] ({A\\col\\val}) circle (5pt);\n'
+  tex += '\t}\n'
+  tex += '\t\\foreach\\i [count=\\j from 0] in \\madephieu{\n'
+  tex += '\t\t\\node [\\mauphieu] at ($(A) + ({17.97 + \\j*0.4}, -2.595)$) {\\i};\n'
+  tex += '\t}\n'
+
+  // === Phần I: Trắc nghiệm ===
+  tex += '\t%Phần phiếu tô trắc nghiệm\n'
+  tex += '\t\\foreach \\k in {0,1,2,3}{\n'
+  tex += '\t\t\\pgfmathtruncatemacro{\\cotbatdau}{\\k*10+1}\n'
+  tex += '\t\t\\ifnum\\cotbatdau>\\TN\\else\n'
+  tex += '\t\t\\node at ($(A)+(2.175,-10.2)$)[anchor=west,font={\\bfseries\\small},\\mauphieu,inner sep=0pt] {PHẦN I};\n'
+  tex += '\t\t\\draw[\\mauphieu,fill=white]($(A)+({2.175+\\k*4.315},-10.6)$)rectangle($(A)+({5.85+\\k*4.315},-15.8)$);\n'
+  tex += '\t\t\\fi}\n'
+  tex += '\t\\foreach \\k in {0,1,2,3}{\n'
+  tex += '\t\t\\foreach \\rinc in {1,2,...,10}{\n'
+  tex += '\t\t\t\\pgfmathtruncatemacro{\\r}{\\k*10+\\rinc}\n'
+  tex += '\t\t\t\\ifnum\\r>\\TN\\else\n'
+  tex += '\t\t\t\\foreach \\c [count=\\i from 0] in {A,B,C,D}{\n'
+  tex += '\t\t\t\t\\coordinate (HienTai) at ($(A)+({2.935+\\k*4.315+\\i*0.865},{-11.35-(\\rinc-1)*0.445})$);\n'
+  tex += '\t\t\t\t\\path [draw=\\mauphieu](HienTai)circle(5pt)coordinate(TN\\r\\c);\n'
+  tex += '\t\t\t\t\\node at (TN\\r\\c)[font=\\tiny,\\mauphieu!50]{\\labeltext{\\c}};\n'
+  tex += '\t\t\t\t\\ifnum\\rinc=1\\node at ($(HienTai)+(0,0.45)$)[\\mauphieu,font=\\tiny\\bfseries\\selectfont]{\\c};\\fi\n'
+  tex += '\t\t\t}\n'
+  tex += '\t\t\t\\node at (TN\\r A)[shift={(-0.45,0)},\\mauphieu,font=\\bfseries\\footnotesize] {\\r};\n'
+  tex += '\t\t\t\\fi}}\n'
+
+  // === Phần II: Đúng/Sai ===
+  tex += '\t%Phần phiếu tô đúng sai\n'
+  tex += '\t\\foreach \\k in {0,1,2,3}{\n'
+  tex += '\t\t\\foreach \\q [count=\\qi from 0] in {1,2}{\n'
+  tex += '\t\t\t\\pgfmathtruncatemacro{\\r}{2*\\k+\\q}\n'
+  tex += '\t\t\t\\ifnum\\r>\\DS\\else\n'
+  tex += '\t\t\t\\node at ($(A)+(2.175,-16.125)$)[anchor=west,font={\\bfseries\\small},\\mauphieu,inner sep=0pt] {PHẦN II};\n'
+  tex += '\t\t\t\\ifnum\\qi=0\n'
+  tex += '\t\t\t\\draw[\\mauphieu,fill=white]($(A)+({2.175+\\k*4.32},-16.5)$)rectangle($(A)+({4.2325+\\k*4.32},-19.55)$);\n'
+  tex += '\t\t\t\\else\n'
+  tex += '\t\t\t\\draw[\\mauphieu,fill=white]($(A)+({4.2325+\\k*4.32},-16.5)$)rectangle($(A)+({5.85+\\k*4.32},-19.55)$);\n'
+  tex += '\t\t\t\\fi\n'
+  tex += '\t\t\t\\node at ($(A)+({3.3675+\\k*4.32+\\qi*1.73},-16.85)$) [font=\\footnotesize\\bfseries,\\mauphieu] {Câu \\r};\n'
+  tex += '\t\t\t\\foreach \\y [count=\\yi from 0] in {a,b,c,d}{\n'
+  tex += '\t\t\t\t\\foreach \\t/\\dx in {D/0,S/0.865}{\n'
+  tex += '\t\t\t\t\t\\path[draw=\\mauphieu]($(A)+({2.935+\\k*4.32+\\qi*1.73+\\dx},{-17.8-\\yi*0.445})$)circle(5pt)coordinate(DS\\r\\y\\t)\n'
+  tex += '\t\t\t\t\tnode [font=\\fontsize{7pt}{0pt}\\selectfont,\\mauphieu!80]{\\labeltext{\\t}};\n'
+  tex += '\t\t\t\t\t\\ifnum\\yi=0\\node at (DS\\r\\y\\t)[font=\\bfseries\\footnotesize,shift={(0,0.45)},\\mauphieu]{\\if\\t D Đúng\\else Sai\\fi};\\fi\n'
+  tex += '\t\t\t\t\t\\if\\t D\\ifnum\\qi=0\\node at (DS\\r\\y\\t)[font=\\bfseries\\footnotesize,shift={(-0.4,0)},\\mauphieu]{\\y)};\\fi\\fi\n'
+  tex += '\t\t\t}}\\fi}}\n'
+
+  // === Phần III: Trả lời ngắn ===
+  tex += '\t%Phần TLN\n'
+  tex += '\t\\ifdefined\\TLN\\else\\def\\TLN{6}\\fi\n'
+  tex += '\t\\ifnum\\TLN>0\n'
+  tex += '\t\\foreach \\r in {1,...,\\TLN}{\n'
+  tex += '\t\t\\node at ($(A)+(2.175,-19.9)$)[anchor=west,font={\\bfseries\\small},\\mauphieu,inner sep=0pt] {PHẦN III};\n'
+  tex += '\t\t\\draw[\\mauphieu,fill=white]($(A)+({2.18+(\\r-1)*2.77},-20.355)$)rectangle($(A)+({4.95+(\\r-1)*2.77},-27.3)$);\n'
+  tex += '\t\t\\node at ($(A)+({3+(\\r-1)*2.765},-20.95)$)[font=\\footnotesize\\bfseries,\\mauphieu]{Câu \\r};\n'
+  tex += '\t\t\\foreach \\val [count=\\i from 0] in {-, {,}, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}{\n'
+  tex += '\t\t\t\\node at ($(A)+({2.4+(\\r-1)*2.765},{-21.77-\\i*0.46})$)[font=\\footnotesize\\bfseries,\\mauphieu]{\\val};}\n'
+  tex += '\t\t\\path[draw=\\mauphieu]($(A)+({2.79+(\\r-1)*2.765},-21.77)$)circle(5pt)coordinate(SA\\r1T)node[font=\\fontsize{7pt}{0pt}\\selectfont,\\mauphieu!80]{\\labeltext{$-$}};\n'
+  tex += '\t\t\\foreach \\p [count=\\pi from 0] in {2,3}{\n'
+  tex += '\t\t\t\\path[draw=\\mauphieu]($(A)+({3.38+(\\r-1)*2.765+\\pi*0.59},-22.23)$)circle(5pt)coordinate(SA\\r\\p P)node[font=\\fontsize{7pt}{0pt}\\selectfont,\\mauphieu!80]{\\labeltext{,}};}\n'
+  tex += '\t\t\\foreach \\p in {1,2,3,4}{\n'
+  tex += '\t\t\t\\foreach \\j in {0,1,...,9}{\n'
+  tex += '\t\t\t\t\\path[draw=\\mauphieu]($(A)+({2.79+(\\r-1)*2.77+(\\p-1)*0.59},{-22.69-\\j*0.46})$)circle(5pt)coordinate(SA\\r\\p\\j)node[font=\\fontsize{7pt}{0pt}\\selectfont,\\mauphieu!80]{\\labeltext{\\j}};}}}\n'
+  tex += '\t\\fi\n'
+
+  tex += '\\end{tikzpicture}\n'
+
+  return tex
+}
+
 // ─── LaTeX Content Builder ────────────────────────────────────────────────────
 
 function buildMaTranTex(
@@ -431,7 +622,8 @@ function buildMaTranTex(
   headerLabels?: string[],
   examCode?: string,
   headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[],
-  includeAnswerTable: boolean = true
+  includeAnswerTable: boolean = true,
+  includeAnswerSheet: boolean = false
 ): string {
   const grouped: Record<number, ExamQuestion[]> = {}
   for (const q of questions) {
@@ -524,6 +716,14 @@ function buildMaTranTex(
   } else {
     tex += `%\\begin{indapan}\n%\t{ans/ans\\currfilebase}\n%\\end{indapan}\n`
   }
+  // Insert answer sheet (phiếu trả lời) if requested
+  if (includeAnswerSheet && examCode) {
+    const mcCount = questions.filter(q => q.question_type === 'multiple_choice').length
+    const tfCount = questions.filter(q => q.question_type === 'true_false').length
+    const saCount = questions.filter(q => q.question_type === 'short_answer').length
+    const sheetTex = buildAnswerSheetTex(examCode, mcCount, tfCount, saCount)
+    if (sheetTex) tex += sheetTex
+  }
   tex += `\\zlabel{\\made-lastpage}\n`
 
   return tex
@@ -534,7 +734,7 @@ function buildMaTranTex(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOption, includeAnswerTable } = body as {
+    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOption, includeAnswerTable, includeAnswerSheet } = body as {
       title?: string
       duration?: number
       grade?: number
@@ -545,6 +745,7 @@ export async function POST(request: NextRequest) {
       examCodes?: string[]
       excelOption?: string
       includeAnswerTable?: boolean
+      includeAnswerSheet?: boolean
     }
 
     const displayTitle = title || 'ĐỀ THI TRẮC NGHIỆM'
@@ -604,7 +805,7 @@ export async function POST(request: NextRequest) {
 
     if (examSets.length === 1) {
       // ── Single exam ──
-      const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0], validHeaderStyles, includeAnswerTable !== false)
+      const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0], validHeaderStyles, includeAnswerTable !== false, includeAnswerSheet === true)
       zip.addFile('data/ma_tran_de_thi_toan.tex', Buffer.from(maTranTex, 'utf-8'))
 
       const mainPath = path.join(configDir, 'main.tex')
@@ -615,7 +816,7 @@ export async function POST(request: NextRequest) {
       // ── Multiple exams ──
       for (let i = 0; i < examSets.length; i++) {
         const examLabel = `Đề ${i + 1}`
-        const maTranTex = buildMaTranTex(examSets[i], displayTitle, displayGrade, examLabel, validHeaderLabels, codes[i], validHeaderStyles, includeAnswerTable !== false)
+        const maTranTex = buildMaTranTex(examSets[i], displayTitle, displayGrade, examLabel, validHeaderLabels, codes[i], validHeaderStyles, includeAnswerTable !== false, includeAnswerSheet === true)
         zip.addFile(`data/ma_tran_de_thi_toan${i + 1}.tex`, Buffer.from(maTranTex, 'utf-8'))
       }
 
