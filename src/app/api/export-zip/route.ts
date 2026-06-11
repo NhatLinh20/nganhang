@@ -711,6 +711,7 @@ function buildMaTranTex(
 
   tex += `\\Closesolutionfile{ansbook}\n`
   tex += `\\begin{center}\n\t\\textbf{--------------- HẾT ---------------}\n\\end{center}\n`
+  tex += `\\zlabel{\\made-lastpage}\n`
   if (includeAnswerTable) {
     tex += `\\begin{indapan}\n\t{ans/ans\\currfilebase}\n\\end{indapan}\n`
   } else {
@@ -724,7 +725,6 @@ function buildMaTranTex(
     const sheetTex = buildAnswerSheetTex(examCode, mcCount, tfCount, saCount)
     if (sheetTex) tex += sheetTex
   }
-  tex += `\\zlabel{\\made-lastpage}\n`
 
   return tex
 }
