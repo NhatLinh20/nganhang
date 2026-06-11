@@ -1538,11 +1538,6 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                     <input type="checkbox" checked={includeAnswerSheet} onChange={e => setIncludeAnswerSheet(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
                     <span style={{ flex: 1 }}>Phiếu trả lời trắc nghiệm</span>
                   </label>
-                  {includeAnswerSheet && (
-                    <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '0 4px', lineHeight: '1.5' }}>
-                      Phiếu tô trắc nghiệm (TikZ) sẽ nằm sau mỗi đề. Số câu TN/ĐS/TLN tự động theo đề.
-                    </div>
-                  )}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
