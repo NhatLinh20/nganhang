@@ -539,13 +539,6 @@ function buildAnswerSheetTex(examCode: string, mcCount: number, tfCount: number,
   tex += '\t\t\tnode[font=\\fontsize{7pt}{0pt}\\selectfont,\\mauphieu!80]{\\labeltext{\\j}};\n'
   tex += '\t\t}\n'
   tex += '\t}\n'
-  // Tô mã đề
-  tex += '\t\\foreach \\val [count=\\col from 0] in \\madephieu{\n'
-  tex += '\t\t\\fill[\\mauphieu] ({A\\col\\val}) circle (5pt);\n'
-  tex += '\t}\n'
-  tex += '\t\\foreach\\i [count=\\j from 0] in \\madephieu{\n'
-  tex += '\t\t\\node [\\mauphieu] at ($(A) + ({17.97 + \\j*0.4}, -2.595)$) {\\i};\n'
-  tex += '\t}\n'
 
   // === Phần I: Trắc nghiệm ===
   tex += '\t%Phần phiếu tô trắc nghiệm\n'
