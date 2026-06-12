@@ -826,7 +826,7 @@ function buildMaTranTex(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOptions, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType } = body as {
+    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOptions, includeAnswerTable, includeAnswerSheet, qrCodeOptions } = body as {
       title?: string
       duration?: number
       grade?: number
@@ -838,8 +838,7 @@ export async function POST(request: NextRequest) {
       excelOptions?: string[]
       includeAnswerTable?: boolean
       includeAnswerSheet?: boolean
-      includeQrCode?: boolean
-      qrCodeType?: string
+      qrCodeOptions?: string[]
     }
 
     const displayTitle = title || 'ĐỀ THI TRẮC NGHIỆM'
@@ -930,37 +929,91 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Generate QR Codes for Apps (TNMaker, Smart Test, etc) ──
-    if (includeQrCode) {
+    const qrTypes = qrCodeOptions || []
+    if (qrTypes.length > 0) {
       try {
-        const typeNum = parseInt(qrCodeType || '3', 10)
-        
-        // Split exams into chunks of 9 (limit for TNMaker QR format)
-        const jsons: string[] = []
-        for (let i = 0; i < examSets.length; i += 9) {
-          const chunk = examSets.slice(i, i + 9)
-          const codeChunk = codes.slice(i, i + 9)
-          
-          const obj: any = { success: true, type: typeNum }
-          for (let j = 0; j < chunk.length; j++) {
-            const code = codeChunk[j]
-            let answerStr = ''
-            for (const q of chunk[j]) {
-              if (q.question_type === 'multiple_choice') {
-                const ans = q.correct_answer?.trim() || parseMCAnswer(q.latex_content) || 'A'
-                answerStr += ans.charAt(0).toUpperCase()
-              }
-            }
-            obj[code] = answerStr
+        // Helper: build answers list for one exam
+        function buildExamAnswers(qs: ExamQuestion[]): string[] {
+          const mcQs = qs.filter(q => q.question_type === 'multiple_choice')
+          const tfQs = qs.filter(q => q.question_type === 'true_false')
+          const saQs = qs.filter(q => q.question_type === 'short_answer')
+          const answers: string[] = []
+          for (const q of mcQs) {
+            const ans = q.correct_answer?.trim() || parseMCAnswer(q.latex_content) || 'A'
+            answers.push(ans.charAt(0).toUpperCase())
           }
-          jsons.push(JSON.stringify(obj))
+          for (const q of tfQs) {
+            const ans = getAnswer(q)
+            if (ans.length === 4) {
+              for (const ch of ans) answers.push(ch)
+            } else {
+              answers.push(ans)
+            }
+          }
+          for (const q of saQs) {
+            answers.push(getAnswer(q))
+          }
+          return answers
         }
 
-        // Generate PNG for each chunk
-        for (let i = 0; i < jsons.length; i++) {
-          const filename = `qrcode_dapan_${i + 1}.png`
-          const pngBuffer = await QRCode.toBuffer(jsons[i], { width: 500, margin: 2 })
-          // Save the QR Code image in the DAP-AN/ directory alongside the Excel files
-          zip.addFile(`DAP-AN/${filename}`, pngBuffer)
+        const typeNames: Record<string, string> = { '0': 'tnmaker', '1': 'youngmix', '3': 'smarttest' }
+
+        for (const qrType of qrTypes) {
+          const typeNum = parseInt(qrType, 10)
+          const typeName = typeNames[qrType] || `type${qrType}`
+          const jsons: string[] = []
+
+          if (typeNum === 0) {
+            // TNMaker format: {"success":true,"type":0,"code1":"ABCD",...}
+            for (let i = 0; i < examSets.length; i += 9) {
+              const chunk = examSets.slice(i, i + 9)
+              const codeChunk = codes.slice(i, i + 9)
+              const obj: any = { success: true, type: 0 }
+              for (let j = 0; j < chunk.length; j++) {
+                const mcQs = chunk[j].filter(q => q.question_type === 'multiple_choice')
+                let answerStr = ''
+                for (const q of mcQs) {
+                  const ans = q.correct_answer?.trim() || parseMCAnswer(q.latex_content) || 'A'
+                  answerStr += ans.charAt(0).toUpperCase()
+                }
+                obj[codeChunk[j]] = answerStr
+              }
+              jsons.push(JSON.stringify(obj))
+            }
+          } else {
+            // Young Mix (1) / Smart Test (3) format: 2D array
+            const allRows: (string | number)[][] = []
+            for (let i = 0; i < examSets.length; i++) {
+              const row: (string | number)[] = [codes[i]]
+              const answers = buildExamAnswers(examSets[i])
+              row.push(...answers)
+              allRows.push(row)
+            }
+            const MAX_CELLS = 492
+            let currentChunk: (string | number)[][] = []
+            let currentCells = 0
+            for (const row of allRows) {
+              const cellCount = row.length
+              if (currentCells + cellCount > MAX_CELLS && currentChunk.length > 0) {
+                jsons.push(JSON.stringify(currentChunk))
+                currentChunk = []
+                currentCells = 0
+              }
+              currentChunk.push(row)
+              currentCells += cellCount
+            }
+            if (currentChunk.length > 0) {
+              jsons.push(JSON.stringify(currentChunk))
+            }
+          }
+
+          // Generate PNG for each chunk of this type
+          for (let i = 0; i < jsons.length; i++) {
+            const suffix = jsons.length > 1 ? `_${i + 1}` : ''
+            const filename = `qrcode_${typeName}${suffix}.png`
+            const pngBuffer = await QRCode.toBuffer(jsons[i], { errorCorrectionLevel: 'L', width: 500, margin: 1 })
+            zip.addFile(`DAP-AN/${filename}`, pngBuffer)
+          }
         }
       } catch (qrErr) {
         console.error('QR Code generation error:', qrErr)

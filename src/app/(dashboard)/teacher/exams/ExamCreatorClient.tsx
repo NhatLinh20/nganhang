@@ -144,8 +144,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const [showExcelDropdown, setShowExcelDropdown] = useState<boolean>(false)
   const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
   const [includeAnswerSheet, setIncludeAnswerSheet] = useState<boolean>(false)
-  const [includeQrCode, setIncludeQrCode] = useState<boolean>(false)
-  const [qrCodeType, setQrCodeType] = useState<string>('3') // 0 = TNMaker, 3 = Smart Test
+  const [qrCodeOptions, setQrCodeOptions] = useState<string[]>([])
+  const [showQrDropdown, setShowQrDropdown] = useState<boolean>(false)
 
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
   const [isLoaded, setIsLoaded] = useState(false)
@@ -182,8 +182,10 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
           else if (parsed.excelOption !== 'none') setExcelOptions([parsed.excelOption])
         }
         if (parsed.includeAnswerSheet !== undefined) setIncludeAnswerSheet(parsed.includeAnswerSheet)
-        if (parsed.includeQrCode !== undefined) setIncludeQrCode(parsed.includeQrCode)
-        if (parsed.qrCodeType) setQrCodeType(parsed.qrCodeType)
+        if (parsed.qrCodeOptions) setQrCodeOptions(parsed.qrCodeOptions)
+        if (parsed.includeQrCode && parsed.qrCodeType && !parsed.qrCodeOptions) {
+          setQrCodeOptions([parsed.qrCodeType])
+        }
       }
     } catch (e) {
       console.error('Failed to load manual exam state', e)
@@ -197,7 +199,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
       selections, configTitle, configDuration, configNumExams,
       hasGenerated, activeExamIndex, questions, allExamsQuestions,
-      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOptions, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType
+      examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOptions, includeAnswerTable, includeAnswerSheet, qrCodeOptions
     }
     try {
       localStorage.setItem('manual-exam-state', JSON.stringify(stateToSave))
@@ -208,7 +210,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     isLoaded, mainTab, filterGrade, filterSubject, filterChapter, filterLesson, filterVariant, filterType,
     selections, configTitle, configDuration, configNumExams,
     hasGenerated, activeExamIndex, questions, allExamsQuestions,
-    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOptions, includeAnswerTable, includeAnswerSheet, includeQrCode, qrCodeType
+    examStats, warnings, swappedOutIds, examCodes, headerLabels, excelOptions, includeAnswerTable, includeAnswerSheet, qrCodeOptions
   ])
 
   const fetchStats = useCallback(async () => {
@@ -295,8 +297,8 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       setExcelOptions([])
       setShowExcelDropdown(false)
       setIncludeAnswerSheet(false)
-      setIncludeQrCode(false)
-      setQrCodeType('3')
+      setQrCodeOptions([])
+      setShowQrDropdown(false)
     }
   }
 
@@ -600,8 +602,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         excelOptions,
         includeAnswerTable,
         includeAnswerSheet,
-        includeQrCode,
-        qrCodeType,
+        qrCodeOptions,
       };
 
       if (currentAllExams.length > 1) {
@@ -1541,26 +1542,56 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: includeQrCode ? '1.5px solid #10b981' : '1px solid #cbd5e1', transition: 'all 0.2s' }}>
-                    <input type="checkbox" checked={includeQrCode} onChange={e => setIncludeQrCode(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
-                    <span style={{ flex: 1 }}>📱 Tạo QR Code đáp án</span>
-                  </label>
-                  {includeQrCode && (
-                    <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <select 
-                        value={qrCodeType} 
-                        onChange={e => setQrCodeType(e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', cursor: 'pointer' }}
-                      >
-                        <option value="3">Smart Test</option>
-                        <option value="0">TNMaker</option>
-                        <option value="1">Young Mix</option>
-                      </select>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', lineHeight: '1.5' }}>
-                        QR Code sẽ được xuất thành file ảnh (qrcode.png) nằm trong thư mục <b>DAP-AN</b> cùng với bảng đáp án Excel.
-                      </div>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>📱 Tạo QR Code đáp án:</label>
+                  <div style={{ position: 'relative' }}>
+                    <div 
+                      onClick={() => setShowQrDropdown(!showQrDropdown)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', cursor: 'pointer' }}
+                    >
+                      <span>
+                        {qrCodeOptions.length === 3 ? 'Xuất tất cả QR Code' 
+                          : qrCodeOptions.length > 0 ? `Đã chọn ${qrCodeOptions.length} loại` 
+                          : 'Không xuất QR Code'}
+                      </span>
+                      <span style={{ transform: showQrDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
                     </div>
-                  )}
+
+                    {showQrDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {[
+                          { id: '3', label: 'QR Smart Test' },
+                          { id: '0', label: 'QR TNMaker' },
+                          { id: '1', label: 'QR Young Mix' },
+                        ].map(opt => (
+                          <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={qrCodeOptions.includes(opt.id)} 
+                              onChange={e => {
+                                if (e.target.checked) setQrCodeOptions([...qrCodeOptions, opt.id])
+                                else setQrCodeOptions(qrCodeOptions.filter(x => x !== opt.id))
+                              }} 
+                              style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                        <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }}></div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px', fontWeight: 600 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={qrCodeOptions.length === 3} 
+                            onChange={e => {
+                              if (e.target.checked) setQrCodeOptions(['3', '0', '1'])
+                              else setQrCodeOptions([])
+                            }} 
+                            style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                          />
+                          <span>Tất cả</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Placeholders for future options */}
