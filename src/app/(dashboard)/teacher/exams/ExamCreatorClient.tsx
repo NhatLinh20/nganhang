@@ -1549,7 +1549,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                       style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', cursor: 'pointer' }}
                     >
                       <span>
-                        {qrCodeOptions.length === 3 ? 'Xuất tất cả QR Code' 
+                        {qrCodeOptions.length === 2 ? 'Xuất tất cả QR Code' 
                           : qrCodeOptions.length > 0 ? `Đã chọn ${qrCodeOptions.length} loại` 
                           : 'Không xuất QR Code'}
                       </span>
@@ -1559,7 +1559,6 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                     {showQrDropdown && (
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {[
-                          { id: '3', label: 'QR Smart Test' },
                           { id: '0', label: 'QR TNMaker' },
                           { id: '1', label: 'QR Young Mix' },
                         ].map(opt => (
@@ -1580,9 +1579,9 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px', fontWeight: 600 }}>
                           <input 
                             type="checkbox" 
-                            checked={qrCodeOptions.length === 3} 
+                            checked={qrCodeOptions.length === 2} 
                             onChange={e => {
-                              if (e.target.checked) setQrCodeOptions(['3', '0', '1'])
+                              if (e.target.checked) setQrCodeOptions(['0', '1'])
                               else setQrCodeOptions([])
                             }} 
                             style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
