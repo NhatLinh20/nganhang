@@ -1,25 +1,55 @@
 // src/lib/omr/coordinate-map.ts
-// Bản đồ tọa độ tương đối (0-1) của phiếu trả lời trắc nghiệm
+// Bản đồ tọa độ TƯƠNG ĐỐI theo 4 marker góc phiếu (KHÔNG phải A4)
 // Tọa độ được tính từ mã TikZ trong buildAnswerSheetTex (export-zip/route.ts)
-// Hệ tọa độ TikZ: gốc (A) = current page.north west, đơn vị cm
-// Giấy A4: 21cm × 29.7cm
+//
+// HỆ QUY CHIẾU:
+//   Gốc = marker góc TRÊN-TRÁI (1.3, -1.28)
+//   Trục X: từ marker TL → TR  (1.3 → 19.68) = 18.38cm
+//   Trục Y: từ marker TL → BL  (1.28 → 28.42) = 27.14cm
+//   Tất cả tọa độ đều nằm trong [0, 1] × [0, 1] so với rectangle marker
 
 import type { SheetCoordinateMap, BubbleCoord, RelativePoint } from './types'
 
 // ═══════════════════════════════════
-// CONSTANTS — Kích thước A4 (cm)
+// REFERENCE MARKERS — 4 góc phiếu
 // ═══════════════════════════════════
-const A4_WIDTH = 21.0   // cm
-const A4_HEIGHT = 29.7  // cm
+
+/** Marker góc trên-trái trong TikZ (cm) */
+const REF_TL_X = 1.3
+const REF_TL_Y = 1.28   // absolute value of -1.28
+
+/** Marker góc trên-phải trong TikZ */
+const REF_TR_X = 19.68
+const REF_TR_Y = 1.28
+
+/** Marker góc dưới-trái */
+const REF_BL_X = 1.3
+const REF_BL_Y = 28.42
+
+/** Marker góc dưới-phải */
+const REF_BR_X = 19.68
+const REF_BR_Y = 28.42
+
+/** Chiều rộng và cao vùng marker (cm) */
+const REF_WIDTH = REF_BR_X - REF_TL_X    // 18.38 cm
+const REF_HEIGHT = REF_BL_Y - REF_TL_Y   // 27.14 cm
+
+// ═══════════════════════════════════
+// COORDINATE CONVERSION
+// ═══════════════════════════════════
 
 /**
- * Chuyển tọa độ TikZ (cm, gốc góc trên-trái, Y âm đi xuống)
- * sang tọa độ tương đối (0-1)
+ * Chuyển tọa độ TikZ (cm) sang tọa độ tương đối (0-1)
+ * THEO RECTANGLE 4 MARKER GÓC (không phải A4)
+ *
+ * Nghĩa là (0,0) = marker trên-trái, (1,1) = marker dưới-phải
+ * Các phần tử nằm ngoài marker (ví dụ chữ tiêu đề phía trên) sẽ có y < 0
  */
 function tikzToRelative(xCm: number, yCm: number): RelativePoint {
+  const absY = Math.abs(yCm)
   return {
-    x: xCm / A4_WIDTH,
-    y: Math.abs(yCm) / A4_HEIGHT,  // yCm luôn âm trong TikZ
+    x: (xCm - REF_TL_X) / REF_WIDTH,
+    y: (absY - REF_TL_Y) / REF_HEIGHT,
   }
 }
 
@@ -36,9 +66,7 @@ function tikzBubble(xCm: number, yCm: number, label: string): BubbleCoord {
 
 /**
  * Xây dựng bản đồ tọa độ tương đối cho phiếu trả lời
- * @param mcCount Số câu MC (1-40)
- * @param tfCount Số câu TF (0-8)
- * @param saCount Số câu SA (0-6)
+ * Tất cả tọa độ đều tương đối theo 4 marker góc (0-1)
  */
 export function buildCoordinateMap(
   mcCount: number,
@@ -50,18 +78,15 @@ export function buildCoordinateMap(
   const TLN = Math.min(saCount, 6)
 
   // ── Tracking marks (ô vuông lớn) ──
-  // Từ TikZ: (1.3,-1.28), (13.74,-1.28), (19.68,-1.28),
-  //          (1.3,-9.32), (13.65,-9.32), (19.68,-9.32),
-  //          (1.3,-28.42), (19.68,-28.42)
   const cornerMarkers: RelativePoint[] = [
-    tikzToRelative(1.3, -1.28),
+    tikzToRelative(1.3, -1.28),     // TL
     tikzToRelative(13.74, -1.28),
-    tikzToRelative(19.68, -1.28),
+    tikzToRelative(19.68, -1.28),   // TR
     tikzToRelative(1.3, -9.32),
     tikzToRelative(13.65, -9.32),
     tikzToRelative(19.68, -9.32),
-    tikzToRelative(1.3, -28.42),
-    tikzToRelative(19.68, -28.42),
+    tikzToRelative(1.3, -28.42),    // BL
+    tikzToRelative(19.68, -28.42),  // BR
   ]
 
   // ── Tracking marks (ô vuông nhỏ) ──
@@ -79,7 +104,6 @@ export function buildCoordinateMap(
   )
 
   // ── Mã đề thi: 4 cột × 10 hàng ──
-  // TikZ: center at (17.975 + i*0.405, -3.3 - j*0.575) với i=0..3, j=0..9
   const examCodeBubbles: BubbleCoord[][] = []
   for (let col = 0; col < 4; col++) {
     const column: BubbleCoord[] = []
@@ -92,7 +116,6 @@ export function buildCoordinateMap(
   }
 
   // ── Số báo danh: 8 cột × 10 hàng ──
-  // TikZ: center at (14.16 + i*0.405, -3.3 - j*0.575) với i=0..7, j=0..9
   const studentIdBubbles: BubbleCoord[][] = []
   for (let col = 0; col < 8; col++) {
     const column: BubbleCoord[] = []
@@ -105,14 +128,11 @@ export function buildCoordinateMap(
   }
 
   // ── Phần I: Trắc nghiệm MC ──
-  // TikZ: center at (2.935 + k*4.315 + i*0.865, -11.35 - (rinc-1)*0.445)
-  // k=0..3 (cột), rinc=1..10 (hàng trong cột), i=0..3 (A/B/C/D)
-  // Câu r = k*10 + rinc
   const mcBubbles: BubbleCoord[][] = []
   const MC_LABELS = ['A', 'B', 'C', 'D']
   for (let q = 0; q < TN; q++) {
-    const k = Math.floor(q / 10)      // cột (0-3)
-    const rinc = (q % 10) + 1         // hàng trong cột (1-10)
+    const k = Math.floor(q / 10)
+    const rinc = (q % 10) + 1
     const options: BubbleCoord[] = []
     for (let i = 0; i < 4; i++) {
       const xCm = 2.935 + k * 4.315 + i * 0.865
@@ -123,18 +143,14 @@ export function buildCoordinateMap(
   }
 
   // ── Phần II: Đúng/Sai TF ──
-  // TikZ: center at (2.935 + k*4.32 + qi*1.73 + dx, -17.8 - yi*0.445)
-  // k=0..3 (khối), qi=0,1 (câu trong khối), yi=0..3 (a/b/c/d), dx: D=0, S=0.865
-  // Câu r = 2*k + q (q=1,2)
   const tfBubbles: BubbleCoord[][][] = []
   const TF_LABELS = ['Đ', 'S']
   for (let q = 0; q < DS; q++) {
-    const k = Math.floor(q / 2)        // khối (0-3)
-    const qi = q % 2                    // vị trí trong khối (0 or 1)
+    const k = Math.floor(q / 2)
+    const qi = q % 2
     const subs: BubbleCoord[][] = []
-    for (let yi = 0; yi < 4; yi++) {    // a, b, c, d
+    for (let yi = 0; yi < 4; yi++) {
       const options: BubbleCoord[] = []
-      // Đ (dx=0), S (dx=0.865)
       const dxValues = [0, 0.865]
       for (let ti = 0; ti < 2; ti++) {
         const xCm = 2.935 + k * 4.32 + qi * 1.73 + dxValues[ti]
@@ -147,44 +163,22 @@ export function buildCoordinateMap(
   }
 
   // ── Phần III: Trả lời ngắn SA ──
-  // Dấu trừ: (2.79 + (r-1)*2.765, -21.77) — chỉ 1 bong bóng
-  // Dấu phẩy: (3.38 + (r-1)*2.765 + pi*0.59, -22.23) — pi=0,1
-  // Chữ số: (2.79 + (r-1)*2.77 + (p-1)*0.59, -22.69 - j*0.46) — p=1..4, j=0..9
   const saBubbles: SheetCoordinateMap['saBubbles'] = []
   for (let q = 0; q < TLN; q++) {
-    const r = q + 1  // 1-indexed
-
-    // Dấu trừ
-    const minusSign = tikzBubble(
-      2.79 + (r - 1) * 2.765,
-      -21.77,
-      '-'
-    )
-
-    // 2 vị trí dấu phẩy
+    const r = q + 1
+    const minusSign = tikzBubble(2.79 + (r - 1) * 2.765, -21.77, '-')
     const commas: BubbleCoord[] = []
     for (let pi = 0; pi < 2; pi++) {
-      commas.push(tikzBubble(
-        3.38 + (r - 1) * 2.765 + pi * 0.59,
-        -22.23,
-        ','
-      ))
+      commas.push(tikzBubble(3.38 + (r - 1) * 2.765 + pi * 0.59, -22.23, ','))
     }
-
-    // 4 cột chữ số, mỗi cột 10 hàng (0-9)
     const digits: BubbleCoord[][] = []
     for (let p = 1; p <= 4; p++) {
       const column: BubbleCoord[] = []
       for (let j = 0; j < 10; j++) {
-        column.push(tikzBubble(
-          2.79 + (r - 1) * 2.77 + (p - 1) * 0.59,
-          -(22.69 + j * 0.46),
-          String(j)
-        ))
+        column.push(tikzBubble(2.79 + (r - 1) * 2.77 + (p - 1) * 0.59, -(22.69 + j * 0.46), String(j)))
       }
       digits.push(column)
     }
-
     saBubbles.push({ minusSign, commas, digits })
   }
 
@@ -200,45 +194,18 @@ export function buildCoordinateMap(
 }
 
 /**
- * Chuyển tọa độ tương đối (0-1) → pixel trên ảnh
- */
-export function relativeToPixel(
-  rel: RelativePoint,
-  imgWidth: number,
-  imgHeight: number
-): { px: number; py: number } {
-  return {
-    px: Math.round(rel.x * imgWidth),
-    py: Math.round(rel.y * imgHeight),
-  }
-}
-
-/**
- * Tính bán kính bong bóng (pixel) dựa trên kích thước ảnh
+ * Tính bán kính bong bóng (pixel) dựa trên khoảng cách marker
  * TikZ: circle(5pt) = ~0.176cm
+ * Tính tương đối theo chiều rộng vùng marker (REF_WIDTH = 18.38cm)
  */
-export function getBubbleRadiusPx(imgWidth: number): number {
-  const bubbleRadiusCm = 0.176
-  const radiusRelative = bubbleRadiusCm / A4_WIDTH
-  return Math.round(radiusRelative * imgWidth)
+export function getBubbleRadiusRelative(): number {
+  return 0.176 / REF_WIDTH  // ~0.00958
 }
 
 /**
- * Tính kích thước ô vuông lớn (pixel)
+ * Tính kích thước ô vuông lớn (tương đối theo marker width)
  * TikZ: minimum size=0.54cm
  */
-export function getLargeMarkerSizePx(imgWidth: number): number {
-  const markerSizeCm = 0.54
-  const sizeRelative = markerSizeCm / A4_WIDTH
-  return Math.round(sizeRelative * imgWidth)
-}
-
-/**
- * Tính kích thước ô vuông nhỏ (pixel)
- * TikZ: minimum size=0.27cm
- */
-export function getSmallMarkerSizePx(imgWidth: number): number {
-  const markerSizeCm = 0.27
-  const sizeRelative = markerSizeCm / A4_WIDTH
-  return Math.round(sizeRelative * imgWidth)
+export function getLargeMarkerSizeRelative(): number {
+  return 0.54 / REF_WIDTH  // ~0.0294
 }

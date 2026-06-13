@@ -1,30 +1,27 @@
 // src/lib/omr/bubble-reader.ts
 // Đọc trạng thái tô/không tô của bong bóng trên phiếu trả lời
-// Sử dụng countBlackRatio từ image-preprocessor.ts
+// V2: Luôn dùng perspective mapping từ 4 corner markers
 
 import type {
   BubbleCoord,
   BubbleState,
-  BubbleGroup,
   StudentAnswers,
   SheetCoordinateMap,
 } from './types'
-import { relativeToPixel, getBubbleRadiusPx } from './coordinate-map'
+import { getBubbleRadiusRelative } from './coordinate-map'
 import { countBlackRatio, perspectiveMap } from './image-preprocessor'
 
 // ═══════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════
 
-/** Ngưỡng mặc định để xác định bong bóng đã tô */
-const DEFAULT_FILL_THRESHOLD = 0.4
+const DEFAULT_FILL_THRESHOLD = 0.35
 
 /**
- * Ngưỡng chênh lệch tối thiểu giữa bong bóng tô đậm nhất 
- * và bong bóng cao thứ 2 để xác nhận một câu trả lời rõ ràng.
- * Nếu chênh lệch < giá trị này → cảnh báo "tô không rõ ràng"
+ * Ngưỡng chênh lệch tối thiểu giữa bubble tô đậm nhất và bubble cao thứ 2
+ * để xác nhận câu trả lời rõ ràng
  */
-const MIN_FILL_GAP = 0.15
+const MIN_FILL_GAP = 0.12
 
 // ═══════════════════════════════════
 // CORE: Đọc một nhóm bong bóng
@@ -32,12 +29,7 @@ const MIN_FILL_GAP = 0.15
 
 /**
  * Đọc trạng thái một nhóm bong bóng (ví dụ: A/B/C/D cho một câu MC)
- * @param coords Tọa độ tương đối của các bong bóng
- * @param binary Ảnh binary (0=đen, 255=trắng)
- * @param width Chiều rộng ảnh (px)
- * @param height Chiều cao ảnh (px)
- * @param threshold Ngưỡng fill ratio
- * @param corners Góc phiếu đã phát hiện (dùng cho perspective correction)
+ * Luôn dùng perspective mapping từ corners
  */
 function readBubbleGroup(
   coords: BubbleCoord[],
@@ -45,42 +37,58 @@ function readBubbleGroup(
   width: number,
   height: number,
   threshold: number,
-  corners: { x: number; y: number }[] | null
+  corners: { x: number; y: number }[]
 ): { bubbles: BubbleState[]; selectedLabel: string | null; multipleSelected: boolean } {
-  const radius = getBubbleRadiusPx(width)
+  // Bubble radius tính từ khoảng cách marker
+  const markerW = Math.sqrt(
+    (corners[1].x - corners[0].x) ** 2 + (corners[1].y - corners[0].y) ** 2
+  )
+  const bubbleRadiusRel = getBubbleRadiusRelative()
+  const radiusPx = Math.max(4, Math.round(bubbleRadiusRel * markerW))
+
   const bubbles: BubbleState[] = []
 
   for (const coord of coords) {
-    let px: number, py: number
+    // Map tọa độ tương đối → pixel qua perspective transform
+    const mapped = perspectiveMap(corners, coord.x, coord.y)
+    const px = mapped.x
+    const py = mapped.y
 
-    if (corners) {
-      // Có perspective correction
-      const mapped = perspectiveMap(corners, coord.x, coord.y)
-      px = mapped.x
-      py = mapped.y
-    } else {
-      // Không có correction → dùng tọa độ trực tiếp
-      const pixel = relativeToPixel(coord, width, height)
-      px = pixel.px
-      py = pixel.py
+    // Kiểm tra bounds
+    if (px < 0 || px >= width || py < 0 || py >= height) {
+      bubbles.push({
+        x: px, y: py, radius: radiusPx,
+        fillRatio: 0, isFilled: false, label: coord.label,
+      })
+      continue
     }
 
-    const fillRatio = countBlackRatio(binary, width, height, px, py, radius)
+    const fillRatio = countBlackRatio(binary, width, height, px, py, radiusPx)
 
     bubbles.push({
       x: px,
       y: py,
-      radius,
+      radius: radiusPx,
       fillRatio,
       isFilled: fillRatio >= threshold,
       label: coord.label,
     })
   }
 
-  // Xác định bong bóng được chọn
+  // Xác định bubble được chọn
   const filled = bubbles.filter(b => b.isFilled)
 
   if (filled.length === 0) {
+    // Nếu không có bubble nào vượt ngưỡng, thử chọn cái đậm nhất
+    // nếu nó rõ ràng hơn phần còn lại
+    const sorted = [...bubbles].sort((a, b) => b.fillRatio - a.fillRatio)
+    if (sorted.length >= 2) {
+      const gap = sorted[0].fillRatio - sorted[1].fillRatio
+      // Nếu bubble đậm nhất vượt 50% ngưỡng VÀ chênh lệch rõ
+      if (sorted[0].fillRatio >= threshold * 0.6 && gap >= MIN_FILL_GAP) {
+        return { bubbles, selectedLabel: sorted[0].label, multipleSelected: false }
+      }
+    }
     return { bubbles, selectedLabel: null, multipleSelected: false }
   }
 
@@ -88,17 +96,14 @@ function readBubbleGroup(
     return { bubbles, selectedLabel: filled[0].label, multipleSelected: false }
   }
 
-  // Nhiều bong bóng vượt ngưỡng → chọn cái tô đậm nhất
-  // Nhưng nếu chênh lệch nhỏ → cảnh báo
+  // Nhiều bubble vượt ngưỡng → chọn đậm nhất
   const sorted = [...filled].sort((a, b) => b.fillRatio - a.fillRatio)
   const gap = sorted[0].fillRatio - sorted[1].fillRatio
 
   if (gap < MIN_FILL_GAP) {
-    // Tô không rõ ràng → vẫn chọn cái đậm nhất nhưng đánh dấu multipleSelected
     return { bubbles, selectedLabel: sorted[0].label, multipleSelected: true }
   }
 
-  // Chênh lệch đủ lớn → chọn cái đậm nhất
   return { bubbles, selectedLabel: sorted[0].label, multipleSelected: false }
 }
 
@@ -106,17 +111,13 @@ function readBubbleGroup(
 // ĐỌC MÃ ĐỀ
 // ═══════════════════════════════════
 
-/**
- * Đọc mã đề thi từ 4 cột bong bóng
- * @returns Chuỗi 4 chữ số (ví dụ: "1234") hoặc null nếu không đọc được
- */
 export function readExamCode(
   coordMap: SheetCoordinateMap,
   binary: Uint8Array,
   width: number,
   height: number,
-  threshold: number = DEFAULT_FILL_THRESHOLD,
-  corners: { x: number; y: number }[] | null = null
+  threshold: number,
+  corners: { x: number; y: number }[]
 ): { code: string | null; warnings: string[] } {
   const warnings: string[] = []
   let code = ''
@@ -142,16 +143,13 @@ export function readExamCode(
 // ĐỌC SỐ BÁO DANH
 // ═══════════════════════════════════
 
-/**
- * Đọc số báo danh từ 8 cột bong bóng
- */
 export function readStudentId(
   coordMap: SheetCoordinateMap,
   binary: Uint8Array,
   width: number,
   height: number,
-  threshold: number = DEFAULT_FILL_THRESHOLD,
-  corners: { x: number; y: number }[] | null = null
+  threshold: number,
+  corners: { x: number; y: number }[]
 ): { id: string | null; warnings: string[] } {
   const warnings: string[] = []
   let id = ''
@@ -161,7 +159,6 @@ export function readStudentId(
     const result = readBubbleGroup(colBubbles, binary, width, height, threshold, corners)
 
     if (result.selectedLabel === null) {
-      // SBD cho phép bỏ trống (chưa tô hết)
       id += '_'
     } else {
       if (result.multipleSelected) {
@@ -171,7 +168,6 @@ export function readStudentId(
     }
   }
 
-  // Loại bỏ trailing underscore
   const trimmed = id.replace(/_+$/, '')
   return { id: trimmed || null, warnings }
 }
@@ -180,17 +176,13 @@ export function readStudentId(
 // ĐỌC PHẦN I: TRẮC NGHIỆM MC
 // ═══════════════════════════════════
 
-/**
- * Đọc đáp án Phần I (Trắc nghiệm 4 lựa chọn)
- * @returns Mảng đáp án: ['A', null, 'C', ...] (null = không tô / mờ)
- */
 export function readMCAnswers(
   coordMap: SheetCoordinateMap,
   binary: Uint8Array,
   width: number,
   height: number,
-  threshold: number = DEFAULT_FILL_THRESHOLD,
-  corners: { x: number; y: number }[] | null = null
+  threshold: number,
+  corners: { x: number; y: number }[]
 ): { answers: (string | null)[]; warnings: string[]; debugBubbles: BubbleState[] } {
   const answers: (string | null)[] = []
   const warnings: string[] = []
@@ -218,25 +210,20 @@ export function readMCAnswers(
 // ĐỌC PHẦN II: ĐÚNG/SAI TF
 // ═══════════════════════════════════
 
-/**
- * Đọc đáp án Phần II (Đúng/Sai)
- * Mỗi câu có 4 ý (a/b/c/d), mỗi ý chọn Đ hoặc S
- * @returns Mảng đáp án dạng chuỗi: ['ĐSĐS', 'ĐĐSS', ...] (null nếu không đọc được)
- */
 export function readTFAnswers(
   coordMap: SheetCoordinateMap,
   binary: Uint8Array,
   width: number,
   height: number,
-  threshold: number = DEFAULT_FILL_THRESHOLD,
-  corners: { x: number; y: number }[] | null = null
+  threshold: number,
+  corners: { x: number; y: number }[]
 ): { answers: (string | null)[]; warnings: string[]; debugBubbles: BubbleState[] } {
   const answers: (string | null)[] = []
   const warnings: string[] = []
   const debugBubbles: BubbleState[] = []
 
   for (let q = 0; q < coordMap.tfBubbles.length; q++) {
-    const subs = coordMap.tfBubbles[q] // 4 ý (a/b/c/d)
+    const subs = coordMap.tfBubbles[q]
     let tfStr = ''
     let hasNull = false
 
@@ -268,18 +255,13 @@ export function readTFAnswers(
 // ĐỌC PHẦN III: TRẢ LỜI NGẮN SA
 // ═══════════════════════════════════
 
-/**
- * Đọc đáp án Phần III (Trả lời ngắn)
- * Mỗi câu có: 1 dấu trừ, 2 vị trí dấu phẩy, 4 cột chữ số (0-9)
- * @returns Mảng đáp án dạng chuỗi: ['3', '-2,5', ...] (null nếu không đọc được)
- */
 export function readSAAnswers(
   coordMap: SheetCoordinateMap,
   binary: Uint8Array,
   width: number,
   height: number,
-  threshold: number = DEFAULT_FILL_THRESHOLD,
-  corners: { x: number; y: number }[] | null = null
+  threshold: number,
+  corners: { x: number; y: number }[]
 ): { answers: (string | null)[]; warnings: string[]; debugBubbles: BubbleState[] } {
   const answers: (string | null)[] = []
   const warnings: string[] = []
@@ -288,30 +270,19 @@ export function readSAAnswers(
   for (let q = 0; q < coordMap.saBubbles.length; q++) {
     const sa = coordMap.saBubbles[q]
 
-    // Đọc dấu trừ
-    const minusResult = readBubbleGroup(
-      [sa.minusSign], binary, width, height, threshold, corners
-    )
+    const minusResult = readBubbleGroup([sa.minusSign], binary, width, height, threshold, corners)
     const isNegative = minusResult.selectedLabel !== null
     debugBubbles.push(...minusResult.bubbles)
 
-    // Đọc dấu phẩy (2 vị trí giữa cột 1-2 và 2-3)
-    const commaResult1 = readBubbleGroup(
-      [sa.commas[0]], binary, width, height, threshold, corners
-    )
-    const commaResult2 = readBubbleGroup(
-      [sa.commas[1]], binary, width, height, threshold, corners
-    )
+    const commaResult1 = readBubbleGroup([sa.commas[0]], binary, width, height, threshold, corners)
+    const commaResult2 = readBubbleGroup([sa.commas[1]], binary, width, height, threshold, corners)
     const commaAfterCol1 = commaResult1.selectedLabel !== null
     const commaAfterCol2 = commaResult2.selectedLabel !== null
     debugBubbles.push(...commaResult1.bubbles, ...commaResult2.bubbles)
 
-    // Đọc 4 cột chữ số
     const digits: (string | null)[] = []
     for (let p = 0; p < sa.digits.length; p++) {
-      const result = readBubbleGroup(
-        sa.digits[p], binary, width, height, threshold, corners
-      )
+      const result = readBubbleGroup(sa.digits[p], binary, width, height, threshold, corners)
       digits.push(result.selectedLabel)
       debugBubbles.push(...result.bubbles)
 
@@ -320,18 +291,15 @@ export function readSAAnswers(
       }
     }
 
-    // Ghép thành chuỗi số
     let numStr = ''
     if (isNegative) numStr += '-'
 
     for (let p = 0; p < digits.length; p++) {
       if (digits[p] !== null) numStr += digits[p]
-      // Chèn dấu phẩy sau cột phù hợp
       if (p === 0 && commaAfterCol1) numStr += ','
       if (p === 1 && commaAfterCol2) numStr += ','
     }
 
-    // Loại bỏ leading zeros (trừ "0" và "0,...")
     if (numStr && numStr !== '0' && !numStr.startsWith('0,') && !numStr.startsWith('-0,')) {
       numStr = numStr.replace(/^(-?)0+/, '$1')
     }
@@ -346,16 +314,13 @@ export function readSAAnswers(
 // ĐỌC TOÀN BỘ PHIẾU
 // ═══════════════════════════════════
 
-/**
- * Đọc toàn bộ phiếu trả lời — gom kết quả từ tất cả các phần
- */
 export function readAllAnswers(
   coordMap: SheetCoordinateMap,
   binary: Uint8Array,
   width: number,
   height: number,
-  threshold: number = DEFAULT_FILL_THRESHOLD,
-  corners: { x: number; y: number }[] | null = null
+  threshold: number,
+  corners: { x: number; y: number }[]
 ): {
   examCode: string | null
   studentId: string | null
@@ -366,25 +331,20 @@ export function readAllAnswers(
   const allWarnings: string[] = []
   const allDebugBubbles: BubbleState[] = []
 
-  // Mã đề
   const examCodeResult = readExamCode(coordMap, binary, width, height, threshold, corners)
   allWarnings.push(...examCodeResult.warnings)
 
-  // SBD
   const studentIdResult = readStudentId(coordMap, binary, width, height, threshold, corners)
   allWarnings.push(...studentIdResult.warnings)
 
-  // Phần I: MC
   const mcResult = readMCAnswers(coordMap, binary, width, height, threshold, corners)
   allWarnings.push(...mcResult.warnings)
   allDebugBubbles.push(...mcResult.debugBubbles)
 
-  // Phần II: TF
   const tfResult = readTFAnswers(coordMap, binary, width, height, threshold, corners)
   allWarnings.push(...tfResult.warnings)
   allDebugBubbles.push(...tfResult.debugBubbles)
 
-  // Phần III: SA
   const saResult = readSAAnswers(coordMap, binary, width, height, threshold, corners)
   allWarnings.push(...saResult.warnings)
   allDebugBubbles.push(...saResult.debugBubbles)
