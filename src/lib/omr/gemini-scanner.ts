@@ -59,9 +59,9 @@ function buildPrompt(mcCount: number, tfCount: number, saCount: number): string 
   }
 
   parts.push(``)
-  parts.push(`GÓC TRÊN PHẢI của phiếu có 2 phần:`)
-  parts.push(`- "7. Số báo danh": 8 cột bong bóng 0-9 (đọc từ trái sang phải)`)
-  parts.push(`- "8. Mã đề thi": 4 cột bong bóng 0-9`)
+  parts.push(`GÓC TRÊN BÊN PHẢI có 2 bảng lưới (grid) chứa các bong bóng số từ 0 đến 9:`)
+  parts.push(`- Bảng "7. Số báo danh": Gồm 8 cột dọc. Mỗi cột dọc tương ứng với 1 chữ số. Hãy dò từng cột từ trái sang phải, xem ở mỗi cột bong bóng số mấy được tô đen. Kết quả là chuỗi 8 chữ số.`)
+  parts.push(`- Bảng "8. Mã đề thi": Gồm 4 cột dọc. Tương tự, dò từng cột dọc từ trái sang phải để lấy 4 chữ số.`)
   parts.push(``)
   parts.push(`QUY TẮC ĐỌC BUBBLE:`)
   parts.push(`- Bubble được tô = bong bóng có màu đen/xám đậm, khác hẳn bubble trống (chỉ có viền)`)
