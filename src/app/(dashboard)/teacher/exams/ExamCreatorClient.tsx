@@ -1488,7 +1488,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                         {[
                           { id: 'azota', label: 'Bảng Azota' },
                           { id: 'tnmaker', label: 'Bảng TNMaker' },
-                          { id: 'youngmix', label: 'Bảng Young Mix' },
+                          { id: 'youngmix', label: 'Bảng Young Mix (Chấm thi QM)' },
                           { id: 'smarttest', label: 'Bảng Smart Test' },
                           { id: 'olm', label: 'Bảng OLM' },
                         ].map(opt => (
@@ -1560,7 +1560,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {[
                           { id: '0', label: 'QR TNMaker' },
-                          { id: '1', label: 'QR Young Mix' },
+                          { id: '1', label: 'QR Young Mix (Chấm thi QM)' },
                         ].map(opt => (
                           <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px' }}>
                             <input 
