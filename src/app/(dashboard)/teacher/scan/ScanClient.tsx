@@ -184,6 +184,15 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
     setSaveMessage(null)
 
     try {
+      // Lazy-load OpenCV.js chỉ khi cần quét
+      if (!isOpenCVLoaded()) {
+        setCvLoading(true)
+        setCvProgress(0)
+        await loadOpenCV((pct) => setCvProgress(pct))
+        setCvLoading(false)
+        setCvReady(true)
+      }
+
       const config = createConfigFromAnswerKey(
         mcAnswers.slice(0, mcCount),
         tfAnswers.slice(0, tfCount),
@@ -200,6 +209,7 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
       alert('Lỗi khi quét phiếu: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setIsProcessing(false)
+      setCvLoading(false)
     }
   }
 
@@ -277,13 +287,9 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
     }
   }, [previewUrl])
 
-  // Preload OpenCV.js khi component mount
+  // Kiểm tra xem OpenCV đã được cache chưa (chỉ cập nhật state, KHÔNG load)
   useEffect(() => {
-    if (isOpenCVLoaded()) { setCvReady(true); return }
-    setCvLoading(true)
-    loadOpenCV((pct) => setCvProgress(pct))
-      .then(() => { setCvReady(true); setCvLoading(false) })
-      .catch(() => { setCvLoading(false) })
+    if (isOpenCVLoaded()) setCvReady(true)
   }, [])
 
   // ═══════════════════════════════════
@@ -733,25 +739,30 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
         </>
       )}
 
-      {/* ── OpenCV loading bar (lần đầu) ── */}
+      {/* ── OpenCV download progress (chỉ hiện khi đang tải lúc quét) ── */}
       {cvLoading && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 200, background: '#1e293b', borderRadius: 12, padding: '12px 20px', color: '#fff', fontSize: 13, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', minWidth: 220 }}>
-          <div style={{ marginBottom: 6, fontWeight: 600 }}>⚙️ Đang tải OpenCV.js...</div>
-          <div style={{ background: '#334155', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-            <div style={{ background: '#3b82f6', height: '100%', width: `${cvProgress}%`, transition: 'width 0.3s' }} />
+        <div className={styles.processingOverlay}>
+          <div className={styles.processingCard}>
+            <div className={styles.processingSpinner} />
+            <div className={styles.processingText}>Đang tải OpenCV.js ({cvProgress}%)</div>
+            <div style={{ width: '100%', background: '#1e293b', borderRadius: 6, height: 8, margin: '12px 0', overflow: 'hidden' }}>
+              <div style={{ background: '#3b82f6', height: '100%', width: `${cvProgress}%`, transition: 'width 0.3s', borderRadius: 6 }} />
+            </div>
+            <div style={{ fontSize: 12, color: '#94a3b8' }}>
+              Lần đầu cần tải ~9MB — lần sau dùng cache tức thì
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{cvProgress}% — Lần đầu ~15 giây, lần sau dùng cache</div>
         </div>
       )}
 
-      {/* ── Processing overlay ── */}
-      {isProcessing && (
+      {/* ── Processing overlay (sau khi OpenCV đã load) ── */}
+      {isProcessing && !cvLoading && (
         <div className={styles.processingOverlay}>
           <div className={styles.processingCard}>
             <div className={styles.processingSpinner} />
             <div className={styles.processingText}>Đang phân tích ảnh...</div>
             <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 8 }}>
-              OpenCV.js: detect viền phiếu → warpPerspective → đọc bubble
+              warpPerspective → đọc bubble → chấm điểm
             </div>
           </div>
         </div>
