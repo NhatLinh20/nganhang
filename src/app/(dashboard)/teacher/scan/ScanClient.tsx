@@ -6,6 +6,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import styles from './scan.module.css'
 import type { OMRConfig, OMRResult, AnswerKey, QuestionResult } from '@/lib/omr/types'
 import { scanWithDebug, createConfigFromAnswerKey } from '@/lib/omr/omr-engine'
+import { loadOpenCV, isOpenCVLoaded } from '@/lib/omr/opencv-loader'
 
 // ═══════════════════════════════════
 // TYPES
@@ -46,6 +47,11 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
   const [scanResult, setScanResult] = useState<OMRResult | null>(null)
   const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null)
   const [showDebug, setShowDebug] = useState(false)
+
+  // ── OpenCV loading state ──
+  const [cvLoading, setCvLoading] = useState(false)
+  const [cvProgress, setCvProgress] = useState(0)
+  const [cvReady, setCvReady] = useState(false)
 
   // ── Saving state ──
   const [isSaving, setIsSaving] = useState(false)
@@ -270,6 +276,15 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
+
+  // Preload OpenCV.js khi component mount
+  useEffect(() => {
+    if (isOpenCVLoaded()) { setCvReady(true); return }
+    setCvLoading(true)
+    loadOpenCV((pct) => setCvProgress(pct))
+      .then(() => { setCvReady(true); setCvLoading(false) })
+      .catch(() => { setCvLoading(false) })
+  }, [])
 
   // ═══════════════════════════════════
   // RENDER
@@ -718,14 +733,25 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
         </>
       )}
 
+      {/* ── OpenCV loading bar (lần đầu) ── */}
+      {cvLoading && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 200, background: '#1e293b', borderRadius: 12, padding: '12px 20px', color: '#fff', fontSize: 13, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', minWidth: 220 }}>
+          <div style={{ marginBottom: 6, fontWeight: 600 }}>⚙️ Đang tải OpenCV.js...</div>
+          <div style={{ background: '#334155', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+            <div style={{ background: '#3b82f6', height: '100%', width: `${cvProgress}%`, transition: 'width 0.3s' }} />
+          </div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{cvProgress}% — Lần đầu ~15 giây, lần sau dùng cache</div>
+        </div>
+      )}
+
       {/* ── Processing overlay ── */}
       {isProcessing && (
         <div className={styles.processingOverlay}>
           <div className={styles.processingCard}>
             <div className={styles.processingSpinner} />
-            <div className={styles.processingText}>Đang quét phiếu và chấm điểm...</div>
+            <div className={styles.processingText}>Đang phân tích ảnh...</div>
             <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 8 }}>
-              Phân tích ảnh, nhận dạng bong bóng
+              OpenCV.js: detect viền phiếu → warpPerspective → đọc bubble
             </div>
           </div>
         </div>

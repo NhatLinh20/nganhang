@@ -1,23 +1,18 @@
 // src/lib/omr/omr-engine.ts
-// Pipeline điều phối toàn bộ quá trình quét phiếu và chấm điểm
-// V2: Corner detection bắt buộc, error rõ ràng khi không tìm thấy markers
+// Pipeline điều phối: OpenCV.js warpPerspective → đọc bubble → chấm điểm
+// Giống cách Azota / TNMaker hoạt động
 
 import type {
-  OMRConfig,
-  OMRResult,
-  ScoreResult,
-  QuestionResult,
-  StudentAnswers,
-  AnswerKey,
-  ScoringConfig,
+  OMRConfig, OMRResult, ScoreResult, QuestionResult,
+  StudentAnswers, AnswerKey, ScoringConfig,
 } from './types'
 import { buildCoordinateMap } from './coordinate-map'
 import {
   loadImageFromFile,
-  toGrayscale,
-  adaptiveThreshold,
-  findCornerMarkers,
+  detectAndWarp,
+  getBinaryFromCanvas,
   drawDebugOverlay,
+  type SheetCorners,
 } from './image-preprocessor'
 import { readAllAnswers } from './bubble-reader'
 
@@ -28,12 +23,12 @@ import { readAllAnswers } from './bubble-reader'
 /**
  * Quét và chấm điểm một phiếu trả lời trắc nghiệm
  *
- * Pipeline:
+ * Pipeline (giống Azota/TNMaker):
  * 1. Load ảnh → Canvas
- * 2. Grayscale → Adaptive threshold → Binary
- * 3. Tìm 4 marker góc → Nếu không tìm được → throw error
- * 4. Perspective mapping: map tọa độ tương đối → pixel qua bilinear interpolation
- * 5. Đọc tất cả bong bóng (mã đề, SBD, MC, TF, SA)
+ * 2. OpenCV.js: GaussianBlur → AdaptiveThreshold → findContours → approxPolyDP
+ * 3. warpPerspective: duỗi phẳng phiếu → 744×1052px cố định
+ * 4. Adaptive threshold trên ảnh warped
+ * 5. Đọc tất cả bubble theo tọa độ tương đối → pixel chính xác
  * 6. So khớp đáp án → Tính điểm
  */
 export async function scanAnswerSheet(
@@ -41,32 +36,30 @@ export async function scanAnswerSheet(
   config: OMRConfig
 ): Promise<OMRResult> {
   const startTime = performance.now()
-  const threshold = config.thresholdLevel ?? 0.35
+  const threshold = config.thresholdLevel ?? 0.32
 
   // Bước 1: Load ảnh
   const { imageData, width, height } = await loadImageFromFile(file)
 
-  // Bước 2: Tiền xử lý
-  const gray = toGrayscale(imageData)
-  const binary = adaptiveThreshold(gray, width, height, 31, 10)
+  // Bước 2-3: Detect phiếu và warpPerspective (OpenCV.js)
+  const { warpedCanvas, corners, success } = await detectAndWarp(imageData, width, height)
 
-  // Bước 3: Tìm 4 marker góc (BẮT BUỘC)
-  const corners = findCornerMarkers(binary, width, height)
-  if (!corners) {
-    throw new Error(
-      'Không tìm được 4 ô vuông định vị trên phiếu. ' +
-      'Hãy đảm bảo: (1) ảnh rõ nét, (2) phiếu nằm trọn trong khung hình, ' +
-      '(3) 4 ô vuông đen ở góc phiếu phải nhìn thấy rõ.'
-    )
+  const warnings: string[] = []
+  if (!success) {
+    warnings.push('⚠️ Không tìm được viền phiếu tự động. Kết quả có thể kém chính xác. Hãy chụp lại với góc phẳng hơn và 4 góc phiếu rõ ràng.')
   }
 
-  // Bước 4-5: Build coordinate map và đọc bong bóng
+  // Bước 4: Threshold trên ảnh warped
+  const { binary, width: wW, height: wH } = getBinaryFromCanvas(warpedCanvas)
+
+  // Bước 5: Build coordinate map và đọc bubble
   const coordMap = buildCoordinateMap(config.mcCount, config.tfCount, config.saCount)
-  const readResult = readAllAnswers(coordMap, binary, width, height, threshold, corners)
+  const readResult = readAllAnswers(coordMap, binary, wW, wH, threshold)
+  warnings.push(...readResult.warnings)
 
   // Bước 6: Chấm điểm
   const score = calculateScore(readResult.answers, config.answerKey, config)
-  const confidence = calculateConfidence(readResult.warnings, config)
+  const confidence = calculateConfidence(warnings, config, success)
   const processingTimeMs = performance.now() - startTime
 
   return {
@@ -75,54 +68,62 @@ export async function scanAnswerSheet(
     answers: readResult.answers,
     score,
     confidence,
-    warnings: readResult.warnings,
+    warnings,
     processingTimeMs,
   }
 }
 
 /**
- * Quét phiếu và trả thêm debug canvas (overlay markers + bubbles)
+ * Quét phiếu + trả debug image
+ * Debug image = ảnh warped (đã duỗi phẳng) với overlay bubble markers
  */
 export async function scanWithDebug(
   file: File,
   config: OMRConfig
 ): Promise<{ result: OMRResult; debugImageUrl: string }> {
   const startTime = performance.now()
-  const threshold = config.thresholdLevel ?? 0.35
+  const threshold = config.thresholdLevel ?? 0.32
 
-  const { imageData, canvas, ctx, width, height } = await loadImageFromFile(file)
-  const gray = toGrayscale(imageData)
-  const binary = adaptiveThreshold(gray, width, height, 31, 10)
+  // Load ảnh gốc
+  const { imageData, canvas: origCanvas, ctx: origCtx, width, height } = await loadImageFromFile(file)
 
-  const corners = findCornerMarkers(binary, width, height)
-  if (!corners) {
-    // Vẫn trả debug image nhưng không có overlay hữu ích
-    throw new Error(
-      'Không tìm được 4 ô vuông định vị trên phiếu. ' +
-      'Hãy đảm bảo: (1) ảnh rõ nét, (2) phiếu nằm trọn trong khung hình, ' +
-      '(3) 4 ô vuông đen ở góc phiếu phải nhìn thấy rõ.'
-    )
+  // Detect + warp
+  const { warpedCanvas, corners, success } = await detectAndWarp(imageData, width, height)
+
+  const warnings: string[] = []
+  if (!success) {
+    warnings.push('⚠️ Không tìm được viền phiếu tự động. Kết quả có thể kém chính xác.')
   }
 
+  // Threshold + đọc bubble trên warped image
+  const { binary, width: wW, height: wH } = getBinaryFromCanvas(warpedCanvas)
   const coordMap = buildCoordinateMap(config.mcCount, config.tfCount, config.saCount)
-  const readResult = readAllAnswers(coordMap, binary, width, height, threshold, corners)
-  const score = calculateScore(readResult.answers, config.answerKey, config)
-  const confidence = calculateConfidence(readResult.warnings, config)
+  const readResult = readAllAnswers(coordMap, binary, wW, wH, threshold)
+  warnings.push(...readResult.warnings)
 
-  // Vẽ debug overlay
+  // Vẽ debug overlay lên warped canvas
+  const warpedCtx = warpedCanvas.getContext('2d')!
   drawDebugOverlay(
-    ctx,
-    corners,
+    warpedCtx,
+    null, // Corners đã được áp dụng vào warp rồi, không cần vẽ lại
     readResult.allDebugBubbles.map(b => ({
-      cx: b.x,
-      cy: b.y,
+      cx: b.x, cy: b.y,
       radius: b.radius,
       isFilled: b.isFilled,
       label: b.label,
     }))
   )
 
-  const debugImageUrl = canvas.toDataURL('image/png')
+  // Vẽ viền phát hiện lên ảnh gốc (green box như Azota)
+  if (success) {
+    drawDebugOverlay(origCtx, corners, [])
+  }
+
+  // Dùng warped image làm debug output (có bubble overlay)
+  const debugImageUrl = warpedCanvas.toDataURL('image/jpeg', 0.9)
+
+  const score = calculateScore(readResult.answers, config.answerKey, config)
+  const confidence = calculateConfidence(warnings, config, success)
   const processingTimeMs = performance.now() - startTime
 
   return {
@@ -132,7 +133,7 @@ export async function scanWithDebug(
       answers: readResult.answers,
       score,
       confidence,
-      warnings: readResult.warnings,
+      warnings,
       processingTimeMs,
     },
     debugImageUrl,
@@ -158,7 +159,6 @@ export function calculateScore(
     const correctAns = answerKey.mc[i]
     const isCorrect = studentAns !== null && studentAns.toUpperCase() === correctAns.toUpperCase()
     if (isCorrect) mcCorrect++
-
     details.push({
       index: i, type: 'mc',
       studentAnswer: studentAns, correctAnswer: correctAns,
@@ -168,7 +168,7 @@ export function calculateScore(
     })
   }
 
-  // Phần II: TF (quy tắc THPT mới)
+  // Phần II: TF — quy tắc THPT mới
   const TF_SCORE_MAP: Record<number, number> = { 4: 1, 3: 0.5, 2: 0.25, 1: 0.1, 0: 0 }
   let tfTotalScore = 0
   let tfMaxScore = 0
@@ -204,7 +204,6 @@ export function calculateScore(
     const correctAns = answerKey.sa[i]
     const isCorrect = studentAns !== null && normalizeSAAnswer(studentAns) === normalizeSAAnswer(correctAns)
     if (isCorrect) saCorrect++
-
     details.push({
       index: i, type: 'sa',
       studentAnswer: studentAns, correctAnswer: correctAns,
@@ -235,40 +234,29 @@ export function calculateScore(
 // ═══════════════════════════════════
 
 function getDefaultScoring(config: OMRConfig): ScoringConfig {
-  const totalQuestions = config.mcCount + config.tfCount + config.saCount
-  if (totalQuestions === 0) {
-    return { totalScore: 10, mcPointPerQ: 0, tfPointPerQ: 0, saPointPerQ: 0 }
-  }
-
   const rawTotal = config.mcCount * 0.25 + config.tfCount * 1 + config.saCount * 0.5
-  if (rawTotal <= 0) {
-    return { totalScore: 10, mcPointPerQ: 0, tfPointPerQ: 0, saPointPerQ: 0 }
-  }
-
+  if (rawTotal <= 0) return { totalScore: 10, mcPointPerQ: 0, tfPointPerQ: 0, saPointPerQ: 0 }
   const scale = 10 / rawTotal
   return {
     totalScore: 10,
     mcPointPerQ: Math.round(0.25 * scale * 1000) / 1000,
-    tfPointPerQ: Math.round(1 * scale * 1000) / 1000,
+    tfPointPerQ: Math.round(1.0 * scale * 1000) / 1000,
     saPointPerQ: Math.round(0.5 * scale * 1000) / 1000,
   }
 }
 
 function normalizeSAAnswer(ans: string): string {
-  return ans
-    .trim()
-    .replace(/\s+/g, '')
-    .replace(/\{,\}/g, ',')
-    .replace(/\\,/g, '')
-    .replace(/,/g, '.')
-    .replace(/^(-?)0+(\d)/, '$1$2')
+  return ans.trim().replace(/\s+/g, '').replace(/,/g, '.').replace(/^(-?)0+(\d)/, '$1$2')
 }
 
-function calculateConfidence(warnings: string[], config: OMRConfig): number {
+function calculateConfidence(warnings: string[], config: OMRConfig, warpSuccess: boolean): number {
+  let base = warpSuccess ? 1.0 : 0.5
   const totalItems = config.mcCount + config.tfCount * 4 + config.saCount + 4 + 8
-  if (totalItems === 0) return 1
-  const warningPenalty = warnings.length * (1 / totalItems)
-  return Math.max(0, Math.min(1, 1 - warningPenalty))
+  if (totalItems > 0) {
+    const warningPenalty = warnings.length * (0.7 / totalItems)
+    base = Math.max(0, base - warningPenalty)
+  }
+  return Math.min(1, Math.round(base * 100) / 100)
 }
 
 export function createConfigFromAnswerKey(

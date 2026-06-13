@@ -1,10 +1,14 @@
 // src/lib/omr/image-preprocessor.ts
-// Tiền xử lý ảnh phiếu trả lời trắc nghiệm — Canvas API thuần
-// V3: Corner detection sử dụng aspect ratio matching
+// Xử lý ảnh phiếu trả lời trắc nghiệm bằng OpenCV.js
+// Pipeline: findContours → approxPolyDP → warpPerspective → đọc bubble
+// (Giống cách Azota / TNMaker hoạt động)
 
-/**
- * Load ảnh từ File thành ImageData trên canvas
- */
+import { loadOpenCV } from './opencv-loader'
+
+// ═══════════════════════════════════
+// LOAD ẢNH
+// ═══════════════════════════════════
+
 export async function loadImageFromFile(file: File): Promise<{
   imageData: ImageData
   canvas: HTMLCanvasElement
@@ -15,57 +19,227 @@ export async function loadImageFromFile(file: File): Promise<{
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
-      const MAX_DIM = 2000
+      // Giới hạn max 2000px để tránh lag
+      const MAX = 2000
       let w = img.width
       let h = img.height
-      if (w > MAX_DIM || h > MAX_DIM) {
-        const scale = MAX_DIM / Math.max(w, h)
-        w = Math.round(w * scale)
-        h = Math.round(h * scale)
+      if (w > MAX || h > MAX) {
+        const s = MAX / Math.max(w, h)
+        w = Math.round(w * s)
+        h = Math.round(h * s)
       }
-
       const canvas = document.createElement('canvas')
       canvas.width = w
       canvas.height = h
-      const ctx = canvas.getContext('2d', { willReadFrequently: true })
-      if (!ctx) return reject(new Error('Cannot get 2D context'))
-
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })!
       ctx.drawImage(img, 0, 0, w, h)
       const imageData = ctx.getImageData(0, 0, w, h)
+      URL.revokeObjectURL(img.src)
       resolve({ imageData, canvas, ctx, width: w, height: h })
     }
-    img.onerror = () => reject(new Error('Failed to load image'))
+    img.onerror = () => reject(new Error('Không load được ảnh'))
     img.src = URL.createObjectURL(file)
   })
 }
 
-/**
- * Chuyển ImageData sang grayscale
- */
-export function toGrayscale(imageData: ImageData): Uint8Array {
-  const { data, width, height } = imageData
-  const gray = new Uint8Array(width * height)
-  for (let i = 0; i < width * height; i++) {
-    const r = data[i * 4]
-    const g = data[i * 4 + 1]
-    const b = data[i * 4 + 2]
-    gray[i] = Math.round(0.299 * r + 0.587 * g + 0.114 * b)
-  }
-  return gray
+// ═══════════════════════════════════
+// PERSPECTIVE TRANSFORM DÙNG OPENCV.JS
+// Đây là bước quan trọng nhất — giống Azota
+// ═══════════════════════════════════
+
+export interface SheetCorners {
+  tl: { x: number; y: number }
+  tr: { x: number; y: number }
+  bl: { x: number; y: number }
+  br: { x: number; y: number }
 }
 
 /**
- * Adaptive threshold (Mean method)
+ * Tìm 4 góc phiếu và duỗi phẳng (warpPerspective)
+ * Trả về ảnh đã được "flatten" — phiếu luôn là hình chữ nhật thẳng đứng
+ * Kích thước đầu ra cố định: 744 × 1052 px (tương tự A4 at 100dpi)
+ *
+ * Thuật toán:
+ * 1. Grayscale + Gaussian blur
+ * 2. Adaptive threshold hoặc Canny edge detection
+ * 3. findContours → lấy contour lớn nhất (= viền phiếu)
+ * 4. approxPolyDP → lấy 4 đỉnh (corner)
+ * 5. Sắp xếp TL/TR/BL/BR
+ * 6. getPerspectiveTransform + warpPerspective
  */
-export function adaptiveThreshold(
-  gray: Uint8Array,
-  width: number,
-  height: number,
-  blockSize: number = 31,
-  C: number = 10
-): Uint8Array {
-  const result = new Uint8Array(width * height)
+export async function detectAndWarp(
+  imageData: ImageData,
+  originalWidth: number,
+  originalHeight: number
+): Promise<{
+  warpedCanvas: HTMLCanvasElement
+  corners: SheetCorners
+  success: boolean
+}> {
+  const cv = await loadOpenCV()
 
+  // Kích thước đầu ra (A4 portrait at 100dpi ~= 827x1169, dùng 744x1052)
+  const OUT_W = 744
+  const OUT_H = 1052
+
+  // Tạo Mat từ ImageData
+  const src = cv.matFromImageData(imageData)
+
+  let gray = new cv.Mat()
+  let blurred = new cv.Mat()
+  let thresh = new cv.Mat()
+  let contours = new cv.MatVector()
+  let hierarchy = new cv.Mat()
+
+  try {
+    // 1. Grayscale
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY)
+
+    // 2. Gaussian blur để giảm nhiễu
+    const ksize = new cv.Size(5, 5)
+    cv.GaussianBlur(gray, blurred, ksize, 0)
+
+    // 3. Adaptive threshold
+    cv.adaptiveThreshold(
+      blurred, thresh,
+      255,
+      cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+      cv.THRESH_BINARY_INV,
+      21, // blockSize
+      10  // C
+    )
+
+    // 4. Morphological closing để lấp các lỗ nhỏ
+    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3))
+    cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, kernel)
+    kernel.delete()
+
+    // 5. findContours
+    cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
+    // 6. Tìm contour lớn nhất (= viền tờ phiếu)
+    let maxArea = 0
+    let bestContourIdx = -1
+    for (let i = 0; i < contours.size(); i++) {
+      const area = cv.contourArea(contours.get(i))
+      if (area > maxArea) {
+        maxArea = area
+        bestContourIdx = i
+      }
+    }
+
+    // Kiểm tra area hợp lý: phải > 10% diện tích ảnh
+    const minArea = originalWidth * originalHeight * 0.1
+    if (bestContourIdx < 0 || maxArea < minArea) {
+      // Fallback: không tìm được viền phiếu
+      const warpedCanvas = imageToCanvas(imageData, OUT_W, OUT_H)
+      return {
+        warpedCanvas,
+        corners: fallbackCorners(originalWidth, originalHeight),
+        success: false,
+      }
+    }
+
+    // 7. approxPolyDP để xấp xỉ polygon
+    const contour = contours.get(bestContourIdx)
+    const perimeter = cv.arcLength(contour, true)
+    const approx = new cv.Mat()
+    cv.approxPolyDP(contour, approx, 0.02 * perimeter, true)
+
+    // Phải có 4 điểm (hình tứ giác)
+    if (approx.rows !== 4) {
+      approx.delete()
+      const warpedCanvas = imageToCanvas(imageData, OUT_W, OUT_H)
+      return {
+        warpedCanvas,
+        corners: fallbackCorners(originalWidth, originalHeight),
+        success: false,
+      }
+    }
+
+    // 8. Lấy 4 điểm và sắp xếp TL/TR/BL/BR
+    const points: { x: number; y: number }[] = []
+    for (let i = 0; i < 4; i++) {
+      points.push({ x: approx.data32S[i * 2], y: approx.data32S[i * 2 + 1] })
+    }
+    approx.delete()
+
+    const corners = sortCorners(points)
+
+    // 9. getPerspectiveTransform + warpPerspective
+    const srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+      corners.tl.x, corners.tl.y,
+      corners.tr.x, corners.tr.y,
+      corners.br.x, corners.br.y,
+      corners.bl.x, corners.bl.y,
+    ])
+    const dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+      0, 0,
+      OUT_W, 0,
+      OUT_W, OUT_H,
+      0, OUT_H,
+    ])
+
+    const M = cv.getPerspectiveTransform(srcPts, dstPts)
+    const warped = new cv.Mat()
+    const dsize = new cv.Size(OUT_W, OUT_H)
+    cv.warpPerspective(src, warped, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar())
+
+    srcPts.delete()
+    dstPts.delete()
+    M.delete()
+
+    // 10. Chuyển warped Mat → Canvas
+    const warpedCanvas = document.createElement('canvas')
+    warpedCanvas.width = OUT_W
+    warpedCanvas.height = OUT_H
+    const warpedCtx = warpedCanvas.getContext('2d')!
+    const warpedImageData = new ImageData(
+      new Uint8ClampedArray(warped.data),
+      OUT_W,
+      OUT_H
+    )
+
+    // Nếu warped là RGBA thì OK, nếu BGR thì cần convert
+    // warpPerspective từ RGBA src → RGBA output
+    warpedCtx.putImageData(warpedImageData, 0, 0)
+    warped.delete()
+
+    return { warpedCanvas, corners, success: true }
+
+  } finally {
+    src.delete()
+    gray.delete()
+    blurred.delete()
+    thresh.delete()
+    contours.delete()
+    hierarchy.delete()
+  }
+}
+
+// ═══════════════════════════════════
+// GRAYSCALE + THRESHOLD TRÊN WARPED IMAGE
+// ═══════════════════════════════════
+
+/**
+ * Đọc dữ liệu binary từ warped canvas (ảnh đã duỗi phẳng)
+ */
+export function getBinaryFromCanvas(
+  canvas: HTMLCanvasElement,
+  blockSize: number = 25,
+  C: number = 8
+): { binary: Uint8Array; gray: Uint8Array; width: number; height: number } {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
+  const { width, height } = canvas
+  const imageData = ctx.getImageData(0, 0, width, height)
+  const { data } = imageData
+
+  const gray = new Uint8Array(width * height)
+  for (let i = 0; i < width * height; i++) {
+    gray[i] = Math.round(0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2])
+  }
+
+  // Integral image cho adaptive threshold nhanh
   const integral = new Float64Array((width + 1) * (height + 1))
   for (let y = 0; y < height; y++) {
     let rowSum = 0
@@ -76,7 +250,9 @@ export function adaptiveThreshold(
     }
   }
 
+  const binary = new Uint8Array(width * height)
   const half = Math.floor(blockSize / 2)
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const x1 = Math.max(0, x - half)
@@ -84,24 +260,23 @@ export function adaptiveThreshold(
       const x2 = Math.min(width - 1, x + half)
       const y2 = Math.min(height - 1, y + half)
       const count = (x2 - x1 + 1) * (y2 - y1 + 1)
-
       const sum =
-        integral[(y2 + 1) * (width + 1) + (x2 + 1)] -
-        integral[y1 * (width + 1) + (x2 + 1)] -
-        integral[(y2 + 1) * (width + 1) + x1] +
-        integral[y1 * (width + 1) + x1]
-
+        integral[(y2+1)*(width+1)+(x2+1)] -
+        integral[y1*(width+1)+(x2+1)] -
+        integral[(y2+1)*(width+1)+x1] +
+        integral[y1*(width+1)+x1]
       const mean = sum / count
-      result[y * width + x] = gray[y * width + x] < mean - C ? 0 : 255
+      binary[y * width + x] = gray[y * width + x] < mean - C ? 0 : 255
     }
   }
 
-  return result
+  return { binary, gray, width, height }
 }
 
-/**
- * Đếm tỷ lệ pixel đen trong vùng tròn
- */
+// ═══════════════════════════════════
+// ĐẾM PIXEL ĐEN TRONG VÙNG TRÒN
+// ═══════════════════════════════════
+
 export function countBlackRatio(
   binary: Uint8Array,
   width: number,
@@ -110,310 +285,23 @@ export function countBlackRatio(
   cy: number,
   radius: number
 ): number {
-  let totalPixels = 0
-  let blackPixels = 0
-  const r2 = radius * radius
-
-  const startY = Math.max(0, Math.floor(cy - radius))
-  const endY = Math.min(height - 1, Math.ceil(cy + radius))
-  const startX = Math.max(0, Math.floor(cx - radius))
-  const endX = Math.min(width - 1, Math.ceil(cx + radius))
-
-  for (let y = startY; y <= endY; y++) {
-    for (let x = startX; x <= endX; x++) {
-      const dx = x - cx
-      const dy = y - cy
-      if (dx * dx + dy * dy <= r2) {
-        totalPixels++
-        if (binary[y * width + x] === 0) blackPixels++
-      }
-    }
-  }
-  return totalPixels > 0 ? blackPixels / totalPixels : 0
-}
-
-// ═══════════════════════════════════
-// CORNER MARKER DETECTION V3
-// Thuật toán: Tìm tất cả ô vuông đen → brute-force tìm
-// 4 điểm tạo thành hình chữ nhật có tỷ lệ đúng (0.677)
-// ═══════════════════════════════════
-
-interface MarkerCandidate {
-  x: number
-  y: number
-  score: number
-  size: number
-}
-
-/**
- * Đếm tỷ lệ pixel đen trong vùng vuông
- */
-function blackRatioRect(
-  binary: Uint8Array,
-  width: number,
-  height: number,
-  cx: number,
-  cy: number,
-  halfSize: number
-): number {
   let total = 0
   let black = 0
-  const sy = Math.max(0, Math.floor(cy - halfSize))
-  const ey = Math.min(height - 1, Math.ceil(cy + halfSize))
-  const sx = Math.max(0, Math.floor(cx - halfSize))
-  const ex = Math.min(width - 1, Math.ceil(cx + halfSize))
+  const r2 = radius * radius
+  const sy = Math.max(0, Math.floor(cy - radius))
+  const ey = Math.min(height - 1, Math.ceil(cy + radius))
+  const sx = Math.max(0, Math.floor(cx - radius))
+  const ex = Math.min(width - 1, Math.ceil(cx + radius))
 
   for (let y = sy; y <= ey; y++) {
     for (let x = sx; x <= ex; x++) {
-      total++
-      if (binary[y * width + x] === 0) black++
+      if ((x-cx)**2 + (y-cy)**2 <= r2) {
+        total++
+        if (binary[y * width + x] === 0) black++
+      }
     }
   }
   return total > 0 ? black / total : 0
-}
-
-/**
- * Quét toàn bộ ảnh tìm các vùng vuông đen đặc (marker candidates)
- */
-function scanForCandidates(
-  binary: Uint8Array,
-  width: number,
-  height: number,
-  minSize: number,
-  maxSize: number
-): MarkerCandidate[] {
-  const candidates: MarkerCandidate[] = []
-  const step = Math.max(3, Math.floor(minSize / 3))
-
-  for (let cy = maxSize; cy < height - maxSize; cy += step) {
-    for (let cx = maxSize; cx < width - maxSize; cx += step) {
-      // Quick check: vùng nhỏ ở tâm phải đen
-      const quickHalf = Math.floor(minSize / 2)
-      const quickRatio = blackRatioRect(binary, width, height, cx, cy, quickHalf)
-      if (quickRatio < 0.6) continue
-
-      // Tìm kích thước marker tốt nhất
-      let bestSize = minSize
-      let bestInnerRatio = 0
-      let bestOuterContrast = 0
-
-      for (let size = minSize; size <= maxSize; size += 2) {
-        const half = Math.floor(size / 2)
-        const innerRatio = blackRatioRect(binary, width, height, cx, cy, half)
-
-        if (innerRatio < 0.65) continue
-
-        // Kiểm tra viền ngoài: phải SÁNG hơn bên trong
-        // Lấy ring bên ngoài marker
-        const outerHalf = half + Math.max(4, Math.floor(half * 0.6))
-        const outerArea = (outerHalf * 2 + 1) ** 2
-        const innerArea = (half * 2 + 1) ** 2
-        const outerTotal = blackRatioRect(binary, width, height, cx, cy, outerHalf) * outerArea
-        const innerTotal = innerRatio * innerArea
-        const ringArea = outerArea - innerArea
-        const ringBlackRatio = ringArea > 0 ? (outerTotal - innerTotal) / ringArea : 1
-
-        // Vòng ngoài phải trắng hơn nhiều so với bên trong
-        const contrast = innerRatio - ringBlackRatio
-        if (contrast < 0.25) continue // Phải có contrast rõ ràng
-
-        if (contrast > bestOuterContrast) {
-          bestOuterContrast = contrast
-          bestInnerRatio = innerRatio
-          bestSize = size
-        }
-      }
-
-      if (bestOuterContrast >= 0.25 && bestInnerRatio >= 0.65) {
-        candidates.push({
-          x: cx,
-          y: cy,
-          score: bestInnerRatio * 0.4 + bestOuterContrast * 0.6,
-          size: bestSize,
-        })
-      }
-    }
-  }
-
-  return candidates
-}
-
-/** Non-maximum suppression */
-function nonMaxSuppression(candidates: MarkerCandidate[], minDist: number): MarkerCandidate[] {
-  const sorted = [...candidates].sort((a, b) => b.score - a.score)
-  const kept: MarkerCandidate[] = []
-  const suppressed = new Set<number>()
-
-  for (let i = 0; i < sorted.length; i++) {
-    if (suppressed.has(i)) continue
-    kept.push(sorted[i])
-    for (let j = i + 1; j < sorted.length; j++) {
-      const dx = sorted[i].x - sorted[j].x
-      const dy = sorted[i].y - sorted[j].y
-      if (Math.sqrt(dx * dx + dy * dy) < minDist) {
-        suppressed.add(j)
-      }
-    }
-  }
-  return kept
-}
-
-/** Khoảng cách Euclid giữa 2 điểm */
-function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
-}
-
-/**
- * TÌM 4 MARKER GÓC — V3
- *
- * Chiến lược:
- * 1. Tìm tất cả candidate ô vuông đen (có contrast rõ với xung quanh)
- * 2. Loại bỏ candidate ở sát mép ảnh (shadow artifacts)
- * 3. Brute-force: thử tất cả tổ hợp C(n,4) candidates
- * 4. Chọn 4 điểm tạo hình chữ nhật có aspect ratio gần 0.677 nhất
- *    (tỷ lệ marker rectangle trên phiếu = 18.38cm / 27.14cm)
- */
-export function findCornerMarkers(
-  binary: Uint8Array,
-  width: number,
-  height: number
-): { x: number; y: number }[] | null {
-  const minMarkerSize = Math.max(8, Math.floor(width * 0.012))
-  const maxMarkerSize = Math.floor(width * 0.06)
-
-  // 1. Tìm tất cả candidates
-  const rawCandidates = scanForCandidates(binary, width, height, minMarkerSize, maxMarkerSize)
-  const merged = nonMaxSuppression(rawCandidates, minMarkerSize * 2)
-
-  if (merged.length < 4) return null
-
-  // 2. Loại bỏ candidates ở sát mép ảnh (< 2% kích thước)
-  const marginX = Math.floor(width * 0.02)
-  const marginY = Math.floor(height * 0.02)
-  const filtered = merged.filter(c =>
-    c.x > marginX && c.x < width - marginX &&
-    c.y > marginY && c.y < height - marginY
-  )
-
-  if (filtered.length < 4) return null
-
-  // 3. Lấy top 12 candidates (theo score) để brute-force
-  const top = [...filtered].sort((a, b) => b.score - a.score).slice(0, 12)
-
-  // Tỷ lệ mong đợi: marker rectangle = 18.38cm rộng / 27.14cm cao
-  const EXPECTED_RATIO = 18.38 / 27.14  // ≈ 0.677
-
-  let bestQuad: MarkerCandidate[] | null = null
-  let bestError = Infinity
-
-  // 4. Brute-force tất cả tổ hợp C(n,4)
-  const n = top.length
-  for (let i = 0; i < n - 3; i++) {
-    for (let j = i + 1; j < n - 2; j++) {
-      for (let k = j + 1; k < n - 1; k++) {
-        for (let l = k + 1; l < n; l++) {
-          const quad = assignCorners(top[i], top[j], top[k], top[l])
-          if (!quad) continue
-
-          const [tl, tr, bl, br] = quad
-
-          // Tính aspect ratio
-          const topW = dist(tl, tr)
-          const botW = dist(bl, br)
-          const leftH = dist(tl, bl)
-          const rightH = dist(tr, br)
-
-          const avgW = (topW + botW) / 2
-          const avgH = (leftH + rightH) / 2
-
-          // Kích thước tối thiểu: quad phải đủ lớn (> 25% ảnh)
-          if (avgW < width * 0.25 || avgH < height * 0.25) continue
-
-          const ratio = avgW / avgH
-          const ratioError = Math.abs(ratio - EXPECTED_RATIO)
-
-          // Kiểm tra song song: cạnh đối phải gần bằng nhau
-          const widthSkew = Math.abs(topW - botW) / Math.max(topW, botW)
-          const heightSkew = Math.abs(leftH - rightH) / Math.max(leftH, rightH)
-          if (widthSkew > 0.3 || heightSkew > 0.3) continue
-
-          // Tổng hợp error: aspect ratio + skew + bonus cho score cao
-          const avgScore = (top[i].score + top[j].score + top[k].score + top[l].score) / 4
-          const totalError = ratioError * 2 + widthSkew + heightSkew - avgScore * 0.1
-
-          if (totalError < bestError) {
-            bestError = totalError
-            bestQuad = quad
-          }
-        }
-      }
-    }
-  }
-
-  // Aspect ratio error > 0.2 = quá sai, reject
-  if (!bestQuad || bestError > 0.8) return null
-
-  return bestQuad.map(c => ({ x: c.x, y: c.y }))
-}
-
-/**
- * Gán 4 điểm vào TL, TR, BL, BR
- * Sắp xếp theo Y (trên/dưới) rồi theo X (trái/phải)
- */
-function assignCorners(
-  a: MarkerCandidate,
-  b: MarkerCandidate,
-  c: MarkerCandidate,
-  d: MarkerCandidate
-): MarkerCandidate[] | null {
-  const points = [a, b, c, d]
-
-  // Sort theo Y
-  points.sort((p1, p2) => p1.y - p2.y)
-
-  // 2 điểm trên, 2 điểm dưới
-  const topTwo = [points[0], points[1]].sort((p1, p2) => p1.x - p2.x)
-  const botTwo = [points[2], points[3]].sort((p1, p2) => p1.x - p2.x)
-
-  const tl = topTwo[0]
-  const tr = topTwo[1]
-  const bl = botTwo[0]
-  const br = botTwo[1]
-
-  // Validate cơ bản
-  if (tl.x >= tr.x || bl.x >= br.x) return null
-  if (tl.y >= bl.y || tr.y >= br.y) return null
-
-  return [tl, tr, bl, br]
-}
-
-// ═══════════════════════════════════
-// PERSPECTIVE MAPPING
-// ═══════════════════════════════════
-
-/**
- * Map tọa độ tương đối (0-1) sang pixel qua bilinear interpolation
- *
- * @param corners 4 góc [TL, TR, BL, BR] trong pixel
- * @param relX 0 = marker trái, 1 = marker phải
- * @param relY 0 = marker trên, 1 = marker dưới
- */
-export function perspectiveMap(
-  corners: { x: number; y: number }[],
-  relX: number,
-  relY: number
-): { x: number; y: number } {
-  const [tl, tr, bl, br] = corners
-
-  const topX = tl.x + (tr.x - tl.x) * relX
-  const topY = tl.y + (tr.y - tl.y) * relX
-  const botX = bl.x + (br.x - bl.x) * relX
-  const botY = bl.y + (br.y - bl.y) * relX
-
-  return {
-    x: Math.round(topX + (botX - topX) * relY),
-    y: Math.round(topY + (botY - topY) * relY),
-  }
 }
 
 // ═══════════════════════════════════
@@ -422,57 +310,159 @@ export function perspectiveMap(
 
 export function drawDebugOverlay(
   ctx: CanvasRenderingContext2D,
-  corners: { x: number; y: number }[] | null,
+  corners: SheetCorners | null,
   bubbles: { cx: number; cy: number; radius: number; isFilled: boolean; label: string }[]
 ) {
-  // Vẽ quadrilateral từ corners
   if (corners) {
-    // Đường viền quad
-    ctx.strokeStyle = '#f59e0b'
+    // Vẽ viền phiếu (từ corners trên ảnh GỐC)
+    ctx.strokeStyle = '#22c55e'
     ctx.lineWidth = 3
     ctx.setLineDash([8, 4])
     ctx.beginPath()
-    ctx.moveTo(corners[0].x, corners[0].y)
-    ctx.lineTo(corners[1].x, corners[1].y)
-    ctx.lineTo(corners[3].x, corners[3].y)
-    ctx.lineTo(corners[2].x, corners[2].y)
+    ctx.moveTo(corners.tl.x, corners.tl.y)
+    ctx.lineTo(corners.tr.x, corners.tr.y)
+    ctx.lineTo(corners.br.x, corners.br.y)
+    ctx.lineTo(corners.bl.x, corners.bl.y)
     ctx.closePath()
     ctx.stroke()
     ctx.setLineDash([])
 
-    // Marker points + labels
-    const labels = ['TL', 'TR', 'BL', 'BR']
-    for (let i = 0; i < corners.length; i++) {
-      const c = corners[i]
-      // Circle
+    // Điểm góc với label
+    const pts = [
+      { ...corners.tl, label: 'TL' },
+      { ...corners.tr, label: 'TR' },
+      { ...corners.bl, label: 'BL' },
+      { ...corners.br, label: 'BR' },
+    ]
+    for (const p of pts) {
       ctx.beginPath()
-      ctx.arc(c.x, c.y, 10, 0, Math.PI * 2)
-      ctx.fillStyle = '#f59e0b'
+      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2)
+      ctx.fillStyle = '#22c55e'
       ctx.fill()
-      ctx.strokeStyle = '#ffffff'
-      ctx.lineWidth = 2
-      ctx.stroke()
-      // Label
       ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 10px sans-serif'
+      ctx.font = 'bold 9px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(labels[i], c.x, c.y)
+      ctx.fillText(p.label, p.x, p.y)
     }
   }
 
-  // Vẽ bubbles
+  // Bubbles (trên ảnh warped — không cần vẽ lên ảnh gốc)
   for (const b of bubbles) {
     ctx.beginPath()
     ctx.arc(b.cx, b.cy, b.radius, 0, Math.PI * 2)
-    ctx.lineWidth = 1.5
+    ctx.lineWidth = 2
     if (b.isFilled) {
       ctx.strokeStyle = '#10b981'
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.3)'
+      ctx.fillStyle = 'rgba(16,185,129,0.3)'
       ctx.fill()
     } else {
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)'
+      ctx.strokeStyle = 'rgba(148,163,184,0.3)'
     }
     ctx.stroke()
   }
+}
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+
+/** Sắp xếp 4 điểm thành TL, TR, BL, BR */
+function sortCorners(pts: { x: number; y: number }[]): SheetCorners {
+  // Sort theo y
+  const sorted = [...pts].sort((a, b) => a.y - b.y)
+  const topTwo = sorted.slice(0, 2).sort((a, b) => a.x - b.x)
+  const botTwo = sorted.slice(2, 4).sort((a, b) => a.x - b.x)
+  return {
+    tl: topTwo[0],
+    tr: topTwo[1],
+    bl: botTwo[0],
+    br: botTwo[1],
+  }
+}
+
+/** Fallback corners = toàn bộ ảnh */
+function fallbackCorners(w: number, h: number): SheetCorners {
+  const m = Math.min(w, h) * 0.02
+  return {
+    tl: { x: m, y: m },
+    tr: { x: w - m, y: m },
+    bl: { x: m, y: h - m },
+    br: { x: w - m, y: h - m },
+  }
+}
+
+/** Chuyển ImageData thành canvas với kích thước mới */
+function imageToCanvas(imageData: ImageData, w: number, h: number): HTMLCanvasElement {
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')!
+  const tmp = document.createElement('canvas')
+  tmp.width = imageData.width
+  tmp.height = imageData.height
+  tmp.getContext('2d')!.putImageData(imageData, 0, 0)
+  ctx.drawImage(tmp, 0, 0, w, h)
+  return c
+}
+
+// ═══════════════════════════════════
+// LEGACY (cho backward compat)
+// ═══════════════════════════════════
+
+/** @deprecated Dùng getBinaryFromCanvas thay thế */
+export function toGrayscale(imageData: ImageData): Uint8Array {
+  const { data, width, height } = imageData
+  const gray = new Uint8Array(width * height)
+  for (let i = 0; i < width * height; i++) {
+    gray[i] = Math.round(0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2])
+  }
+  return gray
+}
+
+/** @deprecated */
+export function adaptiveThreshold(
+  gray: Uint8Array, width: number, height: number,
+  blockSize = 31, C = 10
+): Uint8Array {
+  const integral = new Float64Array((width+1)*(height+1))
+  for (let y = 0; y < height; y++) {
+    let rowSum = 0
+    for (let x = 0; x < width; x++) {
+      rowSum += gray[y*width+x]
+      integral[(y+1)*(width+1)+(x+1)] = integral[y*(width+1)+(x+1)] + rowSum
+    }
+  }
+  const result = new Uint8Array(width*height)
+  const half = Math.floor(blockSize/2)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const x1=Math.max(0,x-half),y1=Math.max(0,y-half)
+      const x2=Math.min(width-1,x+half),y2=Math.min(height-1,y+half)
+      const count=(x2-x1+1)*(y2-y1+1)
+      const sum = integral[(y2+1)*(width+1)+(x2+1)] - integral[y1*(width+1)+(x2+1)]
+                - integral[(y2+1)*(width+1)+x1] + integral[y1*(width+1)+x1]
+      result[y*width+x] = gray[y*width+x] < sum/count - C ? 0 : 255
+    }
+  }
+  return result
+}
+
+/** @deprecated */
+export function findCornerMarkers(): null {
+  return null
+}
+
+/** @deprecated */
+export function perspectiveMap(
+  corners: { x: number; y: number }[],
+  relX: number,
+  relY: number
+): { x: number; y: number } {
+  const [tl, tr, bl, br] = corners
+  const topX = tl.x + (tr.x - tl.x) * relX
+  const topY = tl.y + (tr.y - tl.y) * relX
+  const botX = bl.x + (br.x - bl.x) * relX
+  const botY = bl.y + (br.y - bl.y) * relX
+  return { x: Math.round(topX + (botX - topX) * relY), y: Math.round(topY + (botY - topY) * relY) }
 }
