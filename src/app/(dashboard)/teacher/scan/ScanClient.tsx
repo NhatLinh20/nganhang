@@ -6,7 +6,6 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import styles from './scan.module.css'
 import type { OMRConfig, OMRResult, AnswerKey, QuestionResult } from '@/lib/omr/types'
 import { scanWithDebug, createConfigFromAnswerKey } from '@/lib/omr/omr-engine'
-import { loadOpenCV, isOpenCVLoaded } from '@/lib/omr/opencv-loader'
 
 // ═══════════════════════════════════
 // TYPES
@@ -47,11 +46,6 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
   const [scanResult, setScanResult] = useState<OMRResult | null>(null)
   const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null)
   const [showDebug, setShowDebug] = useState(false)
-
-  // ── OpenCV loading state ──
-  const [cvLoading, setCvLoading] = useState(false)
-  const [cvProgress, setCvProgress] = useState(0)
-  const [cvReady, setCvReady] = useState(false)
 
   // ── Saving state ──
   const [isSaving, setIsSaving] = useState(false)
@@ -184,15 +178,6 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
     setSaveMessage(null)
 
     try {
-      // Lazy-load OpenCV.js chỉ khi cần quét
-      if (!isOpenCVLoaded()) {
-        setCvLoading(true)
-        setCvProgress(0)
-        await loadOpenCV((pct) => setCvProgress(pct))
-        setCvLoading(false)
-        setCvReady(true)
-      }
-
       const config = createConfigFromAnswerKey(
         mcAnswers.slice(0, mcCount),
         tfAnswers.slice(0, tfCount),
@@ -209,7 +194,6 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
       alert('Lỗi khi quét phiếu: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setIsProcessing(false)
-      setCvLoading(false)
     }
   }
 
@@ -286,11 +270,6 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
-
-  // Kiểm tra xem OpenCV đã được cache chưa (chỉ cập nhật state, KHÔNG load)
-  useEffect(() => {
-    if (isOpenCVLoaded()) setCvReady(true)
-  }, [])
 
   // ═══════════════════════════════════
   // RENDER
@@ -739,24 +718,8 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
         </>
       )}
 
-      {/* ── OpenCV download progress (chỉ hiện khi đang tải lúc quét) ── */}
-      {cvLoading && (
-        <div className={styles.processingOverlay}>
-          <div className={styles.processingCard}>
-            <div className={styles.processingSpinner} />
-            <div className={styles.processingText}>Đang tải OpenCV.js ({cvProgress}%)</div>
-            <div style={{ width: '100%', background: '#1e293b', borderRadius: 6, height: 8, margin: '12px 0', overflow: 'hidden' }}>
-              <div style={{ background: '#3b82f6', height: '100%', width: `${cvProgress}%`, transition: 'width 0.3s', borderRadius: 6 }} />
-            </div>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>
-              Lần đầu cần tải ~9MB — lần sau dùng cache tức thì
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Processing overlay (sau khi OpenCV đã load) ── */}
-      {isProcessing && !cvLoading && (
+      {/* ── Processing overlay ── */}
+      {isProcessing && (
         <div className={styles.processingOverlay}>
           <div className={styles.processingCard}>
             <div className={styles.processingSpinner} />

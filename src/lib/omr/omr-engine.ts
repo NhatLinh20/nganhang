@@ -1,18 +1,15 @@
 // src/lib/omr/omr-engine.ts
-// Pipeline điều phối: OpenCV.js warpPerspective → đọc bubble → chấm điểm
-// Giống cách Azota / TNMaker hoạt động
+// Pipeline: thuần JS, không cần OpenCV.js
+// Grayscale → AdaptiveThreshold → findCornerMarkers (per-quadrant)
+// → warpPerspective (DLT homography) → readBubbles → score
 
 import type {
-  OMRConfig, OMRResult, ScoreResult, QuestionResult,
-  StudentAnswers, AnswerKey, ScoringConfig,
+  OMRConfig, OMRResult, ScoreResult, QuestionResult, StudentAnswers, AnswerKey, ScoringConfig,
 } from './types'
 import { buildCoordinateMap } from './coordinate-map'
 import {
-  loadImageFromFile,
-  detectAndWarp,
-  getBinaryFromCanvas,
-  drawDebugOverlay,
-  type SheetCorners,
+  loadImageFromFile, detectAndWarpSync, getBinaryFromCanvas,
+  drawDebugOverlay, type SheetCorners,
 } from './image-preprocessor'
 import { readAllAnswers } from './bubble-reader'
 
@@ -20,47 +17,25 @@ import { readAllAnswers } from './bubble-reader'
 // MAIN PIPELINE
 // ═══════════════════════════════════
 
-/**
- * Quét và chấm điểm một phiếu trả lời trắc nghiệm
- *
- * Pipeline (giống Azota/TNMaker):
- * 1. Load ảnh → Canvas
- * 2. OpenCV.js: GaussianBlur → AdaptiveThreshold → findContours → approxPolyDP
- * 3. warpPerspective: duỗi phẳng phiếu → 744×1052px cố định
- * 4. Adaptive threshold trên ảnh warped
- * 5. Đọc tất cả bubble theo tọa độ tương đối → pixel chính xác
- * 6. So khớp đáp án → Tính điểm
- */
-export async function scanAnswerSheet(
-  file: File,
-  config: OMRConfig
-): Promise<OMRResult> {
+export async function scanAnswerSheet(file: File, config: OMRConfig): Promise<OMRResult> {
   const startTime = performance.now()
   const threshold = config.thresholdLevel ?? 0.32
 
-  // Bước 1: Load ảnh
   const { imageData, width, height } = await loadImageFromFile(file)
-
-  // Bước 2-3: Detect phiếu và warpPerspective (OpenCV.js)
-  const { warpedCanvas, corners, success } = await detectAndWarp(imageData, width, height)
+  const { warpedCanvas, corners, success } = detectAndWarpSync(imageData, width, height)
 
   const warnings: string[] = []
   if (!success) {
-    warnings.push('⚠️ Không tìm được viền phiếu tự động. Kết quả có thể kém chính xác. Hãy chụp lại với góc phẳng hơn và 4 góc phiếu rõ ràng.')
+    warnings.push('⚠️ Không tìm được viền phiếu tự động — hãy chụp phẳng hơn và đủ 4 góc phiếu trong khung hình.')
   }
 
-  // Bước 4: Threshold trên ảnh warped
   const { binary, width: wW, height: wH } = getBinaryFromCanvas(warpedCanvas)
-
-  // Bước 5: Build coordinate map và đọc bubble
   const coordMap = buildCoordinateMap(config.mcCount, config.tfCount, config.saCount)
   const readResult = readAllAnswers(coordMap, binary, wW, wH, threshold)
   warnings.push(...readResult.warnings)
 
-  // Bước 6: Chấm điểm
   const score = calculateScore(readResult.answers, config.answerKey, config)
   const confidence = calculateConfidence(warnings, config, success)
-  const processingTimeMs = performance.now() - startTime
 
   return {
     examCode: readResult.examCode,
@@ -69,72 +44,51 @@ export async function scanAnswerSheet(
     score,
     confidence,
     warnings,
-    processingTimeMs,
+    processingTimeMs: performance.now() - startTime,
   }
 }
 
-/**
- * Quét phiếu + trả debug image
- * Debug image = ảnh warped (đã duỗi phẳng) với overlay bubble markers
- */
 export async function scanWithDebug(
-  file: File,
-  config: OMRConfig
+  file: File, config: OMRConfig
 ): Promise<{ result: OMRResult; debugImageUrl: string }> {
   const startTime = performance.now()
   const threshold = config.thresholdLevel ?? 0.32
 
-  // Load ảnh gốc
-  const { imageData, canvas: origCanvas, ctx: origCtx, width, height } = await loadImageFromFile(file)
-
-  // Detect + warp
-  const { warpedCanvas, corners, success } = await detectAndWarp(imageData, width, height)
+  const { imageData, ctx: origCtx, width, height } = await loadImageFromFile(file)
+  const { warpedCanvas, corners, success } = detectAndWarpSync(imageData, width, height)
 
   const warnings: string[] = []
   if (!success) {
-    warnings.push('⚠️ Không tìm được viền phiếu tự động. Kết quả có thể kém chính xác.')
+    warnings.push('⚠️ Không tìm được viền phiếu tự động — hãy chụp phẳng hơn và đủ 4 góc phiếu trong khung hình.')
   }
 
-  // Threshold + đọc bubble trên warped image
   const { binary, width: wW, height: wH } = getBinaryFromCanvas(warpedCanvas)
   const coordMap = buildCoordinateMap(config.mcCount, config.tfCount, config.saCount)
   const readResult = readAllAnswers(coordMap, binary, wW, wH, threshold)
   warnings.push(...readResult.warnings)
 
-  // Vẽ debug overlay lên warped canvas
+  // Debug: vẽ overlay lên warped canvas
   const warpedCtx = warpedCanvas.getContext('2d')!
-  drawDebugOverlay(
-    warpedCtx,
-    null, // Corners đã được áp dụng vào warp rồi, không cần vẽ lại
-    readResult.allDebugBubbles.map(b => ({
-      cx: b.x, cy: b.y,
-      radius: b.radius,
-      isFilled: b.isFilled,
-      label: b.label,
-    }))
-  )
+  drawDebugOverlay(warpedCtx, null, readResult.allDebugBubbles.map(b => ({
+    cx: b.x, cy: b.y, radius: b.radius, isFilled: b.isFilled, label: b.label,
+  })))
 
-  // Vẽ viền phát hiện lên ảnh gốc (green box như Azota)
-  if (success) {
+  // Vẽ viền phiếu lên ảnh gốc (nếu tìm được)
+  if (success && corners) {
     drawDebugOverlay(origCtx, corners, [])
   }
 
-  // Dùng warped image làm debug output (có bubble overlay)
-  const debugImageUrl = warpedCanvas.toDataURL('image/jpeg', 0.9)
-
+  const debugImageUrl = warpedCanvas.toDataURL('image/jpeg', 0.88)
   const score = calculateScore(readResult.answers, config.answerKey, config)
   const confidence = calculateConfidence(warnings, config, success)
-  const processingTimeMs = performance.now() - startTime
 
   return {
     result: {
       examCode: readResult.examCode,
       studentId: readResult.studentId,
       answers: readResult.answers,
-      score,
-      confidence,
-      warnings,
-      processingTimeMs,
+      score, confidence, warnings,
+      processingTimeMs: performance.now() - startTime,
     },
     debugImageUrl,
   }
@@ -145,72 +99,44 @@ export async function scanWithDebug(
 // ═══════════════════════════════════
 
 export function calculateScore(
-  studentAnswers: StudentAnswers,
-  answerKey: AnswerKey,
-  config: OMRConfig
+  studentAnswers: StudentAnswers, answerKey: AnswerKey, config: OMRConfig
 ): ScoreResult {
   const scoring = config.scoringConfig ?? getDefaultScoring(config)
   const details: QuestionResult[] = []
 
-  // Phần I: MC
+  // MC
   let mcCorrect = 0
   for (let i = 0; i < answerKey.mc.length; i++) {
-    const studentAns = studentAnswers.mc[i] ?? null
-    const correctAns = answerKey.mc[i]
-    const isCorrect = studentAns !== null && studentAns.toUpperCase() === correctAns.toUpperCase()
-    if (isCorrect) mcCorrect++
-    details.push({
-      index: i, type: 'mc',
-      studentAnswer: studentAns, correctAnswer: correctAns,
-      isCorrect,
-      score: isCorrect ? scoring.mcPointPerQ : 0,
-      maxScore: scoring.mcPointPerQ,
-    })
+    const s = studentAnswers.mc[i] ?? null
+    const c = answerKey.mc[i]
+    const ok = s !== null && s.toUpperCase() === c.toUpperCase()
+    if (ok) mcCorrect++
+    details.push({ index: i, type: 'mc', studentAnswer: s, correctAnswer: c, isCorrect: ok, score: ok ? scoring.mcPointPerQ : 0, maxScore: scoring.mcPointPerQ })
   }
 
-  // Phần II: TF — quy tắc THPT mới
-  const TF_SCORE_MAP: Record<number, number> = { 4: 1, 3: 0.5, 2: 0.25, 1: 0.1, 0: 0 }
-  let tfTotalScore = 0
-  let tfMaxScore = 0
-
+  // TF — quy tắc THPT mới: 4/4=1đ, 3/4=0.5đ, 2/4=0.25đ, 1/4=0.1đ, 0=0
+  const TF_MAP: Record<number, number> = { 4: 1, 3: 0.5, 2: 0.25, 1: 0.1, 0: 0 }
+  let tfTotalScore = 0, tfMaxScore = 0
   for (let i = 0; i < answerKey.tf.length; i++) {
-    const studentAns = studentAnswers.tf[i] ?? null
-    const correctAns = answerKey.tf[i]
+    const s = studentAnswers.tf[i] ?? null
+    const c = answerKey.tf[i]
     let correctSubs = 0
-
-    if (studentAns && studentAns.length === 4 && correctAns.length === 4) {
-      for (let s = 0; s < 4; s++) {
-        if (studentAns[s] === correctAns[s]) correctSubs++
-      }
+    if (s && s.length === 4 && c.length === 4) {
+      for (let j = 0; j < 4; j++) if (s[j] === c[j]) correctSubs++
     }
-
-    const qScore = TF_SCORE_MAP[correctSubs] ?? 0
-    const qMax = scoring.tfPointPerQ
-    tfTotalScore += qScore
-    tfMaxScore += qMax
-
-    details.push({
-      index: i, type: 'tf',
-      studentAnswer: studentAns, correctAnswer: correctAns,
-      isCorrect: correctSubs === 4,
-      score: qScore, maxScore: qMax,
-    })
+    const qScore = TF_MAP[correctSubs] ?? 0
+    tfTotalScore += qScore; tfMaxScore += scoring.tfPointPerQ
+    details.push({ index: i, type: 'tf', studentAnswer: s, correctAnswer: c, isCorrect: correctSubs === 4, score: qScore, maxScore: scoring.tfPointPerQ })
   }
 
-  // Phần III: SA
+  // SA
   let saCorrect = 0
   for (let i = 0; i < answerKey.sa.length; i++) {
-    const studentAns = studentAnswers.sa[i] ?? null
-    const correctAns = answerKey.sa[i]
-    const isCorrect = studentAns !== null && normalizeSAAnswer(studentAns) === normalizeSAAnswer(correctAns)
-    if (isCorrect) saCorrect++
-    details.push({
-      index: i, type: 'sa',
-      studentAnswer: studentAns, correctAnswer: correctAns,
-      isCorrect,
-      score: isCorrect ? scoring.saPointPerQ : 0,
-      maxScore: scoring.saPointPerQ,
-    })
+    const s = studentAnswers.sa[i] ?? null
+    const c = answerKey.sa[i]
+    const ok = s !== null && normSA(s) === normSA(c)
+    if (ok) saCorrect++
+    details.push({ index: i, type: 'sa', studentAnswer: s, correctAnswer: c, isCorrect: ok, score: ok ? scoring.saPointPerQ : 0, maxScore: scoring.saPointPerQ })
   }
 
   const mcScore = mcCorrect * scoring.mcPointPerQ
@@ -219,11 +145,9 @@ export function calculateScore(
   const maxScore = (answerKey.mc.length * scoring.mcPointPerQ) + tfMaxScore + (answerKey.sa.length * scoring.saPointPerQ)
 
   return {
-    total: Math.round(total * 100) / 100,
-    maxScore: Math.round(maxScore * 100) / 100,
+    total: r2(total), maxScore: r2(maxScore),
     mcCorrect, mcTotal: answerKey.mc.length,
-    tfScore: Math.round(tfTotalScore * 100) / 100,
-    tfMaxScore: Math.round(tfMaxScore * 100) / 100,
+    tfScore: r2(tfTotalScore), tfMaxScore: r2(tfMaxScore),
     saCorrect, saTotal: answerKey.sa.length,
     details,
   }
@@ -233,43 +157,25 @@ export function calculateScore(
 // HELPERS
 // ═══════════════════════════════════
 
-function getDefaultScoring(config: OMRConfig): ScoringConfig {
-  const rawTotal = config.mcCount * 0.25 + config.tfCount * 1 + config.saCount * 0.5
-  if (rawTotal <= 0) return { totalScore: 10, mcPointPerQ: 0, tfPointPerQ: 0, saPointPerQ: 0 }
-  const scale = 10 / rawTotal
-  return {
-    totalScore: 10,
-    mcPointPerQ: Math.round(0.25 * scale * 1000) / 1000,
-    tfPointPerQ: Math.round(1.0 * scale * 1000) / 1000,
-    saPointPerQ: Math.round(0.5 * scale * 1000) / 1000,
-  }
+const r2 = (n: number) => Math.round(n * 100) / 100
+const normSA = (s: string) => s.trim().replace(/\s+/g,'').replace(/,/g,'.').replace(/^(-?)0+(\d)/,'$1$2')
+
+function getDefaultScoring(c: OMRConfig): ScoringConfig {
+  const raw = c.mcCount*0.25 + c.tfCount*1 + c.saCount*0.5
+  if (raw <= 0) return { totalScore: 10, mcPointPerQ: 0, tfPointPerQ: 0, saPointPerQ: 0 }
+  const s = 10 / raw
+  return { totalScore: 10, mcPointPerQ: r2(0.25*s), tfPointPerQ: r2(1.0*s), saPointPerQ: r2(0.5*s) }
 }
 
-function normalizeSAAnswer(ans: string): string {
-  return ans.trim().replace(/\s+/g, '').replace(/,/g, '.').replace(/^(-?)0+(\d)/, '$1$2')
-}
-
-function calculateConfidence(warnings: string[], config: OMRConfig, warpSuccess: boolean): number {
-  let base = warpSuccess ? 1.0 : 0.5
-  const totalItems = config.mcCount + config.tfCount * 4 + config.saCount + 4 + 8
-  if (totalItems > 0) {
-    const warningPenalty = warnings.length * (0.7 / totalItems)
-    base = Math.max(0, base - warningPenalty)
-  }
-  return Math.min(1, Math.round(base * 100) / 100)
+function calculateConfidence(warnings: string[], config: OMRConfig, warpOk: boolean): number {
+  let base = warpOk ? 1.0 : 0.5
+  const total = config.mcCount + config.tfCount*4 + config.saCount + 12
+  base = Math.max(0, base - warnings.length * (0.7 / Math.max(total, 1)))
+  return Math.min(1, r2(base))
 }
 
 export function createConfigFromAnswerKey(
-  mc: string[],
-  tf: string[],
-  sa: string[],
-  threshold?: number
+  mc: string[], tf: string[], sa: string[], threshold?: number
 ): OMRConfig {
-  return {
-    mcCount: mc.length,
-    tfCount: tf.length,
-    saCount: sa.length,
-    answerKey: { mc, tf, sa },
-    thresholdLevel: threshold,
-  }
+  return { mcCount: mc.length, tfCount: tf.length, saCount: sa.length, answerKey: { mc, tf, sa }, thresholdLevel: threshold }
 }
