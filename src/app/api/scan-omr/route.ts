@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Prepare FormData for Python backend
+    const arrayBuffer = await imageFile.arrayBuffer()
     const pythonFormData = new FormData()
     pythonFormData.append('file', new Blob([arrayBuffer], { type: imageFile.type }), imageFile.name)
     pythonFormData.append('mcCount', mcCount.toString())
