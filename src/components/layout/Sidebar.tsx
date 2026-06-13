@@ -29,6 +29,7 @@ const navItems = [
     items: [
       { href: '/teacher/exams', icon: '📝', label: 'Tạo đề thi' },
       { href: '/teacher/shuffle', icon: '🔀', label: 'Trộn đề' },
+      { href: '/teacher/scan', icon: '📷', label: 'Quét phiếu chấm thi' },
       { href: '/admin/ai-exam', icon: '🤖', label: 'AI tạo đề' },
       { href: '/admin/ai-chat', icon: '💬', label: 'Trợ lý AI' },
       { href: '/admin/tex-processor', icon: '🔧', label: 'Xử lí TeX' },
@@ -69,6 +70,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
             item.href === '/admin/tex-processor' ||
             item.href === '/teacher/exams' ||
             item.href === '/teacher/shuffle' ||
+            item.href === '/teacher/scan' ||
             item.href === '/admin/lesson-builder'
           )
         }
