@@ -61,15 +61,8 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('scan-omr API error:', err)
     const message = err instanceof Error ? err.message : 'Lỗi không xác định'
-
-    // Lỗi Gemini API cụ thể
-    if (message.includes('GEMINI_API_KEY')) {
-      return NextResponse.json({ error: 'Server chưa cấu hình Gemini API Key' }, { status: 500 })
-    }
-    if (message.includes('quota') || message.includes('429')) {
-      return NextResponse.json({ error: 'Vượt quota Gemini API. Thử lại sau.' }, { status: 429 })
-    }
-
-    return NextResponse.json({ error: message }, { status: 500 })
+    
+    // Trả về lỗi raw để dễ debug
+    return NextResponse.json({ error: `Chi tiết lỗi: ${message}` }, { status: 500 })
   }
 }
