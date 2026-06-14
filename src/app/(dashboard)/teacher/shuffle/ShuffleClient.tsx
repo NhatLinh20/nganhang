@@ -195,8 +195,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   )
   const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
   const [selectedLine, setSelectedLine] = useState<number | null>(null)
-  const [excelOption, setExcelOption] = useState<string>('none')
+  const [excelOptions, setExcelOptions] = useState<string[]>([])
+  const [showExcelDropdown, setShowExcelDropdown] = useState<boolean>(false)
   const [includeAnswerTable, setIncludeAnswerTable] = useState<boolean>(true)
+  const [includeAnswerSheet, setIncludeAnswerSheet] = useState<boolean>(false)
+  const [qrCodeOptions, setQrCodeOptions] = useState<string[]>([])
+  const [showQrDropdown, setShowQrDropdown] = useState<boolean>(false)
 
   // ─── Load source data from localStorage ─────────────────────────────────────
   useEffect(() => {
@@ -229,7 +233,16 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         if (parsed.shuffledExams) setShuffledExams(parsed.shuffledExams)
         if (parsed.hasShuffled) setHasShuffled(parsed.hasShuffled)
         if (parsed.headerLabels) setHeaderLabels(parsed.headerLabels)
-        if (parsed.excelOption) setExcelOption(parsed.excelOption)
+        if (parsed.excelOptions) setExcelOptions(parsed.excelOptions)
+        if (parsed.excelOption && !parsed.excelOptions) {
+          if (parsed.excelOption === 'all') setExcelOptions(['all'])
+          else if (parsed.excelOption !== 'none') setExcelOptions([parsed.excelOption])
+        }
+        if (parsed.includeAnswerSheet !== undefined) setIncludeAnswerSheet(parsed.includeAnswerSheet)
+        if (parsed.qrCodeOptions) setQrCodeOptions(parsed.qrCodeOptions)
+        if (parsed.includeQrCode && parsed.qrCodeType && !parsed.qrCodeOptions) {
+          setQrCodeOptions([parsed.qrCodeType])
+        }
       }
     } catch (e) {
       console.error('Failed to load shuffle source data', e)
@@ -242,12 +255,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
     try {
       localStorage.setItem('shuffle-page-state', JSON.stringify({
         sourceConfigs, shuffleQuestions, shuffleAnswers,
-        shuffledExams, hasShuffled, headerLabels, excelOption
+        shuffledExams, hasShuffled, headerLabels, excelOptions, includeAnswerSheet, qrCodeOptions
       }))
     } catch (e) {
       console.error('Failed to save shuffle state', e)
     }
-  }, [sourceConfigs, shuffleQuestions, shuffleAnswers, shuffledExams, hasShuffled, headerLabels, excelOption, hasSource])
+  }, [sourceConfigs, shuffleQuestions, shuffleAnswers, shuffledExams, hasShuffled, headerLabels, excelOptions, includeAnswerSheet, qrCodeOptions, hasSource])
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
 
@@ -264,7 +277,9 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       setExpandedId(null)
       setShuffleQuestions(true)
       setShuffleAnswers(true)
-      setExcelOption('none')
+      setExcelOptions([])
+      setIncludeAnswerSheet(false)
+      setQrCodeOptions([])
       setHeaderLabels([
         'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
         'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
@@ -441,8 +456,10 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         examCodes: shuffledExams.map(e => e.code),
         duration: sourceData?.configDuration || 90,
         grade: sourceData?.filterGrade || 12,
-        excelOption,
+        excelOptions,
         includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
       }
 
       payload.exams = shuffledExams.map(e => ({
@@ -905,26 +922,129 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
               <div style={{ flex: '0 0 280px', background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tùy chọn xuất</h4>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Bảng đáp án Excel:</label>
-                  <select 
-                    value={excelOption} 
-                    onChange={e => setExcelOption(e.target.value)}
-                    style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, outline: 'none', background: 'white' }}
-                  >
-                    <option value="none">Không xuất bảng đáp án</option>
-                    <option value="all">Xuất tất cả các loại bảng</option>
-                    <option value="azota">Xuất bảng Azota</option>
-                    <option value="tnmaker">Xuất bảng TNMaker</option>
-                    <option value="olm">Xuất bảng OLM</option>
-                  </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Bảng đáp án Excel:</label>
+                  <div style={{ position: 'relative' }}>
+                    <div 
+                      onClick={() => setShowExcelDropdown(!showExcelDropdown)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', cursor: 'pointer' }}
+                    >
+                      <span>
+                        {excelOptions.includes('all') || excelOptions.length === 5 ? 'Xuất tất cả các loại bảng' 
+                          : excelOptions.length > 0 ? `Đã chọn ${excelOptions.length} bảng` 
+                          : 'Không xuất bảng đáp án'}
+                      </span>
+                      <span style={{ transform: showExcelDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                    </div>
+
+                    {showExcelDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {[
+                          { id: 'azota', label: 'Bảng Azota' },
+                          { id: 'tnmaker', label: 'Bảng TNMaker' },
+                          { id: 'youngmix', label: 'Bảng Young Mix (Chấm thi QM)' },
+                          { id: 'smarttest', label: 'Bảng Smart Test' },
+                          { id: 'olm', label: 'Bảng OLM' },
+                        ].map(opt => (
+                          <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={excelOptions.includes('all') || excelOptions.includes(opt.id)} 
+                              onChange={e => {
+                                if (excelOptions.includes('all') || excelOptions.length === 5) {
+                                  setExcelOptions(['azota', 'tnmaker', 'youngmix', 'smarttest', 'olm'].filter(x => x !== opt.id))
+                                } else {
+                                  if (e.target.checked) setExcelOptions([...excelOptions, opt.id])
+                                  else setExcelOptions(excelOptions.filter(x => x !== opt.id))
+                                }
+                              }} 
+                              style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                        <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }}></div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px', fontWeight: 600 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={excelOptions.includes('all') || excelOptions.length === 5} 
+                            onChange={e => {
+                              if (e.target.checked) setExcelOptions(['all'])
+                              else setExcelOptions([])
+                            }} 
+                            style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                          />
+                          <span>Tất cả</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#334155', background: 'white', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                     <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
                     <span style={{ flex: 1 }}>Thêm Bảng đáp án cuối đề <i>(indapan)</i></span>
                   </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: includeAnswerSheet ? '1.5px solid #10b981' : '1px solid #cbd5e1', transition: 'all 0.2s' }}>
+                    <input type="checkbox" checked={includeAnswerSheet} onChange={e => setIncludeAnswerSheet(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>Phiếu trả lời trắc nghiệm</span>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>📱 Tạo QR Code đáp án:</label>
+                  <div style={{ position: 'relative' }}>
+                    <div 
+                      onClick={() => setShowQrDropdown(!showQrDropdown)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', cursor: 'pointer' }}
+                    >
+                      <span>
+                        {qrCodeOptions.length === 2 ? 'Xuất tất cả QR Code' 
+                          : qrCodeOptions.length > 0 ? `Đã chọn ${qrCodeOptions.length} loại` 
+                          : 'Không xuất QR Code'}
+                      </span>
+                      <span style={{ transform: showQrDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                    </div>
+
+                    {showQrDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {[
+                          { id: '0', label: 'QR TNMaker' },
+                          { id: '1', label: 'QR Young Mix (Chấm thi QM)' },
+                        ].map(opt => (
+                          <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={qrCodeOptions.includes(opt.id)} 
+                              onChange={e => {
+                                if (e.target.checked) setQrCodeOptions([...qrCodeOptions, opt.id])
+                                else setQrCodeOptions(qrCodeOptions.filter(x => x !== opt.id))
+                              }} 
+                              style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                        <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }}></div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px', fontWeight: 600 }}>
+                          <input 
+                            type="checkbox" 
+                            checked={qrCodeOptions.length === 2} 
+                            onChange={e => {
+                              if (e.target.checked) setQrCodeOptions(['0', '1'])
+                              else setQrCodeOptions([])
+                            }} 
+                            style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} 
+                          />
+                          <span>Tất cả</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Placeholders for future options */}
