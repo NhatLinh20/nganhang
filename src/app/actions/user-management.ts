@@ -15,6 +15,8 @@ export interface UserManagementData {
   updated_at: string
   provider: string
   device_id: string | null
+  device_ids: string[] | null
+  active_sessions: string[] | null
   device_bound_at: string | null
   device_info: Record<string, string> | null
 }

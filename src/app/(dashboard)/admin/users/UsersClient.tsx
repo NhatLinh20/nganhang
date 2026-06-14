@@ -130,17 +130,20 @@ export default function UsersClient() {
 
   // Device display helpers
   const getDeviceDisplay = (u: UserManagementData) => {
-    if (!u.device_id) {
-      return { icon: '⚠️', text: 'Chưa gắn kết', className: styles.deviceNotBound }
+    const devices = u.device_ids || []
+    if (devices.length === 0 && !u.device_id) {
+      return { icon: '⚠️', text: 'Chưa gắn kết', className: styles.deviceNotBound, count: 0 }
     }
+    const count = Math.max(devices.length, u.device_id ? 1 : 0)
     const info = u.device_info || {}
     const browser = info.browser || '?'
     const os = info.os || '?'
     const screen = info.screen || ''
     return {
       icon: os === 'Android' || os === 'iOS' ? '📱' : '💻',
-      text: `${browser} / ${os}${screen ? ` (${screen})` : ''}`,
-      className: styles.deviceBound
+      text: `${count} thiết bị. Gần nhất: ${browser} / ${os}`,
+      className: styles.deviceBound,
+      count: count
     }
   }
 
@@ -325,12 +328,12 @@ export default function UsersClient() {
                           </span>
                         </td>
                         <td>
-                          <div className={device.className} title={u.device_id ? `ID: ${u.device_id.substring(0, 12)}...` : 'Chưa gắn kết'}>
+                          <div className={device.className} title={u.device_ids && u.device_ids.length > 0 ? `IDs: ${u.device_ids.map(id => id.substring(0, 12)).join(', ')}` : 'Chưa gắn kết'}>
                             <span>{device.icon}</span>
                             <span className={styles.deviceText}>{device.text}</span>
                             {u.device_bound_at && (
                               <div className={styles.deviceDate}>
-                                Gắn: {formatDate(u.device_bound_at)}
+                                Gần nhất: {formatDate(u.device_bound_at)}
                               </div>
                             )}
                           </div>
@@ -348,7 +351,7 @@ export default function UsersClient() {
                               >
                                 {u.is_active ? '🔒 Khóa' : '🔓 Mở'}
                               </button>
-                              {u.device_id && (
+                              {device.count > 0 && (
                                 <button 
                                   className={`${styles.actionBtn} ${styles.btnReset}`}
                                   onClick={() => handleResetDevice(u.id, u.full_name)}
