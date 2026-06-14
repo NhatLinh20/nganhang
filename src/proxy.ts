@@ -102,6 +102,11 @@ export async function proxy(request: NextRequest) {
     // Nếu vào trang dashboard thì điều hướng dựa trên quyền
     if (pathname === '/dashboard' || pathname === '/') {
       if (role === 'teacher') {
+        const userAgent = request.headers.get('user-agent') || ''
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+        if (isMobile) {
+          return NextResponse.redirect(new URL('/teacher/scan', request.url))
+        }
         return NextResponse.redirect(new URL('/admin/ai-exam', request.url))
       }
       if (role === 'student') {
@@ -132,6 +137,11 @@ export async function proxy(request: NextRequest) {
     if (pathname.startsWith('/student')) {
       if (role === 'teacher') {
         // Teacher không vào khu vực student
+        const userAgent = request.headers.get('user-agent') || ''
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+        if (isMobile) {
+          return NextResponse.redirect(new URL('/teacher/scan', request.url))
+        }
         return NextResponse.redirect(new URL('/admin/ai-exam', request.url))
       }
       // Admin và student đều được vào
