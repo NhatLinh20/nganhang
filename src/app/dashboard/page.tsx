@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/supabase/roles'
+import { headers } from 'next/headers'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -22,11 +23,20 @@ export default async function DashboardPage() {
     redirect('/pending')
   }
 
+  // Detect mobile device
+  const headersList = await headers()
+  const userAgent = headersList.get('user-agent') || ''
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+
   // Điều hướng theo role
   if (role === 'admin') {
     redirect('/admin/questions')
   } else if (role === 'teacher') {
-    redirect('/admin/ai-exam') // Teacher mặc định vào trang AI tạo đề
+    if (isMobile) {
+      redirect('/teacher/scan') // Mobile: vào trang quét phiếu
+    } else {
+      redirect('/admin/ai-exam') // Desktop: vào trang AI tạo đề
+    }
   } else if (role === 'student') {
     redirect('/student/courses') // Student mặc định vào trang Khóa học
   }
