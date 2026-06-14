@@ -917,11 +917,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
 
       {/* ═══ CREATE / EDIT VIEW ═══ */}
       {(view === 'create' || view === 'edit') && (
-        <div>
-          <button onClick={() => { resetCreateForm(); setView(view === 'edit' ? 'detail' : 'list') }} style={btnBack}>← Quay lại</button>
-          <h2 style={{ fontSize: 24, fontWeight: 800, margin: '16px 0' }}>
-            {view === 'edit' ? '✏️ Chỉnh sửa bài thi' : '✨ Tạo bài thi chấm trắc nghiệm'}
-          </h2>
+        <div style={{ padding: '0 16px' }}>
 
           {formStep === 1 ? (
             <div style={{ marginTop: 16 }}>
@@ -952,7 +948,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
               </div>
 
               {/* Nhập đáp án */}
-              <div className={styles.card} style={{ margin: 0, paddingBottom: 60 }}>
+              <div className={styles.card} style={{ margin: 0, paddingBottom: 100 }}>
                 <div className={styles.cardTitle}>✏️ Nhập đáp án</div>
 
                 {/* Mã đề selector */}
@@ -1073,7 +1069,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
             </div>
           ) : (
             /* Step 2: Scoring config */
-            <div style={{ paddingBottom: 60 }}>
+            <div style={{ paddingBottom: 100 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, margin: '16px 0' }}>Bước 2: Cấu hình thang điểm</h2>
               <div className={styles.card} style={{ margin: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -1137,22 +1133,15 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
 
       {/* ═══ DETAIL VIEW ═══ */}
       {view === 'detail' && selectedExam && (
-        <div>
-          <button onClick={() => { setView('list'); setSelectedExam(null) }} style={btnBack}>← Quay lại</button>
-          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{selectedExam.name}</h2>
-              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'flex', gap: 12 }}>
-                <span>📘 {selectedExam.mc_count} TN ({selectedExam.mc_total_score}đ)</span>
-                <span>📗 {selectedExam.tf_count} ĐS ({selectedExam.tf_total_score}đ)</span>
-                <span>📙 {selectedExam.sa_count} SA ({selectedExam.sa_total_score}đ)</span>
-                <span>🔑 {examCodes.length} mã đề: {examCodes.join(', ')}</span>
-              </div>
+        <div style={{ padding: '0 16px' }}>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 13, color: '#64748b', display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>📘 {selectedExam.mc_count} TN ({selectedExam.mc_total_score}đ)</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>📗 {selectedExam.tf_count} ĐS ({selectedExam.tf_total_score}đ)</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>📙 {selectedExam.sa_count} SA ({selectedExam.sa_total_score}đ)</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>🔑 {examCodes.length} mã đề</span>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setScanRaw(null); setSaveMsg(null); setView('scan') }} style={btnPrimary}>
-                📷 Quét phiếu
-              </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <button onClick={() => {
                 setFormName(selectedExam.name)
                 setFormMcCount(selectedExam.mc_count)
@@ -1166,11 +1155,11 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
                 const firstCode = Object.keys(selectedExam.answer_keys)[0]
                 setCurrentCode(firstCode || '')
                 setView('edit')
-              }} style={{ ...btnBack, color: '#0ea5e9', borderColor: '#bae6fd' }}>
+              }} className={`${styles.btn} ${styles.btnSecondary}`} style={{ width: '100%' }}>
                 ✏️ Sửa cấu hình
               </button>
-              <button onClick={() => handleDeleteExam(selectedExam.id)} style={{ ...btnBack, color: '#dc2626', borderColor: '#fecaca' }}>
-                🗑️ Xóa
+              <button onClick={() => handleDeleteExam(selectedExam.id)} className={`${styles.btn} ${styles.btnDanger}`} style={{ width: '100%' }}>
+                🗑️ Xóa bài thi
               </button>
             </div>
           </div>
@@ -1186,7 +1175,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
           )}
 
           {/* Results List */}
-          <div style={{ marginTop: 16, paddingBottom: 60 }}>
+          <div style={{ marginTop: 16, paddingBottom: 100 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>📊 Kết quả ({scanResults.length})</div>
               {scanResults.length > 0 && (
@@ -1299,7 +1288,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
 
       {/* ═══ RESULT VIEW ═══ */}
       {view === 'result' && selectedExam && scanRaw && score && (
-        <div style={{ padding: '0 16px', paddingBottom: 80 }}>
+        <div style={{ padding: '0 16px', paddingBottom: 100 }}>
           {/* Score card */}
           <div className={styles.card} style={{ margin: '16px 0', padding: 24, textAlign: 'center' }}>
             <div className={styles.bigScore} style={{ color: score.total >= score.maxScore * 0.5 ? '#16a34a' : '#dc2626' }}>
@@ -1307,16 +1296,16 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
             </div>
             <div style={{ fontSize: 16, color: '#64748b', fontWeight: 600 }}>/ {score.maxScore} điểm</div>
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <label className={styles.label}>Mã đề</label>
+            <div style={{ display: 'flex', gap: 16, marginTop: 24 }}>
+              <div style={{ flex: 1 }}>
+                <label className={styles.label} style={{ textAlign: 'center' }}>Mã đề</label>
                 <input value={overrideExamCode} onChange={e => setOverrideExamCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  className={styles.input} style={{ textAlign: 'center', fontWeight: 800, fontSize: 20 }} placeholder="—" />
+                  className={styles.input} style={{ textAlign: 'center', fontWeight: 800, fontSize: 24, letterSpacing: 2 }} placeholder="—" />
               </div>
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <label className={styles.label}>SBD</label>
+              <div style={{ flex: 1 }}>
+                <label className={styles.label} style={{ textAlign: 'center' }}>SBD</label>
                 <input value={overrideStudentId} onChange={e => setOverrideStudentId(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  className={styles.input} style={{ textAlign: 'center', fontWeight: 800, fontSize: 20 }} placeholder="—" />
+                  className={styles.input} style={{ textAlign: 'center', fontWeight: 800, fontSize: 24, letterSpacing: 2 }} placeholder="—" />
               </div>
             </div>
 
