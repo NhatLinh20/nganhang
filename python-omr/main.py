@@ -15,6 +15,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "OMR Service is running"}
+
 @app.post("/scan")
 async def scan_omr(
     file: UploadFile = File(...),

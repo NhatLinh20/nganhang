@@ -2,6 +2,7 @@
 // Layout chung cho tất cả trang dashboard (Admin, Teacher)
 
 import Sidebar from '@/components/layout/Sidebar'
+import ServerPrewarmer from '@/components/ServerPrewarmer'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function DashboardLayout({
@@ -30,6 +31,8 @@ export default async function DashboardLayout({
 
   return (
     <div className="page-layout">
+      {/* Khởi động server Python ngầm */}
+      <ServerPrewarmer />
       <Sidebar userRole={role} userEmail={email} />
       <div className="main-content">
         {children}
