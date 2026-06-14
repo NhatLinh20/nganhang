@@ -391,14 +391,17 @@ def find_bubbles_with_row_markers(gray, sbd_a1, sbd_a2, actual_left, actual_righ
 
     return results
 
-def process_omr_image(image, mcCount, tfCount, saCount):
+def process_omr_image(image, mcCount, tfCount, saCount, include_debug=False):
+    import time
+    t0 = time.time()
+    
     warped, success = get_perspective_transform(image)
     
     if not success:
         return {"error": "Không tìm thấy 4 điểm neo của phiếu. Vui lòng chụp rõ 4 góc."}
         
     gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-    debug_img = warped.copy()
+    debug_img = warped.copy() if include_debug else None
     
     # ═══════════════════════════════════════════════
     # BƯỚC 2: Tìm tất cả marker trên ảnh warped
@@ -536,17 +539,12 @@ def process_omr_image(image, mcCount, tfCount, saCount):
         sa_answers.append(ans)
 
     # ═══════════════════════════════════════════════
-    # Vẽ marker lên ảnh debug & encode base64
+    # Vẽ marker lên ảnh debug & encode base64 (chỉ khi được yêu cầu)
     # ═══════════════════════════════════════════════
-    draw_found_markers(debug_img, all_found)
+    elapsed_ms = int((time.time() - t0) * 1000)
+    print(f"[OMR] Processing took {elapsed_ms}ms (debug={'ON' if include_debug else 'OFF'})")
     
-    import base64
-    # Resize and compress to reduce payload size
-    debug_small = cv2.resize(debug_img, (825, int(825 * debug_img.shape[0] / debug_img.shape[1])))
-    _, buffer = cv2.imencode('.jpg', debug_small, [cv2.IMWRITE_JPEG_QUALITY, 70])
-    debug_base64 = base64.b64encode(buffer).decode('utf-8')
-    
-    return {
+    result = {
         "confidence": 95,
         "warnings": ["Hệ thống đang hoạt động với OpenCV (Beta)"],
         "studentId": sbd_str if sbd_str else "00000000",
@@ -554,5 +552,15 @@ def process_omr_image(image, mcCount, tfCount, saCount):
         "mc": mc_answers if len(mc_answers) > 0 else [""] * mcCount,
         "tf": tf_answers,
         "sa": sa_answers,
-        "debug_image_base64": f"data:image/jpeg;base64,{debug_base64}"
+        "python_processing_ms": elapsed_ms
     }
+    
+    if include_debug and debug_img is not None:
+        draw_found_markers(debug_img, all_found)
+        import base64
+        debug_small = cv2.resize(debug_img, (825, int(825 * debug_img.shape[0] / debug_img.shape[1])))
+        _, buffer = cv2.imencode('.jpg', debug_small, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        debug_base64 = base64.b64encode(buffer).decode('utf-8')
+        result["debug_image_base64"] = f"data:image/jpeg;base64,{debug_base64}"
+    
+    return result

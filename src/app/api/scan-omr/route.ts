@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     const mcCount = parseInt(formData.get('mcCount') as string || '0')
     const tfCount = parseInt(formData.get('tfCount') as string || '0')
     const saCount = parseInt(formData.get('saCount') as string || '0')
+    const debug = formData.get('debug') as string || '0'
 
     if (!imageFile) {
       return NextResponse.json({ error: 'Thiếu file ảnh' }, { status: 400 })
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
     pythonFormData.append('mcCount', mcCount.toString())
     pythonFormData.append('tfCount', tfCount.toString())
     pythonFormData.append('saCount', saCount.toString())
+    pythonFormData.append('debug', debug)
 
     // 4. Call Python OMR Service
     const omrUrl = process.env.PYTHON_OMR_URL || 'http://127.0.0.1:8000/scan'

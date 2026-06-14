@@ -20,9 +20,13 @@ async def scan_omr(
     file: UploadFile = File(...),
     mcCount: int = Form(12),
     tfCount: int = Form(4),
-    saCount: int = Form(6)
+    saCount: int = Form(6),
+    debug: int = Form(0)
 ):
     try:
+        import time
+        t0 = time.time()
+        
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -30,8 +34,14 @@ async def scan_omr(
         if img is None:
             return {"error": "Invalid image file"}
 
+        print(f"[OMR] Received image: {img.shape[1]}x{img.shape[0]}, size={len(contents)//1024}KB, debug={'ON' if debug else 'OFF'}")
+        
         # Process the image with the OpenCV engine
-        result = process_omr_image(img, mcCount, tfCount, saCount)
+        result = process_omr_image(img, mcCount, tfCount, saCount, include_debug=bool(debug))
+        
+        elapsed = int((time.time() - t0) * 1000)
+        print(f"[OMR] Total endpoint time: {elapsed}ms")
+        
         return result
 
     except Exception as e:

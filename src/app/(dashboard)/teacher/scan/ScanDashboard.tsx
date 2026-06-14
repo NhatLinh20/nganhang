@@ -449,7 +449,42 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
     }
   }, [view, isMobile, cameraActive])
 
-  const capturePhoto = () => {
+  // ═══════════════════════════════════
+  // IMAGE RESIZE HELPER (Performance optimization)
+  // ═══════════════════════════════════
+
+  const resizeImageBeforeUpload = (sourceCanvas: HTMLCanvasElement, maxWidth = 1200, quality = 0.85): Promise<File> => {
+    return new Promise((resolve) => {
+      const sw = sourceCanvas.width
+      const sh = sourceCanvas.height
+      
+      // If already small enough, just export as-is
+      if (sw <= maxWidth) {
+        sourceCanvas.toBlob(blob => {
+          resolve(new File([blob!], 'scan.jpg', { type: 'image/jpeg' }))
+        }, 'image/jpeg', quality)
+        return
+      }
+      
+      // Calculate new dimensions maintaining aspect ratio
+      const scale = maxWidth / sw
+      const nw = maxWidth
+      const nh = Math.round(sh * scale)
+      
+      // Use a temporary canvas for resizing
+      const tmpCanvas = document.createElement('canvas')
+      tmpCanvas.width = nw
+      tmpCanvas.height = nh
+      const tmpCtx = tmpCanvas.getContext('2d')!
+      tmpCtx.drawImage(sourceCanvas, 0, 0, nw, nh)
+      
+      tmpCanvas.toBlob(blob => {
+        resolve(new File([blob!], 'scan.jpg', { type: 'image/jpeg' }))
+      }, 'image/jpeg', quality)
+    })
+  }
+
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -461,28 +496,69 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
     if (!ctx) return
     
     ctx.drawImage(video, 0, 0)
-    canvas.toBlob(blob => {
-      if (blob) processImage(new File([blob], 'scan.jpg', { type: 'image/jpeg' }))
-    }, 'image/jpeg', 0.92)
+    
+    // Resize before uploading for faster processing
+    const resizedFile = await resizeImageBeforeUpload(canvas)
+    processImage(resizedFile)
   }
 
   // ═══════════════════════════════════
   // SCAN PROCESSING
   // ═══════════════════════════════════
 
+  // Resize a File (from gallery) before uploading
+  const resizeFileBeforeUpload = (file: File, maxWidth = 1200, quality = 0.85): Promise<File> => {
+    return new Promise((resolve) => {
+      // If not an image or already small, pass through
+      if (!file.type.startsWith('image/') || file.size < 200 * 1024) {
+        resolve(file)
+        return
+      }
+      const img = new Image()
+      img.onload = () => {
+        if (img.width <= maxWidth) {
+          resolve(file)
+          return
+        }
+        const scale = maxWidth / img.width
+        const nw = maxWidth
+        const nh = Math.round(img.height * scale)
+        const tmpCanvas = document.createElement('canvas')
+        tmpCanvas.width = nw
+        tmpCanvas.height = nh
+        const tmpCtx = tmpCanvas.getContext('2d')!
+        tmpCtx.drawImage(img, 0, 0, nw, nh)
+        tmpCanvas.toBlob(blob => {
+          resolve(new File([blob!], 'scan.jpg', { type: 'image/jpeg' }))
+        }, 'image/jpeg', quality)
+      }
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
   const processImage = async (file: File) => {
     if (!selectedExam) return
     setIsProcessing(true)
     setSaveMsg(null)
+    const t0 = performance.now()
     try {
+      // Resize gallery images before upload
+      const optimizedFile = file.size > 300 * 1024 ? await resizeFileBeforeUpload(file) : file
+      console.log(`[OMR] Image size: ${(optimizedFile.size / 1024).toFixed(0)}KB (original: ${(file.size / 1024).toFixed(0)}KB)`)
+      
       const form = new FormData()
-      form.append('image', file)
+      form.append('image', optimizedFile)
       form.append('mcCount', String(selectedExam.mc_count))
       form.append('tfCount', String(selectedExam.tf_count))
       form.append('saCount', String(selectedExam.sa_count))
+      // Only request debug image in manual mode (not fast scan) for faster processing
+      form.append('debug', isFastScan ? '0' : '1')
 
+      const t1 = performance.now()
       const res = await fetch('/api/scan-omr', { method: 'POST', body: form })
       const data = await res.json()
+      const t2 = performance.now()
+      console.log(`[OMR] Upload+Process: ${(t2 - t1).toFixed(0)}ms | Total: ${(t2 - t0).toFixed(0)}ms`)
       if (!res.ok) throw new Error(data.error || 'Lỗi API')
 
       const eCode = data.examCode || ''
@@ -593,11 +669,16 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
         setBatchProgress(prev => prev ? { ...prev, current: i + 1 } : null)
         
         try {
+          // Resize batch image for faster processing
+          const batchFile = new File([allBlobs[i].blob], 'scan.jpg', { type: 'image/jpeg' })
+          const optimizedBatch = batchFile.size > 300 * 1024 ? await resizeFileBeforeUpload(batchFile) : batchFile
+          
           const form = new FormData()
-          form.append('image', allBlobs[i].blob)
+          form.append('image', optimizedBatch)
           form.append('mcCount', String(selectedExam.mc_count))
           form.append('tfCount', String(selectedExam.tf_count))
           form.append('saCount', String(selectedExam.sa_count))
+          form.append('debug', '0') // Batch never needs debug images
 
           const res = await fetch('/api/scan-omr', { method: 'POST', body: form })
           const data = await res.json()
