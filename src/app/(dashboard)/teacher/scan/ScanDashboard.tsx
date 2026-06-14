@@ -453,11 +453,32 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
     const canvas = canvasRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    
+    // Hardware dimensions
+    const vw = video.videoWidth
+    const vh = video.videoHeight
+    
+    // Container dimensions
+    const cw = video.clientWidth
+    const ch = video.clientHeight
+    if (vw === 0 || vh === 0 || cw === 0 || ch === 0) return
+    
+    // Calculate scale for object-fit: cover
+    const scale = Math.max(cw / vw, ch / vh)
+    
+    // Visible crop area in hardware pixels
+    const crop_width = cw / scale
+    const crop_height = ch / scale
+    const crop_x = (vw - crop_width) / 2
+    const crop_y = (vh - crop_height) / 2
+    
+    // Set canvas to match the cropped area perfectly
+    canvas.width = crop_width
+    canvas.height = crop_height
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.drawImage(video, 0, 0)
+    
+    ctx.drawImage(video, crop_x, crop_y, crop_width, crop_height, 0, 0, crop_width, crop_height)
     canvas.toBlob(blob => {
       if (blob) processImage(new File([blob], 'scan.jpg', { type: 'image/jpeg' }))
     }, 'image/jpeg', 0.92)
