@@ -539,7 +539,7 @@ function buildAnswerSheetTex(examCode: string, mcCount: number, tfCount: number,
 
   // === Tuỳ chọn phiếu ===
   tex += '\t%Tùy chọn cho phiếu\n'
-  tex += `\t\\def\\mauphieu{red}\n`
+  tex += `\t\\def\\mauphieu{black}\n`
   tex += `\t\\def\\madephieu{${madeDigits}}%mã đề (dùng riêng cho phiếu, không ghi đè \\made)\n`
   tex += `\t\\def\\TN{${TN}}%Số câu TN\n`
   tex += `\t\\def\\DS{${DS}}%Số câu ĐS\n`
