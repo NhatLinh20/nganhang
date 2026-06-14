@@ -13,6 +13,8 @@ export interface UserProfile {
   avatar_url: string | null
   active_session_id: string | null
   device_id: string | null
+  active_sessions: string[] | null
+  device_ids: string[] | null
   device_bound_at: string | null
   device_info: Record<string, string> | null
   created_at: string

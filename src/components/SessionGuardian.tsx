@@ -38,9 +38,9 @@ export default function SessionGuardian({ userId, sessionId }: SessionGuardianPr
           filter: `id=eq.${userId}`,
         },
         (payload) => {
-          const newSessionId = payload.new?.active_session_id
-          // Nếu active_session_id thay đổi → thiết bị khác đã login
-          if (newSessionId && newSessionId !== sessionId) {
+          const activeSessions: string[] = payload.new?.active_sessions || []
+          // Nếu session hiện tại không còn nằm trong danh sách active_sessions -> bị đá ra
+          if (activeSessions.length > 0 && !activeSessions.includes(sessionId)) {
             setShowWarning(true)
           }
         }

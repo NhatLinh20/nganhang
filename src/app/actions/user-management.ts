@@ -136,7 +136,7 @@ export async function revokeUser(userId: string): Promise<{ success?: boolean, e
 
   const { error } = await supabaseAdmin
     .from('users')
-    .update({ is_approved: false, active_session_id: null, updated_at: new Date().toISOString() })
+    .update({ is_approved: false, active_sessions: [], updated_at: new Date().toISOString() })
     .eq('id', userId)
 
   if (error) return { error: 'Không thể thu hồi tài khoản.' }
@@ -161,7 +161,7 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
 
   const { error } = await supabaseAdmin
     .from('users')
-    .update({ is_active: isActive, active_session_id: !isActive ? null : undefined, updated_at: new Date().toISOString() })
+    .update({ is_active: isActive, active_sessions: !isActive ? [] : undefined, updated_at: new Date().toISOString() })
     .eq('id', userId)
 
   if (error) return { error: 'Lỗi cập nhật trạng thái hoạt động.' }
@@ -266,6 +266,8 @@ export async function resetDevice(userId: string): Promise<{ success?: boolean, 
     .from('users')
     .update({ 
       device_id: null, 
+      device_ids: [],
+      active_sessions: [],
       device_bound_at: null, 
       device_info: {},
       updated_at: new Date().toISOString() 

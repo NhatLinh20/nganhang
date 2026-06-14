@@ -38,7 +38,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
   const supabaseAdmin = createAdminClient()
   let { data: profile } = await supabaseAdmin
     .from('users')
-    .select('role, is_approved, is_active, device_id')
+    .select('role, is_approved, is_active, device_ids, active_sessions')
     .eq('id', user.id)
     .single()
 
@@ -57,7 +57,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
         is_approved: newApproved,
         is_active: true,
       })
-      .select('role, is_approved, is_active, device_id')
+      .select('role, is_approved, is_active, device_ids, active_sessions')
       .single()
       
     if (newProfile) {
@@ -85,40 +85,48 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
   // ★ DEVICE BINDING CHECK ★
   // Admin bypass hoàn toàn — không kiểm tra thiết bị
   if (profile?.role !== 'admin' && deviceId) {
-    const existingDeviceId = profile?.device_id
+    const deviceIds: string[] = profile?.device_ids || []
 
-    if (existingDeviceId && existingDeviceId !== deviceId) {
-      // Thiết bị KHÔNG khớp → từ chối đăng nhập
-      await supabase.auth.signOut()
-      return {
-        error: 'Tài khoản đã được đăng nhập\nVui lòng liên hệ admin để được hỗ trợ 0812022648',
+    if (!deviceIds.includes(deviceId)) {
+      if (deviceIds.length >= 2) {
+        // Đã đủ 2 thiết bị -> từ chối đăng nhập
+        await supabase.auth.signOut()
+        return {
+          error: 'Tài khoản đã đạt giới hạn 2 thiết bị đăng nhập.\nVui lòng liên hệ admin để được hỗ trợ 0812022648',
+        }
+      } else {
+        // Gắn kết thiết bị mới
+        let deviceInfo = {}
+        try {
+          if (deviceInfoRaw) deviceInfo = JSON.parse(deviceInfoRaw)
+        } catch { /* ignore */ }
+
+        const newDeviceIds = [...deviceIds, deviceId]
+        await supabaseAdmin
+          .from('users')
+          .update({
+            device_ids: newDeviceIds,
+            device_bound_at: new Date().toISOString(),
+            device_info: deviceInfo,
+          })
+          .eq('id', user.id)
       }
-    }
-
-    if (!existingDeviceId) {
-      // Lần đầu đăng nhập → gắn kết thiết bị
-      let deviceInfo = {}
-      try {
-        if (deviceInfoRaw) deviceInfo = JSON.parse(deviceInfoRaw)
-      } catch { /* ignore */ }
-
-      await supabaseAdmin
-        .from('users')
-        .update({
-          device_id: deviceId,
-          device_bound_at: new Date().toISOString(),
-          device_info: deviceInfo,
-        })
-        .eq('id', user.id)
     }
   }
 
-  // Cập nhật active_session_id (ngăn đăng nhập đồng thời)
+  // Cập nhật active_sessions (ngăn đăng nhập đồng thời trên 3+ thiết bị)
   const sessionId = data.session?.access_token?.slice(-20) || crypto.randomUUID()
-  await supabaseAdmin
-    .from('users')
-    .update({ active_session_id: sessionId })
-    .eq('id', user.id)
+  let activeSessions: string[] = profile?.active_sessions || []
+  if (!activeSessions.includes(sessionId)) {
+    activeSessions.push(sessionId)
+    if (activeSessions.length > 2) {
+      activeSessions = activeSessions.slice(-2)
+    }
+    await supabaseAdmin
+      .from('users')
+      .update({ active_sessions: activeSessions })
+      .eq('id', user.id)
+  }
 
   // Ghi log đăng nhập (async, không block)
   const headersList = await headers()
@@ -230,14 +238,27 @@ export async function register(formData: FormData): Promise<{ error?: string }> 
 export async function logout(): Promise<void> {
   const supabase = await createClient()
 
-  // Xóa active_session_id
+  // Xóa session hiện tại khỏi mảng active_sessions
+  const { data: { session } } = await supabase.auth.getSession()
   const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const supabaseAdmin = createAdminClient()
-    await supabaseAdmin
-      .from('users')
-      .update({ active_session_id: null })
-      .eq('id', user.id)
+  if (user && session) {
+    const sessionId = session.access_token?.slice(-20)
+    if (sessionId) {
+      const supabaseAdmin = createAdminClient()
+      const { data: profile } = await supabaseAdmin
+        .from('users')
+        .select('active_sessions')
+        .eq('id', user.id)
+        .single()
+      
+      const currentSessions: string[] = profile?.active_sessions || []
+      const newSessions = currentSessions.filter(s => s !== sessionId)
+      
+      await supabaseAdmin
+        .from('users')
+        .update({ active_sessions: newSessions })
+        .eq('id', user.id)
+    }
   }
 
   await supabase.auth.signOut()

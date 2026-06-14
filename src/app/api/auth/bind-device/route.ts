@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = createAdminClient()
 
-    // Lấy profile hiện tại
+    // Lấy profile hiện tại (bao gồm các mảng mới)
     const { data: profile } = await supabaseAdmin
       .from('users')
-      .select('role, is_approved, is_active, device_id')
+      .select('role, is_approved, is_active, device_ids, active_sessions')
       .eq('id', user.id)
       .single()
 
@@ -49,37 +49,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tài khoản chưa được kích hoạt.' }, { status: 403 })
     }
 
-    const existingDeviceId = profile.device_id
+    const deviceIds: string[] = profile.device_ids || []
 
-    // Đã có device_id và KHÔNG khớp → từ chối
-    if (existingDeviceId && existingDeviceId !== device_id) {
-      // Đăng xuất user
-      await supabase.auth.signOut()
-      return NextResponse.json({
-        error: 'Tài khoản đã được đăng nhập\nVui lòng liên hệ admin để được hỗ trợ 0812022648',
-        code: 'DEVICE_MISMATCH'
-      }, { status: 403 })
+    // Nếu thiết bị chưa có trong danh sách
+    if (!deviceIds.includes(device_id)) {
+      if (deviceIds.length >= 2) {
+        // Đã đủ 2 thiết bị -> từ chối
+        await supabase.auth.signOut()
+        return NextResponse.json({
+          error: 'Tài khoản đã đạt giới hạn 2 thiết bị đăng nhập.\nVui lòng liên hệ admin để được hỗ trợ 0812022648',
+          code: 'DEVICE_LIMIT_REACHED'
+        }, { status: 403 })
+      } else {
+        // Thêm thiết bị mới vào danh sách
+        const newDeviceIds = [...deviceIds, device_id]
+        await supabaseAdmin
+          .from('users')
+          .update({
+            device_ids: newDeviceIds,
+            device_bound_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+      }
     }
 
-    // Chưa có device_id → gắn kết lần đầu
-    if (!existingDeviceId) {
-      await supabaseAdmin
-        .from('users')
-        .update({
-          device_id,
-          device_bound_at: new Date().toISOString(),
-          device_info: device_info || {},
-        })
-        .eq('id', user.id)
-    }
-
-    // Cập nhật active_session_id
+    // Cập nhật active_sessions (thêm session mới, giữ tối đa 2 sessions cuối)
     const session = await supabase.auth.getSession()
     const sessionId = session.data.session?.access_token?.slice(-20) || crypto.randomUUID()
-    await supabaseAdmin
-      .from('users')
-      .update({ active_session_id: sessionId })
-      .eq('id', user.id)
+    
+    let activeSessions: string[] = profile.active_sessions || []
+    if (!activeSessions.includes(sessionId)) {
+      activeSessions.push(sessionId)
+      // Nếu có quá 2 session đang active, xóa cái cũ nhất
+      if (activeSessions.length > 2) {
+        activeSessions = activeSessions.slice(-2)
+      }
+      await supabaseAdmin
+        .from('users')
+        .update({ active_sessions: activeSessions })
+        .eq('id', user.id)
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
