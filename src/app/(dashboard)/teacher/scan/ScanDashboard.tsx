@@ -448,16 +448,6 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
     }
   }, [view, isMobile, cameraActive])
 
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>
-    if (view === 'scan' && isFastScan && cameraActive && !isProcessing) {
-      interval = setInterval(() => {
-        capturePhoto()
-      }, 1500)
-    }
-    return () => { if (interval) clearInterval(interval) }
-  }, [view, isFastScan, cameraActive, isProcessing])
-
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
