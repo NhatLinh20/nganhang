@@ -415,8 +415,8 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        // Request exactly 3:4 portrait resolution to match iPhone native camera FOV without cropping
-        video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1440 } }
+        // Request max resolution to force iOS to use the full uncropped 4:3 sensor
+        video: { facingMode: 'environment', width: { ideal: 4032 }, height: { ideal: 3024 } }
       })
       streamRef.current = stream
       setCameraActive(true)
@@ -454,31 +454,13 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
     const video = videoRef.current
     const canvas = canvasRef.current
     
-    // Hardware dimensions
-    const vw = video.videoWidth
-    const vh = video.videoHeight
-    
-    // Container dimensions
-    const cw = video.clientWidth
-    const ch = video.clientHeight
-    if (vw === 0 || vh === 0 || cw === 0 || ch === 0) return
-    
-    // Calculate scale for object-fit: cover
-    const scale = Math.max(cw / vw, ch / vh)
-    
-    // Visible crop area in hardware pixels
-    const crop_width = cw / scale
-    const crop_height = ch / scale
-    const crop_x = (vw - crop_width) / 2
-    const crop_y = (vh - crop_height) / 2
-    
-    // Set canvas to match the cropped area perfectly
-    canvas.width = crop_width
-    canvas.height = crop_height
+    // Capture the exact hardware frame
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     
-    ctx.drawImage(video, crop_x, crop_y, crop_width, crop_height, 0, 0, crop_width, crop_height)
+    ctx.drawImage(video, 0, 0)
     canvas.toBlob(blob => {
       if (blob) processImage(new File([blob], 'scan.jpg', { type: 'image/jpeg' }))
     }, 'image/jpeg', 0.92)
