@@ -20,8 +20,10 @@ export default function LoginPage() {
       const errParam = urlParams.get('error')
       if (errParam === 'locked') {
         setError('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin để biết thêm chi tiết.')
+      } else if (errParam === 'session_expired') {
+        setError('Lỗi Cookie: Phiên đăng nhập không được lưu. Vui lòng kiểm tra lại trình duyệt.')
       } else if (errParam) {
-        setError('Đăng nhập thất bại. Vui lòng thử lại.')
+        setError(`Đăng nhập thất bại (Mã lỗi: ${errParam}). Vui lòng thử lại.`)
       }
     }
   }, [])
@@ -88,8 +90,8 @@ export default function LoginPage() {
         // Redirect client-side để tránh lỗi NEXT_REDIRECT bị catch
         window.location.href = '/dashboard'
       }
-    } catch {
-      setError('Đăng nhập thất bại. Vui lòng thử lại.')
+    } catch (err: any) {
+      setError(`Lỗi mạng/hệ thống: ${err.message || 'Vui lòng thử lại'}`)
       setIsLoading(false)
     }
   }
@@ -137,6 +139,7 @@ export default function LoginPage() {
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">Email</label>
             <input
+              suppressHydrationWarning
               id="login-email"
               name="email"
               type="email"
@@ -156,6 +159,7 @@ export default function LoginPage() {
               </Link>
             </div>
             <input
+              suppressHydrationWarning
               id="login-password"
               name="password"
               type="password"

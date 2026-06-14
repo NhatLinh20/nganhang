@@ -125,6 +125,7 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
   // ── Saving state ──
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
 
   // ── Computed: điểm sau khi áp override ──
   const answerKey: AnswerKey = {
@@ -691,6 +692,24 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
               )}
             </div>
           </div>
+          
+          {(geminiRaw as any)?.debug_image_base64 && (
+            <div style={{ marginTop: 24, background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+              <div 
+                onClick={() => setShowDebug(!showDebug)}
+                style={{ padding: '12px 16px', background: '#f8fafc', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600, color: '#334155' }}
+              >
+                <span>🐛 Xem ảnh Debug chi tiết của AI</span>
+                <span>{showDebug ? '▲' : '▼'}</span>
+              </div>
+              {showDebug && (
+                <div style={{ padding: 16, borderTop: '1px solid #e2e8f0' }}>
+                  <img src={(geminiRaw as any).debug_image_base64} alt="Debug Image" style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                  <p style={{ marginTop: 8, fontSize: 13, color: '#64748b', textAlign: 'center' }}>Các bong bóng có ô màu xanh là được AI chọn, ô màu đỏ là bỏ qua. Số bên cạnh là diện tích pixel.</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className={styles.actionBar}>
             <div className={styles.actionBarLeft}>

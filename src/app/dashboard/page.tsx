@@ -10,7 +10,8 @@ export default async function DashboardPage() {
 
   // Chưa đăng nhập → về login
   if (!user) {
-    redirect('/login')
+    console.log("Dashboard: No user found, redirecting to login. Cookie issue?")
+    redirect('/login?error=session_expired')
   }
 
   const profile = await getProfile()

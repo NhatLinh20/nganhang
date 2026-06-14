@@ -45,10 +45,11 @@ export async function POST(request: NextRequest) {
     pythonFormData.append('saCount', saCount.toString())
 
     // 4. Call Python OMR Service
-    console.log('Sending to Python OMR service at http://localhost:8000/scan...')
+    const omrUrl = process.env.PYTHON_OMR_URL || 'http://127.0.0.1:8000/scan'
+    console.log(`Sending to Python OMR service at ${omrUrl}...`)
     const startTime = Date.now()
     
-    const pythonRes = await fetch('http://localhost:8000/scan', {
+    const pythonRes = await fetch(omrUrl, {
       method: 'POST',
       body: pythonFormData,
     })

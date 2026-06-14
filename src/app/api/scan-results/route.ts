@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
       confidence,
       warnings,
       answers,
+      scanExamId,
     } = body
 
     // Insert vào bảng scan_results
@@ -47,9 +48,10 @@ export async function POST(request: NextRequest) {
         sa_correct: saCorrect,
         sa_total: saTotal,
         details: details,
-        confidence: confidence,
+        confidence: (typeof confidence === 'number' && confidence > 1) ? confidence / 100 : confidence,
         warnings: warnings,
         answers: answers,
+        scan_exam_id: scanExamId || null,
       })
       .select()
       .single()

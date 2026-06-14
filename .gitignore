@@ -57,3 +57,8 @@ next-env.d.ts
 /ex_test.sty
 /scratch/
 /docs/
+
+# Python OMR
+/python-omr/venv/
+__pycache__/
+*.pyc

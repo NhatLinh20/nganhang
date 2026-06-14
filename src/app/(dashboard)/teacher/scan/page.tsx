@@ -1,27 +1,19 @@
 // src/app/(dashboard)/teacher/scan/page.tsx
-// Trang quét phiếu trả lời trắc nghiệm — Server Component wrapper
-
-import ScanClient from './ScanClient'
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import ScanDashboard from './ScanDashboard'
 
 export const metadata = {
-  title: 'Quét phiếu chấm thi',
-  description: 'Quét phiếu trả lời trắc nghiệm và chấm điểm tự động',
+  title: 'Quét phiếu chấm thi — Kho Toán',
+  description: 'Tạo bài thi, nhập đáp án và quét phiếu trả lời trắc nghiệm bằng camera',
 }
 
 export default async function ScanPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  let role = ''
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    role = profile?.role || (user.user_metadata?.role as string) || ''
-  }
+  const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
 
-  return <ScanClient userRole={role} userId={user?.id || ''} />
+  return <ScanDashboard userRole={profile?.role || 'teacher'} userId={user.id} />
 }

@@ -971,10 +971,20 @@ export async function POST(request: NextRequest) {
               const obj: any = { success: true, type: 0 }
               for (let j = 0; j < chunk.length; j++) {
                 const mcQs = chunk[j].filter(q => q.question_type === 'multiple_choice')
+                const tfQs = chunk[j].filter(q => q.question_type === 'true_false')
+                const saQs = chunk[j].filter(q => q.question_type === 'short_answer')
                 let answerStr = ''
                 for (const q of mcQs) {
                   const ans = q.correct_answer?.trim() || parseMCAnswer(q.latex_content) || 'A'
                   answerStr += ans.charAt(0).toUpperCase()
+                }
+                for (const q of tfQs) {
+                  const ans = getAnswer(q)
+                  if (ans.length === 4) answerStr += ans
+                  else answerStr += ans.padEnd(4, 'S')
+                }
+                if (saQs.length > 0) {
+                  answerStr += '#' + saQs.map(q => getAnswer(q)).join('#')
                 }
                 obj[codeChunk[j]] = answerStr
               }
