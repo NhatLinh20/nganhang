@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import styles from './scan-mobile.module.css'
 
 // ═══════════════════════════════════
 // TYPES
@@ -170,6 +171,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
   const [isSaving, setIsSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [showDebug, setShowDebug] = useState(false)
+  const [resultTab, setResultTab] = useState<'mc' | 'tf' | 'sa' | 'debug'>('mc')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -833,41 +835,52 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
 
   const examCodes = selectedExam ? Object.keys(selectedExam.answer_keys) : []
 
+  // Custom Haptic Feedback wrapper
+  const triggerHaptic = (type: 'success' | 'warning' | 'heavy' = 'success') => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (type === 'success') navigator.vibrate([30, 50, 30])
+      if (type === 'warning') navigator.vibrate([50, 100, 50])
+      if (type === 'heavy') navigator.vibrate(100)
+    }
+  }
+
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 16px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          📷 Quét phiếu chấm thi
+    <div className={styles.appContainer}>
+      {/* App Bar */}
+      <div className={styles.appBar}>
+        {(view !== 'list') && (
+          <button onClick={() => {
+            if (view === 'create' || view === 'edit') { resetCreateForm(); setView(view === 'edit' ? 'detail' : 'list') }
+            else if (view === 'detail') { setView('list'); setSelectedExam(null) }
+            else if (view === 'scan') { stopCamera(); setView('detail') }
+            else if (view === 'result') { setScanRaw(null); setView('scan') }
+          }} className={styles.backBtn}>
+            ←
+          </button>
+        )}
+        <h1 className={styles.appBarTitle}>
+          {view === 'list' && '📷 Quét Phiếu'}
+          {view === 'create' && '✨ Tạo bài thi mới'}
+          {view === 'edit' && '✏️ Chỉnh sửa bài thi'}
+          {view === 'detail' && selectedExam?.name}
+          {view === 'scan' && '📷 Đang quét...'}
+          {view === 'result' && '📊 Kết quả quét'}
         </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 14 }}>
-          Tạo bài thi, nhập đáp án và quét phiếu trả lời bằng camera
-        </p>
       </div>
 
       {/* ═══ LIST VIEW ═══ */}
       {view === 'list' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Danh sách bài thi</h2>
-            <button onClick={() => { resetCreateForm(); setView('create') }} style={btnPrimary}>
-              ＋ Tạo bài thi mới
-            </button>
-          </div>
-
+        <div style={{ padding: '0 16px', marginTop: 16 }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>⏳ Đang tải...</div>
           ) : exams.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, background: '#f8fafc', borderRadius: 16, border: '2px dashed #e2e8f0' }}>
+            <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 16, border: '1px solid #f1f5f9' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>📝</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: '#334155' }}>Chưa có bài thi nào</div>
-              <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 16 }}>Tạo bài thi mới để bắt đầu quét phiếu chấm thi</div>
-              <button onClick={() => { resetCreateForm(); setView('create') }} style={btnPrimary}>
-                ＋ Tạo bài thi đầu tiên
-              </button>
+              <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 16 }}>Chạm vào nút + để tạo bài thi đầu tiên</div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {exams.map(exam => (
                 <SwipeableExamCard 
                   key={exam.id} 
@@ -878,6 +891,11 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
               ))}
             </div>
           )}
+
+          {/* Floating Action Button */}
+          <button className={styles.fab} onClick={() => { resetCreateForm(); setView('create') }}>
+            +
+          </button>
         </div>
       )}
 
@@ -894,32 +912,32 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Bước 1: Tạo bài thi & Nhập đáp án</h2>
 
               {/* Tên + Cấu hình */}
-              <div style={card}>
-                <div style={cardTitle}>⚙️ Thông tin cơ bản</div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>Tên bài thi</label>
+              <div className={styles.card} style={{ margin: 0, marginBottom: 16 }}>
+                <div className={styles.cardTitle}>⚙️ Thông tin cơ bản</div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.label}>Tên bài thi</label>
                   <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="VD: Kiểm tra giữa kỳ Toán 12"
-                    style={{ ...inputStyle, width: '100%' }} />
+                    className={styles.input} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                   <div>
-                    <label style={labelStyle}>Trắc nghiệm (MC)</label>
-                    <input type="number" min={0} max={40} value={formMcCount} onChange={e => setFormMcCount(Math.min(40, Math.max(0, +e.target.value || 0)))} style={inputStyle} />
+                    <label className={styles.label}>MC</label>
+                    <input type="number" min={0} max={40} value={formMcCount} onChange={e => setFormMcCount(Math.min(40, Math.max(0, +e.target.value || 0)))} className={styles.input} style={{ textAlign: 'center', padding: '12px 8px' }} />
                   </div>
                   <div>
-                    <label style={labelStyle}>Đúng/Sai (TF)</label>
-                    <input type="number" min={0} max={8} value={formTfCount} onChange={e => setFormTfCount(Math.min(8, Math.max(0, +e.target.value || 0)))} style={inputStyle} />
+                    <label className={styles.label}>TF</label>
+                    <input type="number" min={0} max={8} value={formTfCount} onChange={e => setFormTfCount(Math.min(8, Math.max(0, +e.target.value || 0)))} className={styles.input} style={{ textAlign: 'center', padding: '12px 8px' }} />
                   </div>
                   <div>
-                    <label style={labelStyle}>Trả lời ngắn (SA)</label>
-                    <input type="number" min={0} max={6} value={formSaCount} onChange={e => setFormSaCount(Math.min(6, Math.max(0, +e.target.value || 0)))} style={inputStyle} />
+                    <label className={styles.label}>SA</label>
+                    <input type="number" min={0} max={6} value={formSaCount} onChange={e => setFormSaCount(Math.min(6, Math.max(0, +e.target.value || 0)))} className={styles.input} style={{ textAlign: 'center', padding: '12px 8px' }} />
                   </div>
                 </div>
               </div>
 
               {/* Nhập đáp án */}
-              <div style={{ ...card, marginTop: 16 }}>
-                <div style={cardTitle}>✏️ Nhập đáp án</div>
+              <div className={styles.card} style={{ margin: 0, paddingBottom: 60 }}>
+                <div className={styles.cardTitle}>✏️ Nhập đáp án</div>
 
                 {/* Mã đề selector */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -984,11 +1002,11 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid #f1f5f9', paddingBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid #f1f5f9', paddingBottom: 8, overflowX: 'auto' }}>
                   {([['manual', '✏️ Thủ công'], ['excel', '📁 Import Excel'], ['qr', '📱 Quét QR']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => setAnswerTab(key)} style={{
-                      padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                      background: answerTab === key ? '#3b82f6' : 'transparent', color: answerTab === key ? 'white' : '#64748b',
+                      padding: '8px 16px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+                      background: answerTab === key ? '#3b82f6' : '#f1f5f9', color: answerTab === key ? 'white' : '#64748b',
                     }}>{label}</button>
                   ))}
                 </div>
@@ -1007,7 +1025,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>Import file đáp án Excel</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>Hỗ trợ format: TNMaker, YoungMix, SmartTest, AZOTA</div>
                     <input type="file" accept=".xlsx,.xls,.csv,.tsv,.txt" onChange={handleExcelImport} style={{ display: 'none' }} id="excel-import" />
-                    <label htmlFor="excel-import" style={{ ...btnPrimary, display: 'inline-block', cursor: 'pointer' }}>
+                    <label htmlFor="excel-import" className={`${styles.btn} ${styles.btnPrimary}`} style={{ display: 'inline-flex', cursor: 'pointer', width: 'auto' }}>
                       Chọn file
                     </label>
                     <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>Lưu ý: File .xlsx cần save as .csv/.tsv trước khi import (hỗ trợ XLSX đang phát triển)</div>
@@ -1021,7 +1039,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
                     <div style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
                       Dùng điện thoại chụp ảnh QR Code hoặc upload ảnh có chứa mã QR đáp án.
                     </div>
-                    <label style={{ ...btnPrimary, display: 'inline-flex', cursor: 'pointer', margin: '0 auto' }}>
+                    <label className={`${styles.btn} ${styles.btnPrimary}`} style={{ display: 'inline-flex', cursor: 'pointer', margin: '0 auto', width: 'auto' }}>
                       <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleQrImageUpload} />
                       📷 Chụp / Chọn ảnh QR
                     </label>
@@ -1029,76 +1047,70 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
                 )}
               </div>
 
-              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+              {/* Sticky bottom actions */}
+              <div className={styles.bottomBar}>
                 <button onClick={() => setFormStep(2)} disabled={Object.keys(formAnswerKeys).length === 0}
-                  style={{ ...btnPrimary, opacity: Object.keys(formAnswerKeys).length === 0 ? 0.5 : 1 }}>
-                  Tiếp tục — Cấu hình điểm →
+                  className={`${styles.btn} ${styles.btnPrimary}`} style={{ opacity: Object.keys(formAnswerKeys).length === 0 ? 0.5 : 1 }}>
+                  Tiếp tục — Thang điểm →
                 </button>
               </div>
             </div>
           ) : (
             /* Step 2: Scoring config */
-            <div style={{ marginTop: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Bước 2: Cấu hình thang điểm</h2>
-              <div style={card}>
+            <div style={{ paddingBottom: 60 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: '16px 0' }}>Bước 2: Cấu hình thang điểm</h2>
+              <div className={styles.card} style={{ margin: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <div style={cardTitle}>⚙️ Thang điểm</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#3b82f6' }}>
-                    Tổng: {r2(formMcScore + formTfScore + formSaScore)} điểm
+                  <div className={styles.cardTitle} style={{ marginBottom: 0 }}>⚙️ Thang điểm</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#3b82f6' }}>
+                    Tổng: {r2(formMcScore + formTfScore + formSaScore)}đ
                   </div>
                 </div>
 
                 {formMcCount > 0 && (
-                  <div style={scoringRow}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                      <span style={{ fontWeight: 700 }}>📘 Phần I — Trắc nghiệm</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input type="number" step={0.5} min={0} max={10} value={formMcScore} onChange={e => setFormMcScore(+e.target.value || 0)} style={{ ...inputStyle, width: 60, textAlign: 'center' as const }} />
-                      <span style={{ fontSize: 13, color: '#64748b' }}>điểm ÷ {formMcCount} câu = <strong>{r2(formMcScore / formMcCount)}đ/câu</strong></span>
+                  <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 8 }}>📘 Phần I — Trắc nghiệm</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <input type="number" step={0.5} min={0} max={10} value={formMcScore} onChange={e => setFormMcScore(+e.target.value || 0)} className={styles.input} style={{ width: 80, textAlign: 'center' }} />
+                      <span style={{ fontSize: 13, color: '#64748b' }}>÷ {formMcCount} câu = <strong>{r2(formMcScore / formMcCount)}đ/câu</strong></span>
                     </div>
                   </div>
                 )}
 
                 {formTfCount > 0 && (
-                  <div style={scoringRow}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                      <span style={{ fontWeight: 700 }}>📗 Phần II — Đúng/Sai</span>
+                  <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 8 }}>📗 Phần II — Đúng/Sai</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <input type="number" step={0.5} min={0} max={10} value={formTfScore} onChange={e => setFormTfScore(+e.target.value || 0)} className={styles.input} style={{ width: 80, textAlign: 'center' }} />
+                      <span style={{ fontSize: 13, color: '#64748b' }}>÷ {formTfCount} câu = <strong>{r2(formTfScore / formTfCount)}đ/câu</strong></span>
                     </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input type="number" step={0.5} min={0} max={10} value={formTfScore} onChange={e => setFormTfScore(+e.target.value || 0)} style={{ ...inputStyle, width: 60, textAlign: 'center' as const }} />
-                        <span style={{ fontSize: 13, color: '#64748b' }}>điểm ÷ {formTfCount} câu = <strong>{r2(formTfScore / formTfCount)}đ/câu</strong></span>
-                      </div>
-                      <div style={{ fontSize: 12, color: '#7c3aed', marginTop: 4, background: '#f5f3ff', padding: '4px 8px', borderRadius: 6 }}>
-                        Theo Bộ GD: 4/4 = 1.0 | 3/4 = 0.5 | 2/4 = 0.25 | 1/4 = 0.1 | 0/4 = 0
-                      </div>
+                    <div style={{ fontSize: 12, color: '#7c3aed', marginTop: 8, background: '#f5f3ff', padding: '8px 12px', borderRadius: 8 }}>
+                      Theo Bộ GD: 4/4 = 1.0 | 3/4 = 0.5 | 2/4 = 0.25 | 1/4 = 0.1 | 0/4 = 0
                     </div>
                   </div>
                 )}
 
                 {formSaCount > 0 && (
-                  <div style={scoringRow}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                      <span style={{ fontWeight: 700 }}>📙 Phần III — Trả lời ngắn</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input type="number" step={0.5} min={0} max={10} value={formSaScore} onChange={e => setFormSaScore(+e.target.value || 0)} style={{ ...inputStyle, width: 60, textAlign: 'center' as const }} />
-                      <span style={{ fontSize: 13, color: '#64748b' }}>điểm ÷ {formSaCount} câu = <strong>{r2(formSaScore / formSaCount)}đ/câu</strong></span>
+                  <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 8 }}>📙 Phần III — Trả lời ngắn</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <input type="number" step={0.5} min={0} max={10} value={formSaScore} onChange={e => setFormSaScore(+e.target.value || 0)} className={styles.input} style={{ width: 80, textAlign: 'center' }} />
+                      <span style={{ fontSize: 13, color: '#64748b' }}>÷ {formSaCount} câu = <strong>{r2(formSaScore / formSaCount)}đ/câu</strong></span>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between' }}>
-                <button onClick={() => setFormStep(1)} style={btnBack}>← Quay lại nhập đáp án</button>
+              {/* Sticky bottom actions */}
+              <div className={styles.bottomBar}>
+                <button onClick={() => setFormStep(1)} className={`${styles.btn} ${styles.btnSecondary}`} style={{ width: 'auto' }}>←</button>
                 {view === 'edit' ? (
-                  <button onClick={handleUpdateExam} disabled={formSaving} style={btnPrimary}>
+                  <button onClick={handleUpdateExam} disabled={formSaving} className={`${styles.btn} ${styles.btnPrimary}`}>
                     {formSaving ? '⏳ Đang lưu...' : '✅ Lưu thay đổi'}
                   </button>
                 ) : (
-                  <button onClick={handleCreateExam} disabled={formSaving} style={btnPrimary}>
-                    {formSaving ? '⏳ Đang tạo...' : '✅ Hoàn tất tạo bài thi'}
+                  <button onClick={handleCreateExam} disabled={formSaving} className={`${styles.btn} ${styles.btnPrimary}`}>
+                    {formSaving ? '⏳ Đang tạo...' : '✅ Hoàn tất tạo'}
                   </button>
                 )}
               </div>
@@ -1157,272 +1169,210 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
             </div>
           )}
 
-          {/* Results table */}
-          <div style={{ ...card, marginTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ ...cardTitle, marginBottom: 0 }}>📊 Kết quả quét ({scanResults.length} phiếu)</div>
+          {/* Results List */}
+          <div style={{ marginTop: 16, paddingBottom: 60 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>📊 Kết quả ({scanResults.length})</div>
               {scanResults.length > 0 && (
-                <button onClick={handleExportExcel} style={{ ...btnPrimary, background: '#10b981', borderColor: '#059669' }}>
+                <button onClick={handleExportExcel} className={styles.btn} style={{ background: '#10b981', color: 'white', padding: '8px 12px', fontSize: 13, width: 'auto' }}>
                   📥 Xuất Excel
                 </button>
               )}
             </div>
+            
             {scanResults.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>
-                Chưa có phiếu nào được quét. Nhấn "📷 Quét phiếu" để bắt đầu.
+              <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', background: 'white', borderRadius: 16 }}>
+                Chưa có phiếu nào được quét.
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={th}>#</th>
-                      <th style={th}>SBD</th>
-                      <th style={th}>Mã đề</th>
-                      <th style={th}>Điểm</th>
-                      <th style={th}>MC</th>
-                      <th style={th}>TF</th>
-                      <th style={th}>SA</th>
-                      <th style={th}>Thời gian</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scanResults.map((r, i) => (
-                      <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={td}>{i + 1}</td>
-                        <td style={td}>{r.student_id_number || '—'}</td>
-                        <td style={td}>{r.exam_code || '—'}</td>
-                        <td style={{ ...td, fontWeight: 700, color: r.score >= r.max_score * 0.5 ? '#16a34a' : '#dc2626' }}>
-                          {r.score}/{r.max_score}
-                        </td>
-                        <td style={td}>{r.mc_correct}/{r.mc_total}</td>
-                        <td style={td}>{r.tf_score}/{r.tf_max_score}</td>
-                        <td style={td}>{r.sa_correct}/{r.sa_total}</td>
-                        <td style={{ ...td, color: '#94a3b8' }}>{new Date(r.created_at).toLocaleString('vi')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {scanResults.map((r, i) => (
+                  <div key={r.id} className={styles.card} style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 14, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+                        {i + 1}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 15, color: '#1e293b' }}>SBD: {r.student_id_number || '—'}</div>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Mã đề: {r.exam_code || '—'}</div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div className={`${styles.listItemScore} ${r.score >= r.max_score * 0.5 ? styles.high : styles.low}`}>
+                        {r.score}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>/ {r.max_score}đ</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+
+          {/* Sticky Bottom Bar for Scanning */}
+          <div className={styles.bottomBar}>
+             <button onClick={() => { setScanRaw(null); setSaveMsg(null); setView('scan') }} className={`${styles.btn} ${styles.btnPrimary}`}>
+               📷 Bắt đầu Quét
+             </button>
+          </div>
         </div>
       )}
 
-      {/* ═══ SCAN VIEW ═══ */}
-      {(view === 'scan' || view === 'result') && selectedExam && (
-        <div style={{ display: view === 'scan' ? 'block' : 'none' }}>
-          <button onClick={() => { stopCamera(); setView('detail') }} style={btnBack}>← Quay lại bài thi</button>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: '16px 0' }}>📷 Quét phiếu — {selectedExam.name}</h2>
-
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
-            {/* Camera / Upload */}
-            <div style={card}>
-              <div style={cardTitle}>{isMobile ? '📸 Camera' : '📁 Upload ảnh'}</div>
-
-              {isMobile && !cameraActive && (
-                <button onClick={startCamera} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', padding: '16px', marginBottom: 12 }}>
-                  📸 Mở Camera
-                </button>
-              )}
-
-              {/* Fast Scan Toggle */}
-              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, padding: 12, background: isFastScan ? '#dcfce7' : '#f1f5f9', borderRadius: 8, cursor: 'pointer' }} onClick={() => setIsFastScan(!isFastScan)}>
-                <input type="checkbox" checked={isFastScan} readOnly style={{ width: 18, height: 18 }} />
-                <div style={{ fontWeight: 600, color: isFastScan ? '#166534' : '#475569', fontSize: 14 }}>⚡ Chế độ Quét liên tục (Tự động lưu)</div>
-              </div>
-
-              {cameraActive && (
-                <div>
-                  <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', backgroundColor: '#000' }}>
-                    <video ref={videoRef} style={{ width: '100%', display: 'block' }} autoPlay playsInline muted />
-                    {/* Overlay guides */}
-                    {saveMsg && (
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(22, 163, 74, 0.9)', color: 'white', padding: '16px 24px', borderRadius: 12, fontWeight: 800, fontSize: 24, zIndex: 10, textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', whiteSpace: 'nowrap' }}>
-                        {saveMsg}
-                      </div>
-                    )}
-                    {/* Overlay guides - A4 aspect ratio */}
-                    <div style={{
-                      position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                      width: '92%', maxWidth: 500, aspectRatio: '1 / 1.414',
-                      border: '2px solid rgba(59,130,246,0.8)',
-                      display: 'flex', justifyContent: 'space-between', flexDirection: 'column', padding: 16,
-                      pointerEvents: 'none',
-                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
-                      borderRadius: 12
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div style={markerGuide}>■</div>
-                        <div style={markerGuide}>■</div>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div style={markerGuide}>■</div>
-                        <div style={markerGuide}>■</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                    <button onClick={capturePhoto} disabled={isProcessing} style={{ ...btnPrimary, flex: 1, justifyContent: 'center', padding: '14px' }}>
-                      {isProcessing ? '⏳ Đang xử lý...' : '📸 Chụp & Quét'}
-                    </button>
-                    <button onClick={stopCamera} style={btnBack}>✕</button>
-                  </div>
-                </div>
-              )}
-
-              {/* Desktop: upload */}
-              <div style={{ marginTop: 12 }}>
-                <div onClick={() => fileInputRef.current?.click()} style={{
-                  padding: 24, textAlign: 'center', background: '#f8fafc', borderRadius: 12,
-                  border: '2px dashed #e2e8f0', cursor: 'pointer',
-                }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
-                  <div style={{ fontWeight: 600 }}>Kéo thả hoặc click để chọn ảnh</div>
-                  <div style={{ fontSize: 13, color: '#94a3b8' }}>JPG, PNG (tối đa 10MB)</div>
-                </div>
-                <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple capture={isMobile ? 'environment' : undefined} style={{ display: 'none' }}
-                  onChange={e => {
-                    const files = e.target.files
-                    if (!files || files.length === 0) return
-                    if (files.length === 1 && files[0].type.startsWith('image/')) {
-                      processImage(files[0]) // single image
-                    } else {
-                      processBatch(files) // multiple images or PDF
-                    }
-                    e.target.value = ''
-                  }} />
-              </div>
-            </div>
-
-            {/* Info panel */}
-            <div style={card}>
-              <div style={cardTitle}>📋 Thông tin bài thi</div>
-              <div style={{ fontSize: 14, lineHeight: 2 }}>
-                <div>📘 Trắc nghiệm: <strong>{selectedExam.mc_count} câu</strong> ({selectedExam.mc_total_score}đ)</div>
-                <div>📗 Đúng/Sai: <strong>{selectedExam.tf_count} câu</strong> ({selectedExam.tf_total_score}đ)</div>
-                <div>📙 Trả lời ngắn: <strong>{selectedExam.sa_count} câu</strong> ({selectedExam.sa_total_score}đ)</div>
-                <div>🔑 Mã đề: <strong>{examCodes.join(', ') || 'Chưa có'}</strong></div>
-              </div>
-              <div style={{ marginTop: 12, padding: 12, background: '#f0f9ff', borderRadius: 8, fontSize: 13, color: '#1e40af' }}>
-                💡 Khi quét, hệ thống sẽ tự động nhận dạng mã đề trên phiếu và match đáp án tương ứng.
-              </div>
-            </div>
+      {/* ═══ SCAN VIEW (Camera) ═══ */}
+      {view === 'scan' && selectedExam && (
+        <div className={styles.cameraView}>
+          <div className={styles.cameraHeader}>
+            <button onClick={() => { stopCamera(); setView('detail') }} className={styles.backBtn} style={{ color: 'white' }}>
+              ←
+            </button>
+            <div style={{ fontWeight: 700 }}>{selectedExam.name}</div>
+            <div style={{ width: 32 }} /> {/* Spacer */}
           </div>
 
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          <div className={styles.cameraVideoContainer}>
+            {!cameraActive && isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                <button onClick={startCamera} className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: 'auto' }}>
+                  Mở Camera để quét
+                </button>
+              </div>
+            ) : (
+              <>
+                <video ref={videoRef} className={styles.cameraVideo} autoPlay playsInline muted />
+                <div className={styles.scanOverlay}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div className={`${styles.scanMarker} ${styles.markerTL}`} />
+                    <div className={`${styles.scanMarker} ${styles.markerTR}`} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div className={`${styles.scanMarker} ${styles.markerBL}`} />
+                    <div className={`${styles.scanMarker} ${styles.markerBR}`} />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className={styles.cameraControls}>
+            <button onClick={() => setIsFastScan(!isFastScan)} className={styles.fastScanToggle}>
+              ⚡ Tự động quét {isFastScan ? 'BẬT' : 'TẮT'}
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-evenly', width: '100%', maxWidth: 400 }}>
+              <div style={{ width: 64, display: 'flex', justifyContent: 'center' }}>
+                <label style={{ color: 'white', cursor: 'pointer', textAlign: 'center' }}>
+                  <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }}
+                    onChange={e => {
+                      const files = e.target.files
+                      if (!files || files.length === 0) return
+                      if (files.length === 1 && files[0].type.startsWith('image/')) {
+                        processImage(files[0])
+                      } else {
+                        processBatch(files)
+                      }
+                      e.target.value = ''
+                    }} />
+                  <div style={{ fontSize: 24, marginBottom: 4 }}>🖼️</div>
+                  <div style={{ fontSize: 11, fontWeight: 600 }}>Thư viện</div>
+                </label>
+              </div>
+              <button className={styles.shutterBtn} onClick={capturePhoto} disabled={isProcessing || !cameraActive} />
+              <div style={{ width: 64 }} /> {/* Spacer */}
+            </div>
+          </div>
         </div>
       )}
+
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       {/* ═══ RESULT VIEW ═══ */}
       {view === 'result' && selectedExam && scanRaw && score && (
-        <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16 }}>
-            {/* Score card */}
-            <div style={{ ...card, position: 'sticky' as const, top: 16 }}>
-              <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                <div style={{ fontSize: 48, fontWeight: 900, color: score.total >= score.maxScore * 0.5 ? '#16a34a' : '#dc2626' }}>
-                  {score.total}
-                </div>
-                <div style={{ fontSize: 16, color: '#64748b' }}>/ {score.maxScore} điểm</div>
+        <div style={{ padding: '0 16px', paddingBottom: 80 }}>
+          {/* Score card */}
+          <div className={styles.card} style={{ margin: '16px 0', padding: 24, textAlign: 'center' }}>
+            <div className={styles.bigScore} style={{ color: score.total >= score.maxScore * 0.5 ? '#16a34a' : '#dc2626' }}>
+              {score.total}
+            </div>
+            <div style={{ fontSize: 16, color: '#64748b', fontWeight: 600 }}>/ {score.maxScore} điểm</div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <label className={styles.label}>Mã đề</label>
+                <input value={overrideExamCode} onChange={e => setOverrideExamCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className={styles.input} style={{ textAlign: 'center', fontWeight: 800, fontSize: 20 }} placeholder="—" />
               </div>
-
-              <div style={{ padding: '0 16px 16px' }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, color: '#94a3b8' }}>Mã đề</label>
-                    <input value={overrideExamCode} onChange={e => setOverrideExamCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      style={{ ...inputStyle, width: '100%', textAlign: 'center' as const, fontWeight: 700 }} placeholder="—" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, color: '#94a3b8' }}>SBD</label>
-                    <input value={overrideStudentId} onChange={e => setOverrideStudentId(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                      style={{ ...inputStyle, width: '100%', textAlign: 'center' as const, fontWeight: 700 }} placeholder="—" />
-                  </div>
-                </div>
-
-                {score.mcTotal > 0 ? <div style={scoreDetailRow}><span>📘 TN</span><span>{score.mcCorrect}/{score.mcTotal} đúng</span></div> : null}
-                {score.tfMaxScore > 0 ? <div style={scoreDetailRow}><span>📗 ĐS</span><span>{score.tfScore}/{score.tfMaxScore}đ</span></div> : null}
-                {score.saTotal > 0 ? <div style={scoreDetailRow}><span>📙 SA</span><span>{score.saCorrect}/{score.saTotal} đúng</span></div> : null}
-
-                {!getMatchedKey() ? (
-                  <div style={{ padding: 8, background: '#fef9c3', borderRadius: 6, fontSize: 12, color: '#92400e', marginTop: 8 }}>
-                    ⚠️ Không tìm thấy mã đề &quot;{overrideExamCode}&quot; trong đáp án. Hãy chọn mã đề đúng.
-                  </div>
-                ) : null}
-
-                <button onClick={handleSaveResult} disabled={isSaving} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', marginTop: 12, background: '#16a34a' }}>
-                  {isSaving ? '⏳ Đang lưu...' : '💾 Lưu kết quả'}
-                </button>
-                {saveMsg && <div style={{ textAlign: 'center', marginTop: 8, fontSize: 13, fontWeight: 600, color: saveMsg.startsWith('✅') ? '#16a34a' : '#dc2626' }}>{saveMsg}</div>}
-
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button onClick={() => { setScanRaw(null); setSaveMsg(null); setView('scan') }} style={{ ...btnBack, flex: 1, justifyContent: 'center' }}>📷 Quét tiếp</button>
-                  <button onClick={() => { setScanRaw(null); fetchExamDetail(selectedExam); }} style={{ ...btnBack, flex: 1, justifyContent: 'center' }}>📊 Xem DS</button>
-                </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <label className={styles.label}>SBD</label>
+                <input value={overrideStudentId} onChange={e => setOverrideStudentId(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  className={styles.input} style={{ textAlign: 'center', fontWeight: 800, fontSize: 20 }} placeholder="—" />
               </div>
             </div>
 
-            {/* Answer details */}
-            <div style={card}>
-              <div style={cardTitle}>✏️ Kiểm tra & Sửa đáp án</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>Click để sửa nếu AI đọc sai</div>
+            {!getMatchedKey() && (
+              <div style={{ padding: 12, background: '#fef9c3', borderRadius: 8, fontSize: 13, color: '#92400e', marginTop: 16, fontWeight: 600 }}>
+                ⚠️ Mã đề &quot;{overrideExamCode}&quot; không có trong đáp án!
+              </div>
+            )}
+          </div>
 
-              {/* MC Override */}
-              {selectedExam.mc_count > 0 ? (
+          {/* Answer details with Swipeable Tabs */}
+          <div className={styles.card} style={{ margin: '0 0 16px', padding: '16px 0' }}>
+            <div style={{ padding: '0 16px 12px' }}>
+              <div className={styles.cardTitle}>✏️ Kiểm tra & Sửa đáp án</div>
+              <div className={styles.tabs}>
+                {selectedExam.mc_count > 0 && <button className={`${styles.tab} ${resultTab === 'mc' ? styles.active : ''}`} onClick={() => setResultTab('mc')}>📘 Trắc nghiệm ({score.mcCorrect}/{score.mcTotal})</button>}
+                {selectedExam.tf_count > 0 && <button className={`${styles.tab} ${resultTab === 'tf' ? styles.active : ''}`} onClick={() => setResultTab('tf')}>📗 Đúng/Sai ({score.tfScore}đ)</button>}
+                {selectedExam.sa_count > 0 && <button className={`${styles.tab} ${resultTab === 'sa' ? styles.active : ''}`} onClick={() => setResultTab('sa')}>📙 Trả lời ngắn ({score.saCorrect}/{score.saTotal})</button>}
+                {typeof (scanRaw as Record<string, unknown>)?.debug_image_base64 === 'string' && <button className={`${styles.tab} ${resultTab === 'debug' ? styles.active : ''}`} onClick={() => setResultTab('debug')}>🐛 Debug</button>}
+              </div>
+            </div>
+
+            <div style={{ padding: '0 16px' }}>
+              {/* MC Tab */}
+              {resultTab === 'mc' && selectedExam.mc_count > 0 && (
                 <AnswerOverrideSection
-                  title="📘 Phần I — Trắc nghiệm" type="mc"
-                  count={selectedExam.mc_count}
-                  studentAnswers={overrideMc}
-                  correctAnswers={getMatchedKey()?.mc || []}
+                  title="" type="mc" count={selectedExam.mc_count} studentAnswers={overrideMc} correctAnswers={getMatchedKey()?.mc || []}
                   onOverride={(i, v) => { const next = [...overrideMc]; next[i] = ['A','B','C','D'].includes(v.toUpperCase()) ? v.toUpperCase() : null; setOverrideMc(next) }}
                 />
-              ) : null}
+              )}
 
-              {/* TF Override */}
-              {selectedExam.tf_count > 0 ? (
-                <TFOverrideSection
-                  count={selectedExam.tf_count}
-                  overrideTf={overrideTf}
-                  setOverrideTf={setOverrideTf}
-                  getMatchedKey={getMatchedKey}
-                />
-              ) : null}
+              {/* TF Tab */}
+              {resultTab === 'tf' && selectedExam.tf_count > 0 && (
+                <TFOverrideSection count={selectedExam.tf_count} overrideTf={overrideTf} setOverrideTf={setOverrideTf} getMatchedKey={getMatchedKey} />
+              )}
 
-              {/* SA Override */}
-              {selectedExam.sa_count > 0 ? (
-                <div style={{ padding: '12px 0', borderTop: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#d97706', marginBottom: 8, textTransform: 'uppercase' }}>📙 Phần III — Trả lời ngắn</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-                    {[...Array(selectedExam.sa_count)].map((_, i) => {
-                      const student = overrideSa[i]
-                      const correct = getMatchedKey()?.sa[i] || ''
-                      const isOk = student != null && normSA(student) === normSA(correct)
-                      return (
-                        <div key={i} style={{ padding: '6px 10px', borderRadius: 6, background: student == null ? '#fef9c3' : isOk ? '#f0fdf4' : '#fef2f2', border: `1px solid ${student == null ? '#fde047' : isOk ? '#bbf7d0' : '#fecaca'}` }}>
-                          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Câu {i + 1} — đúng: <strong>{correct}</strong></div>
-                          <input value={student || ''} onChange={e => { const next = [...overrideSa]; next[i] = e.target.value || null; setOverrideSa(next) }}
-                            placeholder="Nhập đáp án..." style={{ width: '100%', fontSize: 14, fontWeight: 700, border: '1px solid #e2e8f0', borderRadius: 4, padding: '3px 6px', background: 'white' }} />
-                        </div>
-                      )
-                    })}
-                  </div>
+              {/* SA Tab */}
+              {resultTab === 'sa' && selectedExam.sa_count > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+                  {[...Array(selectedExam.sa_count)].map((_, i) => {
+                    const student = overrideSa[i]
+                    const correct = getMatchedKey()?.sa[i] || ''
+                    const isOk = student != null && normSA(student) === normSA(correct)
+                    return (
+                      <div key={i} style={{ padding: '10px 12px', borderRadius: 12, background: student == null ? '#fef9c3' : isOk ? '#f0fdf4' : '#fef2f2', border: `1px solid ${student == null ? '#fde047' : isOk ? '#bbf7d0' : '#fecaca'}` }}>
+                        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>Câu {i + 1} — đúng: <strong>{correct}</strong></div>
+                        <input value={student || ''} onChange={e => { const next = [...overrideSa]; next[i] = e.target.value || null; setOverrideSa(next) }}
+                          className={styles.input} style={{ padding: '8px 12px', fontSize: 16, fontWeight: 800, textAlign: 'center', background: 'white' }} />
+                      </div>
+                    )
+                  })}
                 </div>
-              ) : null}
+              )}
 
-              {/* Debug image */}
-              {typeof (scanRaw as Record<string, unknown>)?.debug_image_base64 === 'string' ? (
-                <div style={{ marginTop: 16, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
-                  <div onClick={() => setShowDebug(!showDebug)} style={{ cursor: 'pointer', fontWeight: 600, color: '#334155', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>🐛 Ảnh Debug</span>
-                    <span>{showDebug ? '▲' : '▼'}</span>
-                  </div>
-                  {showDebug ? (
-                    <img src={String((scanRaw as Record<string, unknown>).debug_image_base64)} alt="Debug" style={{ width: '100%', borderRadius: 8, marginTop: 8 }} />
-                  ) : null}
-                </div>
-              ) : null}
+              {/* Debug Tab */}
+              {resultTab === 'debug' && (
+                <img src={String((scanRaw as Record<string, unknown>).debug_image_base64)} alt="Debug" style={{ width: '100%', borderRadius: 12 }} />
+              )}
             </div>
+          </div>
+
+          {/* Sticky Bottom Actions */}
+          <div className={styles.bottomBar}>
+            <button onClick={handleSaveResult} disabled={isSaving} className={`${styles.btn} ${styles.btnPrimary}`} style={{ background: '#16a34a' }}>
+              {isSaving ? '⏳ Đang lưu...' : '💾 Lưu kết quả'}
+            </button>
+            <button onClick={() => { setScanRaw(null); setSaveMsg(null); setView('scan') }} className={`${styles.btn} ${styles.btnSecondary}`}>
+              📷 Quét tiếp
+            </button>
           </div>
         </div>
       )}
