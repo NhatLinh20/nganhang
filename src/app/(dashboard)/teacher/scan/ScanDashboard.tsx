@@ -415,7 +415,8 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        // Request portrait resolution by default for mobile
+        video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1920 } }
       })
       streamRef.current = stream
       setCameraActive(true)
