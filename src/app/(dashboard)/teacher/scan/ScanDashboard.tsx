@@ -436,6 +436,28 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
     setCameraActive(false)
   }
 
+  useEffect(() => {
+    if (view === 'scan' && isMobile) {
+      if (!cameraActive && !streamRef.current) {
+        startCamera()
+      } else if (cameraActive && videoRef.current && streamRef.current && videoRef.current.srcObject !== streamRef.current) {
+        // Restore stream if video unmounted and remounted (though we use flex/none now)
+        videoRef.current.srcObject = streamRef.current
+        videoRef.current.play().catch(e => console.log('Auto-play failed:', e))
+      }
+    }
+  }, [view, isMobile, cameraActive])
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>
+    if (view === 'scan' && isFastScan && cameraActive && !isProcessing) {
+      interval = setInterval(() => {
+        capturePhoto()
+      }, 1500)
+    }
+    return () => { if (interval) clearInterval(interval) }
+  }, [view, isFastScan, cameraActive, isProcessing])
+
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
@@ -526,11 +548,11 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
         if (!saveRes.ok) throw new Error('Lỗi khi lưu kết quả')
         
         if (matchedKey) {
-          setSaveMsg(`✅ SBD ${data.studentId}: ${totalScore}đ`)
+          setSaveMsg(`✅ SBD: ${data.studentId}\nMã đề: ${eCode}\nĐiểm: ${totalScore}đ`)
         } else {
-          setSaveMsg(`⚠️ SBD ${data.studentId}: Sai mã (0đ)`)
+          setSaveMsg(`⚠️ SBD: ${data.studentId}\nSai mã đề: ${eCode || 'trống'}`)
         }
-        setTimeout(() => setSaveMsg(null), 2500)
+        setTimeout(() => setSaveMsg(null), 3000)
         setIsProcessing(false)
         return
       }
@@ -1219,8 +1241,8 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
       )}
 
       {/* ═══ SCAN VIEW (Camera) ═══ */}
-      {view === 'scan' && selectedExam && (
-        <div className={styles.cameraView}>
+      {(view === 'scan' || view === 'result') && selectedExam && (
+        <div className={styles.cameraView} style={{ display: view === 'scan' ? 'flex' : 'none' }}>
           <div className={styles.cameraHeader}>
             <button onClick={() => { stopCamera(); setView('detail') }} className={styles.backBtn} style={{ color: 'white' }}>
               ←
@@ -1230,27 +1252,24 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
           </div>
 
           <div className={styles.cameraVideoContainer}>
-            {!cameraActive && isMobile ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                <button onClick={startCamera} className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: 'auto' }}>
-                  Mở Camera để quét
-                </button>
+            <video ref={videoRef} className={styles.cameraVideo} autoPlay playsInline muted />
+            
+            {saveMsg && (
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: saveMsg.includes('⚠️') ? 'rgba(239, 68, 68, 0.95)' : 'rgba(22, 163, 74, 0.95)', color: 'white', padding: '20px 32px', borderRadius: 16, fontWeight: 800, fontSize: 20, zIndex: 10, textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', whiteSpace: 'pre-line' }}>
+                {saveMsg}
               </div>
-            ) : (
-              <>
-                <video ref={videoRef} className={styles.cameraVideo} autoPlay playsInline muted />
-                <div className={styles.scanOverlay}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div className={`${styles.scanMarker} ${styles.markerTL}`} />
-                    <div className={`${styles.scanMarker} ${styles.markerTR}`} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div className={`${styles.scanMarker} ${styles.markerBL}`} />
-                    <div className={`${styles.scanMarker} ${styles.markerBR}`} />
-                  </div>
-                </div>
-              </>
             )}
+
+            <div className={styles.scanOverlay}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div className={`${styles.scanMarker} ${styles.markerTL}`} />
+                <div className={`${styles.scanMarker} ${styles.markerTR}`} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div className={`${styles.scanMarker} ${styles.markerBL}`} />
+                <div className={`${styles.scanMarker} ${styles.markerBR}`} />
+              </div>
+            </div>
           </div>
 
           <div className={styles.cameraControls}>
