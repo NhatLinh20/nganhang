@@ -16,7 +16,7 @@ export interface UserProfile {
   active_sessions: string[] | null
   device_ids: string[] | null
   device_bound_at: string | null
-  device_info: Record<string, string> | null
+  device_info: any
   created_at: string
   updated_at: string
 }

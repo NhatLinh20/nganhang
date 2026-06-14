@@ -18,7 +18,7 @@ export interface UserManagementData {
   device_ids: string[] | null
   active_sessions: string[] | null
   device_bound_at: string | null
-  device_info: Record<string, string> | null
+  device_info: any
 }
 
 export interface LoginLogData {
@@ -271,7 +271,7 @@ export async function resetDevice(userId: string): Promise<{ success?: boolean, 
       device_ids: [],
       active_sessions: [],
       device_bound_at: null, 
-      device_info: {},
+      device_info: [],
       updated_at: new Date().toISOString() 
     })
     .eq('id', userId)

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Lấy profile hiện tại (bao gồm các mảng mới)
     const { data: profile } = await supabaseAdmin
       .from('users')
-      .select('role, is_approved, is_active, device_ids, active_sessions')
+      .select('role, is_approved, is_active, device_ids, active_sessions, device_info')
       .eq('id', user.id)
       .single()
 
@@ -63,11 +63,19 @@ export async function POST(request: NextRequest) {
       } else {
         // Thêm thiết bị mới vào danh sách
         const newDeviceIds = [...deviceIds, device_id]
+        
+        let existingInfo = profile.device_info || []
+        if (!Array.isArray(existingInfo)) {
+          existingInfo = Object.keys(existingInfo).length > 0 ? [existingInfo] : []
+        }
+        const newDeviceInfo = [...existingInfo, device_info || {}]
+
         await supabaseAdmin
           .from('users')
           .update({
             device_ids: newDeviceIds,
-            device_bound_at: new Date().toISOString()
+            device_bound_at: new Date().toISOString(),
+            device_info: newDeviceInfo
           })
           .eq('id', user.id)
       }

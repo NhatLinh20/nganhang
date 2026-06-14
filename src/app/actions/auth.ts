@@ -38,7 +38,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
   const supabaseAdmin = createAdminClient()
   let { data: profile } = await supabaseAdmin
     .from('users')
-    .select('role, is_approved, is_active, device_ids, active_sessions')
+    .select('role, is_approved, is_active, device_ids, active_sessions, device_info')
     .eq('id', user.id)
     .single()
 
@@ -57,7 +57,7 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
         is_approved: newApproved,
         is_active: true,
       })
-      .select('role, is_approved, is_active, device_ids, active_sessions')
+      .select('role, is_approved, is_active, device_ids, active_sessions, device_info')
       .single()
       
     if (newProfile) {
@@ -102,12 +102,19 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
         } catch { /* ignore */ }
 
         const newDeviceIds = [...deviceIds, deviceId]
+        
+        let existingInfo = profile?.device_info || []
+        if (!Array.isArray(existingInfo)) {
+          existingInfo = Object.keys(existingInfo).length > 0 ? [existingInfo] : []
+        }
+        const newDeviceInfo = [...existingInfo, deviceInfo]
+
         await supabaseAdmin
           .from('users')
           .update({
             device_ids: newDeviceIds,
             device_bound_at: new Date().toISOString(),
-            device_info: deviceInfo,
+            device_info: newDeviceInfo,
           })
           .eq('id', user.id)
       }

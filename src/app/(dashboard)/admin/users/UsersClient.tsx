@@ -135,13 +135,27 @@ export default function UsersClient() {
       return { icon: '⚠️', text: 'Chưa gắn kết', className: styles.deviceNotBound, count: 0 }
     }
     const count = Math.max(devices.length, u.device_id ? 1 : 0)
-    const info = u.device_info || {}
-    const browser = info.browser || '?'
-    const os = info.os || '?'
-    const screen = info.screen || ''
+    
+    const infoArray = Array.isArray(u.device_info) ? u.device_info : (u.device_info && Object.keys(u.device_info).length > 0 ? [u.device_info] : [])
+    
+    if (infoArray.length === 0) {
+      return {
+        icon: '💻',
+        text: `${count} thiết bị`,
+        className: styles.deviceBound,
+        count: count
+      }
+    }
+
+    const lastInfo = infoArray[infoArray.length - 1]
+    const os = lastInfo.os || '?'
+    
+    // Tạo chuỗi danh sách thiết bị
+    const allDevicesStr = infoArray.map((i: any) => `${i.browser || '?'} / ${i.os || '?'}`).join(' & ')
+
     return {
       icon: os === 'Android' || os === 'iOS' ? '📱' : '💻',
-      text: `${count} thiết bị. Gần nhất: ${browser} / ${os}`,
+      text: count > 1 ? `${count} thiết bị: ${allDevicesStr}` : `1 thiết bị: ${allDevicesStr}`,
       className: styles.deviceBound,
       count: count
     }
