@@ -415,8 +415,8 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        // Request portrait resolution by default for mobile
-        video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1920 } }
+        // Request exactly 3:4 portrait resolution to match iPhone native camera FOV without cropping
+        video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1440 } }
       })
       streamRef.current = stream
       setCameraActive(true)
