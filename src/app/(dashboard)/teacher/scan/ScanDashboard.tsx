@@ -1338,7 +1338,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
 
           <div className={styles.cameraControls}>
             <button onClick={() => setIsFastScan(!isFastScan)} className={styles.fastScanToggle}>
-              ⚡ Tự động quét {isFastScan ? 'BẬT' : 'TẮT'}
+              ⚡ Chụp liên tục {isFastScan ? 'BẬT' : 'TẮT'}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-evenly', width: '100%', maxWidth: 400 }}>
               <div style={{ width: 64, display: 'flex', justifyContent: 'center' }}>
@@ -1465,7 +1465,7 @@ export default function ScanDashboard({ userId }: { userRole: string; userId: st
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: 'white', borderRadius: 16, padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 8, animation: 'spin 1s linear infinite' }}>⏳</div>
-            <div style={{ fontWeight: 700 }}>AI đang đọc phiếu...</div>
+            <div style={{ fontWeight: 700 }}>Đang quét...</div>
             <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>Nhận dạng bong bóng, mã đề, số báo danh</div>
           </div>
         </div>

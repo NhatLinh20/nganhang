@@ -468,7 +468,7 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
                 </button>
                 <button className={`${styles.scanBtn} ${styles.scanBtnPrimary}`}
                   onClick={handleScan} disabled={isProcessing}>
-                  {isProcessing ? '⏳ AI đang đọc phiếu...' : '🤖 Quét bằng AI'}
+                  {isProcessing ? '⏳ Đang quét...' : '🤖 Quét bằng AI'}
                 </button>
               </div>
             </div>
@@ -727,7 +727,7 @@ export default function ScanClient({ userRole, userId }: ScanClientProps) {
         <div className={styles.processingOverlay}>
           <div className={styles.processingCard}>
             <div className={styles.processingSpinner} />
-            <div className={styles.processingText}>🤖 Gemini AI đang đọc phiếu...</div>
+            <div className={styles.processingText}>🤖 Đang quét...</div>
             <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 8 }}>
               Nhận dạng bong bóng, mã đề, số báo danh
             </div>
