@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import styles from './shuffle.module.css'
 import { isLimitedRole, checkExportQuota, logExport, TEACHER_LIMITS } from '@/lib/export-limiter'
 import LimitModal from '@/components/LimitModal'
+import { processImportFiles, type ImportedFileInfo, type ImportedExamQuestion } from '@/lib/latex-parser/tex-import-parser'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -202,6 +203,33 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   const [qrCodeOptions, setQrCodeOptions] = useState<string[]>([])
   const [showQrDropdown, setShowQrDropdown] = useState<boolean>(false)
 
+  // ─── Import file .tex state ──────────────────────────────────────────────────
+  const [importedFiles, setImportedFiles] = useState<ImportedFileInfo[]>([])
+  const [importMode, setImportMode] = useState<'shuffle' | 'minibank'>('shuffle')
+  const [isImporting, setIsImporting] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [importGlobalErrors, setImportGlobalErrors] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const addFileInputRef = useRef<HTMLInputElement>(null)
+  const hasImportedFiles = importedFiles.length > 0
+
+  // Mini bank config
+  const [miniBankNumExams, setMiniBankNumExams] = useState(4)
+  const [miniBankMcCount, setMiniBankMcCount] = useState(12)
+  const [miniBankTfCount, setMiniBankTfCount] = useState(4)
+  const [miniBankSaCount, setMiniBankSaCount] = useState(6)
+  const [miniBankEsCount, setMiniBankEsCount] = useState(0)
+  const [miniBankAllowDup, setMiniBankAllowDup] = useState(false)
+
+  // Computed: tổng ngân hàng mini
+  const miniBankPool = {
+    mc: importedFiles.reduce((s, f) => s + f.stats.mc, 0),
+    tf: importedFiles.reduce((s, f) => s + f.stats.tf, 0),
+    sa: importedFiles.reduce((s, f) => s + f.stats.sa, 0),
+    es: importedFiles.reduce((s, f) => s + f.stats.es, 0),
+    total: importedFiles.reduce((s, f) => s + f.stats.total, 0),
+  }
+
   // ─── Load source data from localStorage ─────────────────────────────────────
   useEffect(() => {
     try {
@@ -285,8 +313,231 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
       ])
       setHeaderStyles(Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' })))
+      // Reset import state too
+      setImportedFiles([])
+      setImportMode('shuffle')
+      setImportGlobalErrors([])
+      setMiniBankNumExams(4)
+      setMiniBankMcCount(12)
+      setMiniBankTfCount(4)
+      setMiniBankSaCount(6)
+      setMiniBankEsCount(0)
+      setMiniBankAllowDup(false)
     }
   }
+
+  // ─── Import file handlers ──────────────────────────────────────────────────
+
+  const handleImportFiles = async (files: File[]) => {
+    if (files.length === 0) return
+    setIsImporting(true)
+    setImportGlobalErrors([])
+
+    try {
+      const { imported, globalErrors } = await processImportFiles(files)
+      if (globalErrors.length > 0) setImportGlobalErrors(globalErrors)
+
+      if (imported.length > 0) {
+        // Thêm vào danh sách (không thay thế)
+        setImportedFiles(prev => {
+          const newList = [...prev, ...imported]
+          return newList
+        })
+      }
+    } catch (err) {
+      setImportGlobalErrors([`Lỗi xử lý file: ${err instanceof Error ? err.message : String(err)}`])
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const files = Array.from(e.dataTransfer.files)
+    handleImportFiles(files)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    handleImportFiles(files)
+    e.target.value = '' // Reset input to allow re-selection
+  }
+
+  const handleRemoveImportedFile = (index: number) => {
+    setImportedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleClearImportedFiles = () => {
+    if (window.confirm('Xóa tất cả file đã import?')) {
+      setImportedFiles([])
+      setImportGlobalErrors([])
+      // Reset shuffle state nếu đang dùng import
+      if (!hasSource) {
+        setSourceData(null)
+        setSourceConfigs([])
+        setShuffledExams([])
+        setHasShuffled(false)
+      }
+    }
+  }
+
+  // ─── Apply imported files as source data ─────────────────────────────────
+
+  const applyImportedAsSource = () => {
+    if (importedFiles.length === 0) return
+
+    const sourceExams = importedFiles.map(f => ({
+      questions: f.questions as unknown as ExamQuestion[],
+    }))
+
+    const data: ShuffleSourceData = {
+      sourceExams,
+      headerLabels,
+      configTitle: 'Đề thi trộn (import)',
+      configDuration: 90,
+      filterGrade: 12,
+    }
+
+    setSourceData(data)
+    setHasSource(true)
+
+    // Initialize configs: 1 code per source exam
+    const configs = sourceExams.map(() => ({
+      codes: [generateExamCode()],
+    }))
+    setSourceConfigs(configs)
+    setShuffledExams([])
+    setHasShuffled(false)
+  }
+
+  // Auto-apply khi importedFiles thay đổi ở chế độ shuffle
+  useEffect(() => {
+    if (importedFiles.length > 0 && importMode === 'shuffle') {
+      applyImportedAsSource()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importedFiles, importMode])
+
+  // ─── Mini bank: generate exams ───────────────────────────────────────────
+
+  const handleGenerateMiniBank = () => {
+    if (importedFiles.length === 0) return
+
+    // Gộp tất cả câu hỏi theo loại
+    const allQuestions = importedFiles.flatMap(f => f.questions) as unknown as ExamQuestion[]
+    const poolMC = allQuestions.filter(q => q.question_type === 'multiple_choice')
+    const poolTF = allQuestions.filter(q => q.question_type === 'true_false')
+    const poolSA = allQuestions.filter(q => q.question_type === 'short_answer')
+    const poolES = allQuestions.filter(q => q.question_type === 'essay')
+
+    const allCodes = generateUniqueExamCodes(miniBankNumExams)
+    const allShuffled: ShuffledExam[] = []
+
+    // Track used questions để tránh trùng (khi không cho phép trùng)
+    const usedMC = new Set<string>()
+    const usedTF = new Set<string>()
+    const usedSA = new Set<string>()
+    const usedES = new Set<string>()
+
+    for (let i = 0; i < miniBankNumExams; i++) {
+      const questions: ExamQuestion[] = []
+
+      // Lấy ngẫu nhiên câu TN
+      const pickRandom = (pool: ExamQuestion[], count: number, used: Set<string>): ExamQuestion[] => {
+        let available = miniBankAllowDup
+          ? [...pool]
+          : pool.filter(q => !used.has(q.id))
+        const shuffled = shuffleArray(available)
+        const picked = shuffled.slice(0, count)
+        picked.forEach(q => used.add(q.id))
+        return picked.map(q => ({ ...q }))
+      }
+
+      if (miniBankMcCount > 0) questions.push(...pickRandom(poolMC, miniBankMcCount, usedMC))
+      if (miniBankTfCount > 0) questions.push(...pickRandom(poolTF, miniBankTfCount, usedTF))
+      if (miniBankSaCount > 0) questions.push(...pickRandom(poolSA, miniBankSaCount, usedSA))
+      if (miniBankEsCount > 0) questions.push(...pickRandom(poolES, miniBankEsCount, usedES))
+
+      // Trộn thứ tự trong từng phần nếu bật
+      let finalQuestions = questions
+      if (shuffleQuestions) {
+        const grouped: Record<number, ExamQuestion[]> = {}
+        questions.forEach(q => {
+          const key = q.phan ?? 0
+          if (!grouped[key]) grouped[key] = []
+          grouped[key].push(q)
+        })
+        const keys = Object.keys(grouped).map(Number).sort((a, b) => a - b)
+        finalQuestions = []
+        for (const key of keys) {
+          finalQuestions.push(...shuffleArray(grouped[key]))
+        }
+      }
+
+      // Trộn đáp án nếu bật
+      if (shuffleAnswers) {
+        finalQuestions = finalQuestions.map(q => shuffleAnswerOptions(q))
+      }
+
+      allShuffled.push({
+        questions: finalQuestions,
+        code: allCodes[i],
+        sourceIndex: 0, // Ngân hàng mini = 1 nguồn duy nhất
+      })
+    }
+
+    // Cập nhật sourceData cho export
+    setSourceData({
+      sourceExams: [{ questions: allQuestions }],
+      headerLabels,
+      configTitle: 'Đề thi (ngân hàng mini)',
+      configDuration: 90,
+      filterGrade: 12,
+    })
+    setHasSource(true)
+
+    setShuffledExams(allShuffled)
+    setHasShuffled(true)
+    setActiveTab(0)
+    setExpandedId(null)
+  }
+
+  // Mini bank warnings
+  const miniBankWarnings: string[] = []
+  if (hasImportedFiles && importMode === 'minibank') {
+    if (!miniBankAllowDup) {
+      if (miniBankMcCount * miniBankNumExams > miniBankPool.mc && miniBankPool.mc > 0)
+        miniBankWarnings.push(`TN: cần ${miniBankMcCount * miniBankNumExams} câu nhưng chỉ có ${miniBankPool.mc} câu (sẽ trùng)`)
+      if (miniBankTfCount * miniBankNumExams > miniBankPool.tf && miniBankPool.tf > 0)
+        miniBankWarnings.push(`Đ/S: cần ${miniBankTfCount * miniBankNumExams} câu nhưng chỉ có ${miniBankPool.tf} câu (sẽ trùng)`)
+      if (miniBankSaCount * miniBankNumExams > miniBankPool.sa && miniBankPool.sa > 0)
+        miniBankWarnings.push(`Ngắn: cần ${miniBankSaCount * miniBankNumExams} câu nhưng chỉ có ${miniBankPool.sa} câu (sẽ trùng)`)
+      if (miniBankEsCount * miniBankNumExams > miniBankPool.es && miniBankPool.es > 0)
+        miniBankWarnings.push(`TL: cần ${miniBankEsCount * miniBankNumExams} câu nhưng chỉ có ${miniBankPool.es} câu (sẽ trùng)`)
+    }
+    if (miniBankMcCount > miniBankPool.mc) miniBankWarnings.push(`TN: mỗi đề cần ${miniBankMcCount} câu nhưng ngân hàng chỉ có ${miniBankPool.mc} câu`)
+    if (miniBankTfCount > miniBankPool.tf) miniBankWarnings.push(`Đ/S: mỗi đề cần ${miniBankTfCount} câu nhưng ngân hàng chỉ có ${miniBankPool.tf} câu`)
+    if (miniBankSaCount > miniBankPool.sa) miniBankWarnings.push(`Ngắn: mỗi đề cần ${miniBankSaCount} câu nhưng ngân hàng chỉ có ${miniBankPool.sa} câu`)
+    if (miniBankEsCount > miniBankPool.es) miniBankWarnings.push(`TL: mỗi đề cần ${miniBankEsCount} câu nhưng ngân hàng chỉ có ${miniBankPool.es} câu`)
+  }
+
+  const miniBankPerExam = miniBankMcCount + miniBankTfCount + miniBankSaCount + miniBankEsCount
+  const miniBankCanGenerate = hasImportedFiles && miniBankPerExam > 0 && miniBankNumExams > 0
+    && miniBankMcCount <= miniBankPool.mc
+    && miniBankTfCount <= miniBankPool.tf
+    && miniBankSaCount <= miniBankPool.sa
+    && miniBankEsCount <= miniBankPool.es
 
   const handleAddCode = (sourceIdx: number) => {
     // Giáo viên chỉ bị giới hạn số đề gốc (2), số mã đề con không giới hạn
@@ -550,17 +801,370 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       <div className={styles.layout}>
         {/* ═══ LEFT PANEL ═══ */}
         <div className={styles.leftPanel}>
-          {!hasSource ? (
-            <div className={styles.emptyState}>
-              <div className={styles.emptyIcon}>📦</div>
-              <div className={styles.emptyText}>Chưa có đề gốc</div>
-              <div className={styles.emptySubtext}>
-                Hãy vào trang &quot;Tạo đề thi&quot; hoặc &quot;AI tạo đề&quot; rồi bấm nút &quot;🔀 Chuyển sang Trộn đề&quot;
+          {/* ═══ IMPORT ZONE (khi chưa có source từ trang Tạo đề VÀ chưa import file) ═══ */}
+          {!hasSource && !hasImportedFiles && !isImporting && (
+            <div className={styles.importSection}>
+              <div className={styles.sectionTitle}>📦 Nhập đề gốc</div>
+
+              {/* Drop zone */}
+              <div
+                className={`${styles.importDropzone} ${isDragOver ? styles.importDropzoneActive : ''}`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className={styles.importDropzoneIcon}>📂</div>
+                <div className={styles.importDropzoneText}>Kéo thả file .tex hoặc .zip vào đây</div>
+                <div className={styles.importDropzoneSubtext}>hoặc click để chọn file • Hỗ trợ .tex và .zip</div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".tex,.zip"
+                  className={styles.importDropzoneInput}
+                  onChange={handleFileInputChange}
+                  onClick={e => e.stopPropagation()}
+                />
               </div>
+
+              <div className={styles.importDivider}>hoặc</div>
+              <div className={styles.importAltText}>
+                Vào trang &quot;Tạo đề thi&quot; hoặc &quot;AI tạo đề&quot;<br />
+                rồi bấm nút &quot;🔀 Chuyển sang Trộn đề&quot;
+              </div>
+
+              {/* Global errors */}
+              {importGlobalErrors.length > 0 && (
+                <div className={styles.importErrors} style={{ marginTop: 12 }}>
+                  {importGlobalErrors.map((err, i) => (
+                    <div key={i} className={styles.importErrorText}>⚠️ {err}</div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
+          )}
+
+          {/* ═══ IMPORTING SPINNER ═══ */}
+          {isImporting && (
+            <div className={styles.importProcessing}>
+              <div className={styles.importSpinner} />
+              <div className={styles.importProcessingText}>Đang phân tích file .tex...</div>
+            </div>
+          )}
+
+          {/* ═══ IMPORTED FILES LIST + MODE SELECTOR ═══ */}
+          {hasImportedFiles && !isImporting && (
             <>
-              {/* Source info */}
+              {/* Imported files */}
+              <div className={styles.section}>
+                <div className={styles.importedHeader}>
+                  <div className={styles.importedTitle}>📁 {importedFiles.length} file đã import</div>
+                  <button className={styles.importedClearBtn} onClick={handleClearImportedFiles}>Xóa tất cả</button>
+                </div>
+
+                {importedFiles.map((file, fi) => (
+                  <div key={fi} className={styles.importFileCard}>
+                    <div className={styles.importFileCardHeader}>
+                      <div className={styles.importFileName}>📄 {file.fileName}</div>
+                      <button className={styles.importFileRemoveBtn} onClick={() => handleRemoveImportedFile(fi)} title="Xóa file">✕</button>
+                    </div>
+                    <div className={styles.importFileStats}>
+                      {file.stats.mc > 0 && <span className={styles.importFileStat} data-type="mc">⏺ {file.stats.mc} TN</span>}
+                      {file.stats.tf > 0 && <span className={styles.importFileStat} data-type="tf">☑ {file.stats.tf} Đ/S</span>}
+                      {file.stats.sa > 0 && <span className={styles.importFileStat} data-type="sa">✍ {file.stats.sa} Ngắn</span>}
+                      {file.stats.es > 0 && <span className={styles.importFileStat} data-type="es">📝 {file.stats.es} TL</span>}
+                    </div>
+                    {file.errors.length > 0 && (
+                      <div className={styles.importErrors}>
+                        <div className={styles.importErrorText}>⚠️ {file.errors.length} block lỗi (đã bỏ qua)</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Thêm file */}
+                <div className={styles.addMoreFilesBtn} onClick={() => addFileInputRef.current?.click()}>
+                  ➕ Thêm file .tex / .zip
+                  <input
+                    ref={addFileInputRef}
+                    type="file"
+                    multiple
+                    accept=".tex,.zip"
+                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                    onChange={handleFileInputChange}
+                  />
+                </div>
+
+                {/* Global errors */}
+                {importGlobalErrors.length > 0 && (
+                  <div className={styles.importErrors} style={{ marginTop: 8 }}>
+                    {importGlobalErrors.map((err, i) => (
+                      <div key={i} className={styles.importErrorText}>⚠️ {err}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* MODE SELECTOR */}
+              <div className={styles.section}>
+                <div className={styles.modeSelector}>
+                  <button
+                    className={`${styles.modeTab} ${importMode === 'shuffle' ? styles.modeTabActive : ''}`}
+                    onClick={() => setImportMode('shuffle')}
+                  >
+                    🔀 Trộn đề
+                  </button>
+                  <button
+                    className={`${styles.modeTab} ${importMode === 'minibank' ? styles.modeTabActive : ''}`}
+                    onClick={() => setImportMode('minibank')}
+                  >
+                    🏦 Ngân hàng mini
+                  </button>
+                </div>
+
+                {/* ── CHẾ ĐỘ TRỘN ĐỀ ── */}
+                {importMode === 'shuffle' && sourceData && (
+                  <>
+                    <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
+                      {sourceData.sourceExams.length} đề gốc • Tổng cộng trộn ra <strong>{totalCodes} mã đề</strong>
+                    </div>
+
+                    {sourceData.sourceExams.map((exam, si) => (
+                      <div key={si} className={styles.sourceCard}>
+                        <div className={styles.sourceCardHeader}>
+                          <div className={styles.sourceCardTitle}>
+                            Đề gốc {si + 1}
+                            {importedFiles[si] && (
+                              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400, marginLeft: 4 }}>
+                                ({importedFiles[si].fileName})
+                              </span>
+                            )}
+                          </div>
+                          <div className={styles.sourceCardBadge}>{exam.questions.length} câu</div>
+                        </div>
+
+                        {/* Question type breakdown */}
+                        {importedFiles[si] && (
+                          <div className={styles.importFileStats} style={{ marginBottom: 8 }}>
+                            {importedFiles[si].stats.mc > 0 && <span className={styles.importFileStat} data-type="mc">⏺ {importedFiles[si].stats.mc} TN</span>}
+                            {importedFiles[si].stats.tf > 0 && <span className={styles.importFileStat} data-type="tf">☑ {importedFiles[si].stats.tf} Đ/S</span>}
+                            {importedFiles[si].stats.sa > 0 && <span className={styles.importFileStat} data-type="sa">✍ {importedFiles[si].stats.sa} Ngắn</span>}
+                            {importedFiles[si].stats.es > 0 && <span className={styles.importFileStat} data-type="es">📝 {importedFiles[si].stats.es} TL</span>}
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+                          Trộn ra {sourceConfigs[si]?.codes.length || 0} mã đề:
+                        </div>
+                        <div className={styles.codeInputRow}>
+                          {sourceConfigs[si]?.codes.map((code, ci) => (
+                            <div key={ci} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <input
+                                type="text"
+                                className={styles.codeInput}
+                                value={code}
+                                maxLength={4}
+                                onChange={e => handleCodeChange(si, ci, e.target.value)}
+                              />
+                              {sourceConfigs[si].codes.length > 1 && (
+                                <button className={styles.removeCodeBtn} onClick={() => handleRemoveCode(si, ci)} title="Xóa mã đề">✕</button>
+                              )}
+                            </div>
+                          ))}
+                          <button className={styles.addCodeBtn} onClick={() => handleAddCode(si)} title="Thêm mã đề">+</button>
+                          <button className={styles.randomBtn} onClick={() => handleRandomizeCodes(si)} title="Tạo mã ngẫu nhiên">🎲</button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {hasDuplicateCodes && (
+                      <div style={{ fontSize: 12, color: '#dc2626', fontWeight: 500, marginTop: 8 }}>
+                        ⚠️ Có mã đề bị trùng! Vui lòng chỉnh sửa.
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* ── CHẾ ĐỘ NGÂN HÀNG MINI ── */}
+                {importMode === 'minibank' && (
+                  <>
+                    {/* Pool stats */}
+                    <div className={styles.miniBankStats}>
+                      <div className={styles.miniBankStatsTitle}>🏦 Ngân hàng mini</div>
+                      <div className={styles.miniBankStatsGrid}>
+                        <div className={styles.miniBankStatItem}>
+                          ⏺ Trắc nghiệm: <span className={styles.miniBankStatValue}>{miniBankPool.mc}</span>
+                        </div>
+                        <div className={styles.miniBankStatItem}>
+                          ☑ Đúng sai: <span className={styles.miniBankStatValue}>{miniBankPool.tf}</span>
+                        </div>
+                        <div className={styles.miniBankStatItem}>
+                          ✍ Trả lời ngắn: <span className={styles.miniBankStatValue}>{miniBankPool.sa}</span>
+                        </div>
+                        <div className={styles.miniBankStatItem}>
+                          📝 Tự luận: <span className={styles.miniBankStatValue}>{miniBankPool.es}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#6d28d9', fontWeight: 600, marginTop: 8 }}>
+                        Tổng: {miniBankPool.total} câu hỏi
+                      </div>
+                    </div>
+
+                    {/* Config */}
+                    <div className={styles.miniBankConfig}>
+                      <div className={styles.miniBankConfigTitle}>⚙️ Cấu trúc đề con</div>
+
+                      <div className={styles.miniBankConfigRow}>
+                        <span className={styles.miniBankConfigLabel}>Số đề cần tạo:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          className={styles.miniBankConfigInput}
+                          value={miniBankNumExams}
+                          onChange={e => setMiniBankNumExams(Math.max(1, parseInt(e.target.value) || 1))}
+                        />
+                      </div>
+
+                      <div style={{ fontSize: 12, color: '#94a3b8', margin: '8px 0 4px', fontWeight: 600 }}>Mỗi đề gồm:</div>
+
+                      <div className={styles.miniBankConfigRow}>
+                        <span className={styles.miniBankConfigLabel}>⏺ Trắc nghiệm:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={miniBankPool.mc}
+                          className={styles.miniBankConfigInput}
+                          value={miniBankMcCount}
+                          onChange={e => setMiniBankMcCount(Math.max(0, parseInt(e.target.value) || 0))}
+                        />
+                        <span className={styles.miniBankConfigMax}>/ {miniBankPool.mc}</span>
+                      </div>
+
+                      <div className={styles.miniBankConfigRow}>
+                        <span className={styles.miniBankConfigLabel}>☑ Đúng sai:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={miniBankPool.tf}
+                          className={styles.miniBankConfigInput}
+                          value={miniBankTfCount}
+                          onChange={e => setMiniBankTfCount(Math.max(0, parseInt(e.target.value) || 0))}
+                        />
+                        <span className={styles.miniBankConfigMax}>/ {miniBankPool.tf}</span>
+                      </div>
+
+                      <div className={styles.miniBankConfigRow}>
+                        <span className={styles.miniBankConfigLabel}>✍ Trả lời ngắn:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={miniBankPool.sa}
+                          className={styles.miniBankConfigInput}
+                          value={miniBankSaCount}
+                          onChange={e => setMiniBankSaCount(Math.max(0, parseInt(e.target.value) || 0))}
+                        />
+                        <span className={styles.miniBankConfigMax}>/ {miniBankPool.sa}</span>
+                      </div>
+
+                      <div className={styles.miniBankConfigRow}>
+                        <span className={styles.miniBankConfigLabel}>📝 Tự luận:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={miniBankPool.es}
+                          className={styles.miniBankConfigInput}
+                          value={miniBankEsCount}
+                          onChange={e => setMiniBankEsCount(Math.max(0, parseInt(e.target.value) || 0))}
+                        />
+                        <span className={styles.miniBankConfigMax}>/ {miniBankPool.es}</span>
+                      </div>
+
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 8, borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
+                        Mỗi đề: <strong>{miniBankPerExam}</strong> câu • Tổng: <strong>{miniBankPerExam * miniBankNumExams}</strong> câu
+                      </div>
+                    </div>
+
+                    {/* Warnings */}
+                    {miniBankWarnings.length > 0 && (
+                      <div className={styles.miniBankWarning}>
+                        ⚠️ {miniBankWarnings.map((w, i) => <div key={i}>{w}</div>)}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Shuffle options */}
+              <div className={styles.section}>
+                <div className={styles.sectionTitle}>⚙️ Tùy chọn trộn</div>
+                <div className={styles.optionRow}>
+                  <input
+                    type="checkbox"
+                    id="opt-questions"
+                    className={styles.optionCheckbox}
+                    checked={shuffleQuestions}
+                    onChange={e => setShuffleQuestions(e.target.checked)}
+                  />
+                  <label htmlFor="opt-questions" className={styles.optionLabel}>
+                    Trộn thứ tự câu hỏi (trong từng phần)
+                  </label>
+                </div>
+                <div className={styles.optionRow}>
+                  <input
+                    type="checkbox"
+                    id="opt-answers"
+                    className={styles.optionCheckbox}
+                    checked={shuffleAnswers}
+                    onChange={e => setShuffleAnswers(e.target.checked)}
+                  />
+                  <label htmlFor="opt-answers" className={styles.optionLabel}>
+                    Trộn đáp án A/B/C/D (câu trắc nghiệm)
+                  </label>
+                </div>
+                {importMode === 'minibank' && (
+                  <div className={styles.optionRow}>
+                    <input
+                      type="checkbox"
+                      id="opt-allow-dup"
+                      className={styles.optionCheckbox}
+                      checked={miniBankAllowDup}
+                      onChange={e => setMiniBankAllowDup(e.target.checked)}
+                    />
+                    <label htmlFor="opt-allow-dup" className={styles.optionLabel}>
+                      Cho phép trùng câu giữa các đề
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Action button */}
+              <div className={styles.section}>
+                {importMode === 'shuffle' ? (
+                  <button
+                    className={styles.shuffleBtn}
+                    onClick={handleShuffle}
+                    disabled={hasDuplicateCodes || totalCodes === 0}
+                  >
+                    🔀 Bắt đầu trộn đề ({totalCodes} mã đề)
+                  </button>
+                ) : (
+                  <button
+                    className={styles.generateMiniBankBtn}
+                    onClick={handleGenerateMiniBank}
+                    disabled={!miniBankCanGenerate}
+                  >
+                    🏦 Tạo {miniBankNumExams} đề từ ngân hàng mini ({miniBankPerExam} câu/đề)
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ═══ SOURCE FROM TẠO ĐỀ (khi có source từ localStorage NHƯNG không phải import) ═══ */}
+          {hasSource && !hasImportedFiles && (
+            <>
               <div className={styles.section}>
                 <div className={styles.sectionTitle}>📦 Đề gốc đã nhận</div>
                 <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
@@ -574,7 +1178,6 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                       <div className={styles.sourceCardBadge}>{exam.questions.length} câu</div>
                     </div>
 
-                    {/* Exam codes for this source */}
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
                       Trộn ra {sourceConfigs[si]?.codes.length || 0} mã đề:
                     </div>
@@ -606,36 +1209,34 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                 )}
               </div>
 
-              {/* Shuffle options */}
               <div className={styles.section}>
                 <div className={styles.sectionTitle}>⚙️ Tùy chọn trộn</div>
                 <div className={styles.optionRow}>
                   <input
                     type="checkbox"
-                    id="opt-questions"
+                    id="opt-questions-src"
                     className={styles.optionCheckbox}
                     checked={shuffleQuestions}
                     onChange={e => setShuffleQuestions(e.target.checked)}
                   />
-                  <label htmlFor="opt-questions" className={styles.optionLabel}>
+                  <label htmlFor="opt-questions-src" className={styles.optionLabel}>
                     Trộn thứ tự câu hỏi (trong từng phần)
                   </label>
                 </div>
                 <div className={styles.optionRow}>
                   <input
                     type="checkbox"
-                    id="opt-answers"
+                    id="opt-answers-src"
                     className={styles.optionCheckbox}
                     checked={shuffleAnswers}
                     onChange={e => setShuffleAnswers(e.target.checked)}
                   />
-                  <label htmlFor="opt-answers" className={styles.optionLabel}>
+                  <label htmlFor="opt-answers-src" className={styles.optionLabel}>
                     Trộn đáp án A/B/C/D (câu trắc nghiệm)
                   </label>
                 </div>
               </div>
 
-              {/* Shuffle button */}
               <div className={styles.section}>
                 <button
                   className={styles.shuffleBtn}
@@ -655,12 +1256,14 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
             <div className={styles.emptyState} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div className={styles.emptyIcon}>🔀</div>
               <div className={styles.emptyText}>
-                {hasSource ? 'Sẵn sàng trộn đề' : 'Chưa có đề gốc'}
+                {hasSource || hasImportedFiles ? 'Sẵn sàng trộn đề' : 'Chưa có đề gốc'}
               </div>
               <div className={styles.emptySubtext}>
-                {hasSource
-                  ? 'Cấu hình số mã đề ở bên trái rồi bấm "Bắt đầu trộn đề"'
-                  : 'Hãy tạo đề trước rồi chuyển sang trang này'}
+                {hasSource || hasImportedFiles
+                  ? (importMode === 'minibank'
+                    ? 'Cấu hình số đề và số câu ở bên trái rồi bấm "Tạo đề từ ngân hàng mini"'
+                    : 'Cấu hình số mã đề ở bên trái rồi bấm "Bắt đầu trộn đề"')
+                  : 'Import file .tex ở bên trái hoặc tạo đề từ trang khác'}
               </div>
             </div>
           ) : (
@@ -674,7 +1277,9 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                     onClick={() => { setActiveTab(idx); setExpandedId(null) }}
                   >
                     Mã {exam.code}
-                    <span className={styles.tabOriginLabel}>Gốc {exam.sourceIndex + 1}</span>
+                    <span className={styles.tabOriginLabel}>
+                      {importMode === 'minibank' && hasImportedFiles ? 'Ngân hàng' : `Gốc ${exam.sourceIndex + 1}`}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -683,7 +1288,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
               <div className={styles.questionsArea}>
                 {currentExam && (
                   <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-                    <strong>Mã đề {currentExam.code}</strong> • Từ đề gốc {currentExam.sourceIndex + 1} • {currentQuestions.length} câu
+                    <strong>Mã đề {currentExam.code}</strong> • {importMode === 'minibank' && hasImportedFiles ? 'Ngân hàng mini' : `Từ đề gốc ${currentExam.sourceIndex + 1}`} • {currentQuestions.length} câu
                   </div>
                 )}
 
