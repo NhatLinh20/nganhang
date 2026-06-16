@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     mainTex += '\\anloigiai %ẩn lời giải\n'
     mainTex += '%\\tatdongcham %tắt dòng chấm\n'
     mainTex += '\\begin{document}\n'
-    mainTex += '\\tableofcontents\n'
+    mainTex += '\\tableofcontents\\thispagestyle{empty}\n'
     mainTex += '\\input{data/lesson_content}\n'
     mainTex += '\\end{document}\n'
     zip.addFile('main.tex', Buffer.from(mainTex, 'utf-8'))
