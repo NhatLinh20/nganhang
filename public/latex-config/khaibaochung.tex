@@ -1,4 +1,4 @@
-\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,enumerate,multirow,makecell,currfile,venndiagram,fontawesome,pifont,pgf-pie,pgfplots,yhmath,twemojis,xparse}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,enumerate,multirow,makecell,currfile,venndiagram,fontawesome,pifont,pgf-pie,pgfplots,yhmath,twemojis,xparse,casio580x}
 \usepackage{etoolbox}
 \usepackage{zref-lastpage}
 \usepackage{zref-user}
@@ -161,7 +161,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \def\khoi{12}
 \def\made{1010}
 \newcounter{demsode}[chapter]
-\setcounter{demsode}{1}
+\setcounter{demsode}{0}
 \newenvironment{name}[8]{
 	\setcounter{phan}{0}
 	\setcounter{page}{1}
@@ -186,19 +186,21 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 	\textit{Số báo danh:}\tikz \draw[dotted,very thin] (0,0)--(\textwidth/4.6,0);\quad
 	Mã đề: \fbox{\color{blue} \bf \large\fontfamily{anttlc}\selectfont \made}
 	%=====
-	\addcontentsline{toc}{section}{Đề \thedemsode. \MakeUppercase{#5}, Môn Toán \khoi}
 	\addtocounter{demsode}{1}
-	\gdef\socaulc{12}
-	\gdef\socauds{4}
-	\gdef\socaukq{6}
-	\gdef\socautl{3}
+	\phantomsection
+	\addcontentsline{toc}{section}
+	{Đề \thedemsode. \MakeUppercase{#5}, Môn Toán \khoi}
+	%	\gdef\socaulc{12}
+	%	\gdef\socauds{4}
+	%	\gdef\socaukq{6}
+	%	\gdef\socautl{3}
 }
 
 %%%%%%%%%%%%%%
 \newcommand{\indapan}[1]{
-%	\begin{center}
-%		\fbox{\large \textbf{\color{purple} \large BẢNG ĐÁP ÁN}}
-%	\end{center}
+	%	\begin{center}
+		%		\fbox{\large \textbf{\color{purple} \large BẢNG ĐÁP ÁN}}
+		%	\end{center}
 	\IfFileExists{#1-Phan-I}{
 		\noindent
 		\inputansbox{12}{#1-Phan-I}
@@ -233,10 +235,10 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 	\addtocounter{demsode}{1}
 	\newpage}
 %Cấu trúc đề mới
-%\def\socaulc{12}
-%\def\socauds{2}
-%\def\socaukq{4}
-%\def\socautl{3}
+\def\socaulc{12}
+\def\socauds{4}
+\def\socaukq{6}
+\def\socautl{3}
 \newcounter{phan}
 \setcounter{phan}{0}
 \renewcommand{\thephan}{\Roman{phan}}
@@ -244,7 +246,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \newcommand{\caulc}{
 	\stepcounter{phan}
 	\par\noindent
-	\textbf{PHẦN \thephan. Câu trắc nghiệm nhiều phương án lựa chọn.}
+	{\textbf{PHẦN \thephan. Câu trắc nghiệm nhiều phương án lựa chọn.} Thí sinh trả lời trả lời từ câu 1 đến câu \socaulc. Mỗi câu hỏi thí sinh chỉ chọn một phương án.}
 	\par
 	\setcounter{ex}{0}
 }
@@ -252,7 +254,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \newcommand{\cauds}{
 	\stepcounter{phan}
 	\par\noindent
-	\textbf{PHẦN \thephan. Câu trắc nghiệm đúng sai.}
+	{\textbf{PHẦN \thephan. Câu trắc nghiệm đúng sai.} Thí sinh trả lời trả lời từ câu 1 đến câu \socauds. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.}
 	\par
 	\setcounter{ex}{0}
 }
@@ -260,7 +262,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \newcommand{\caukq}{
 	\stepcounter{phan}
 	\par\noindent
-	\textbf{PHẦN \thephan. Câu trắc nghiệm trả lời ngắn.}
+	{\textbf{PHẦN \thephan. Câu trắc nghiệm trả lời ngắn.} Thí sinh trả lời từ câu 1 đến câu \socaukq.}
 	\par
 	\setcounter{ex}{0}
 }
@@ -344,7 +346,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 	colback=white,    % màu nền
 	boxrule=0.5pt,
 	colframe=gray!50!black,  % màu khung
-%	title=\textbf{Định nghĩa},
+	%	title=\textbf{Định nghĩa},
 	fonttitle=\bfseries,
 	breakable,               % cho phép xuống dòng qua trang
 	arc=1mm,                  % bo góc
@@ -448,7 +450,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 \newcounter{vd}
 \newenvironment{vd}
 {\refstepcounter{vd}%
-\begin{khung}\textcolor{black}{\textbf{Ví dụ \thevd. }}}{\end{khung}}
+	\begin{khung}\textcolor{black}{\textbf{Ví dụ \thevd. }}}{\end{khung}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%======dòng chấm, oli
 \newcommand{\dongcham}[1]{
