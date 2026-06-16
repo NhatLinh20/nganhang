@@ -919,7 +919,7 @@ export async function POST(request: NextRequest) {
       mainTex += '%\\exitdapso %ẩn đs\n'
       mainTex += '\\anloigiai %ẩn lời giải\n'
       mainTex += '%\\tatdongcham %tắt dòng chấm\n'
-      mainTex += '\\begin{document}\n'
+      mainTex += '\\begin{document}\n\\tableofcontents\\thispagestyle{empty}\n'
       for (let i = 0; i < examSets.length; i++) {
         mainTex += `\\newpage\\input{data/ma_tran_de_thi_toan${i + 1}}\n`
       }

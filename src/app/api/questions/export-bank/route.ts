@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
     mainTex += '\\anloigiai %ẩn lời giải\n'
     mainTex += '%\\tatdongcham %tắt dòng chấm\n'
     mainTex += '\\begin{document}\n'
-    mainTex += '\\tableofcontents\n'
+    mainTex += '\\tableofcontents\\thispagestyle{empty}\n'
 
     for (const sub of sortedSubjects) {
       const chapters = grouped[sub]
