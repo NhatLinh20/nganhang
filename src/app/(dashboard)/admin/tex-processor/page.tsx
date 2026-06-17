@@ -464,6 +464,9 @@ export default function TexProcessorPage() {
       const questions = grouped[part.type]
       if (questions.length === 0) continue
 
+      const count = questions.length
+      const defCmd = part.cmd.replace('\\cau', '\\socau')
+      tex += `\\def${defCmd}{${count}}\n`
       tex += `${part.cmd}\n`
       tex += `\\Opensolutionfile{ans}[ans/ans\\currfilebase-${part.suffix}]\n\n`
       tex += questions.join('\n\n')
@@ -652,9 +655,21 @@ export default function TexProcessorPage() {
       if (b.type !== currentType) {
         currentType = b.type
         currentDiff = '' // Reset diff when type changes
+        
+        let typeCount = 0
+        for (const q of parsedBlocks) {
+          if (q.grade === b.grade && q.subject === b.subject && q.chapter === b.chapter && q.lesson === b.lesson && q.variant === b.variant && q.type === b.type) {
+            typeCount++
+          }
+        }
+
         const cmd = TYPE_COMMANDS[b.type] || ''
         tex += `%%%---${b.type}---\n`
-        if (cmd) tex += `${cmd}\n`
+        if (cmd) {
+          const defCmd = cmd.replace('\\cau', '\\socau')
+          tex += `\\def${defCmd}{${typeCount}}\n`
+          tex += `${cmd}\n`
+        }
         tex += '\n'
       }
 

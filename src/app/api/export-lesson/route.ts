@@ -94,7 +94,12 @@ function buildLessonContentTex(grade: number, lessons: LessonInput[]): string {
 
             for (const qType of sortedTypes) {
               const command = TYPE_COMMANDS[qType] || ''
-              if (command) tex += `${command}\n`
+              if (command) {
+                const defCmd = command.replace('\\cau', '\\socau')
+                const typeCount = byType[qType].length
+                tex += `\\def${defCmd}{${typeCount}}\n`
+                tex += `${command}\n`
+              }
 
               // Sort by difficulty: N → H → V → C
               const sorted = byType[qType].sort((a, b) => (DIFF_ORDER[a.difficulty] ?? 9) - (DIFF_ORDER[b.difficulty] ?? 9))

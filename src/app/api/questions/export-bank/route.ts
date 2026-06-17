@@ -229,7 +229,19 @@ export async function GET(request: NextRequest) {
 
             for (const qType of sortedTypes) {
               tex += `${TYPE_COMMENTS[qType] || `%%%---${qType}---`}\n`
-              tex += `${TYPE_COMMANDS[qType] || ''}\n`
+
+              const diffs = types[qType]
+              let typeCount = 0
+              for (const diff in diffs) {
+                typeCount += diffs[diff].length
+              }
+
+              const cmd = TYPE_COMMANDS[qType] || ''
+              if (cmd) {
+                const defCmd = cmd.replace('\\cau', '\\socau')
+                tex += `\\def${defCmd}{${typeCount}}\n`
+                tex += `${cmd}\n`
+              }
 
               const diffs = types[qType]
               const sortedDiffs = Object.keys(diffs).sort(

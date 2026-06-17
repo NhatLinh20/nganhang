@@ -774,20 +774,21 @@ function buildMaTranTex(
 
     let partHeader = ''
     let fileSuffix = ''
+    const count = partQuestions.length
     if (partNum === 1) {
-      partHeader = '\\caulc\n'
+      partHeader = `\\def\\socaulc{${count}}\n\\caulc\n`
       fileSuffix = 'Phan-I'
     } else if (partNum === 2) {
-      partHeader = '\\cauds\n'
+      partHeader = `\\def\\socauds{${count}}\n\\cauds\n`
       fileSuffix = 'Phan-II'
     } else if (partNum === 3) {
-      partHeader = '\\caukq\n'
+      partHeader = `\\def\\socaukq{${count}}\n\\caukq\n`
       fileSuffix = 'Phan-III'
     } else if (partNum === 4) {
-      partHeader = '\\cautl\n'
+      partHeader = `\\def\\socautl{${count}}\n\\cautl\n`
       fileSuffix = 'Phan-IV'
     } else {
-      partHeader = `\\caulc\n`
+      partHeader = `\\def\\socaulc{${count}}\n\\caulc\n`
       fileSuffix = `Phan-${partNum}`
     }
 

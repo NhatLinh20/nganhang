@@ -130,6 +130,9 @@ export async function POST(request: NextRequest) {
       const questions = grouped[part.type]
       if (questions.length === 0) continue
 
+      const count = questions.length
+      const defCmd = part.cmd.replace('\\cau', '\\socau')
+      contentTex += `\\def${defCmd}{${count}}\n`
       contentTex += `${part.cmd}\n`
       contentTex += `\\Opensolutionfile{ans}[ans/ans\\currfilebase-${part.suffix}]\n\n`
       contentTex += questions.map(q => q.trim()).join('\n\n')
