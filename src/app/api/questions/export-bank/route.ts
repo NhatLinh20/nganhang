@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
                 tex += `${cmd}\n`
               }
 
-              const diffs = types[qType]
+
               const sortedDiffs = Object.keys(diffs).sort(
                 (a, b) => (DIFF_ORDER[a] ?? 9) - (DIFF_ORDER[b] ?? 9)
               )
