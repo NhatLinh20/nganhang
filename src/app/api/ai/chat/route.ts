@@ -5,6 +5,17 @@ import { SYSTEM_INSTRUCTION } from '@/lib/ai-system-instruction'
 
 // Tăng giới hạn timeout tối đa cho Vercel (Hobby tier hỗ trợ max 60s)
 export const maxDuration = 60;
+export const runtime = 'edge';
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,7 +61,7 @@ export async function POST(req: NextRequest) {
     for (const file of uploadedFiles) {
       if (file && file.size > 0) {
         const fileBytes = await file.arrayBuffer()
-        const base64File = Buffer.from(fileBytes).toString('base64')
+        const base64File = arrayBufferToBase64(fileBytes)
         lastParts.push({
           inlineData: { data: base64File, mimeType: file.type },
         })

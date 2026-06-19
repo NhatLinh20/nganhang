@@ -519,10 +519,29 @@ export default function AiChatPage() {
       }
       setMessages((prev) => [...prev, aiMessage])
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Lỗi không xác định'
+      const rawError = err instanceof Error ? err.message : 'Lỗi không xác định'
+      const lowerErr = rawError.toLowerCase()
+      let translatedError = rawError
+
+      if (lowerErr.includes('401') || lowerErr.includes('unauthorized') || lowerErr.includes('invalid authentication')) {
+        translatedError = 'API Key cá nhân của bạn không hợp lệ hoặc copy bị thiếu ký tự. Vui lòng kiểm tra lại hoặc xoá trắng ô API Key để dùng máy chủ mặc định.'
+      } else if (lowerErr.includes('503') || lowerErr.includes('service unavailable') || lowerErr.includes('high demand') || lowerErr.includes('overloaded')) {
+        translatedError = 'Google Gemini đang bị quá tải do có quá nhiều người sử dụng. Vui lòng thử lại sau ít phút hoặc đổi sang mô hình khác.'
+      } else if (lowerErr.includes('429') || lowerErr.includes('rate limit') || lowerErr.includes('quota')) {
+        translatedError = 'Hệ thống đang quá tải do vượt quá hạn mức. Bạn có thể tự nhập API Key cá nhân của mình để ưu tiên xử lý hoặc đợi vài phút rồi thử lại.'
+      } else if (lowerErr.includes('400') || lowerErr.includes('invalid format')) {
+        translatedError = 'Yêu cầu gửi đi không hợp lệ. Vui lòng kiểm tra lại nội dung chat.'
+      } else if (lowerErr.includes('timeout') || lowerErr.includes('timed out') || lowerErr.includes('deadline')) {
+        translatedError = 'Yêu cầu mất quá lâu để xử lý. Vui lòng thử lại.'
+      } else if (lowerErr.includes('network') || lowerErr.includes('fetch') || lowerErr.includes('econnrefused')) {
+        translatedError = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối Internet và thử lại.'
+      } else if (lowerErr.includes('404') || lowerErr.includes('not found')) {
+        translatedError = 'Không tìm thấy mô hình AI. Vui lòng chọn mô hình dự phòng khác trong danh sách (Ví dụ: Gemini 3 Flash).'
+      }
+
       const aiError: ChatMessage = {
         role: 'model',
-        content: `⚠️ **Lỗi:** ${errorMsg}`,
+        content: `⚠️ **Lỗi:** ${translatedError}`,
         timestamp: Date.now(),
       }
       setMessages((prev) => [...prev, aiError])
