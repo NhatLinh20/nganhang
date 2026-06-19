@@ -82,14 +82,23 @@ export async function POST(req: NextRequest) {
       })),
     })
 
-    // Generate streaming response
-    const result = await chat.sendMessageStream(lastParts)
-
     // Create a ReadableStream to stream the response
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
+        
+        // Gửi ngay 1 dấu cách để bypass giới hạn 25s Initial Response của Vercel Edge
+        controller.enqueue(encoder.encode(' '));
+        
+        // Gửi keep-alive mỗi 10 giây trong lúc chờ Google AI phân tích PDF nặng
+        const keepAlive = setInterval(() => {
+          controller.enqueue(encoder.encode(' '));
+        }, 10000);
+
         try {
+          const result = await chat.sendMessageStream(lastParts)
+          clearInterval(keepAlive);
+
           for await (const chunk of result.stream) {
             const text = chunk.text()
             if (text) {
@@ -97,6 +106,7 @@ export async function POST(req: NextRequest) {
             }
           }
         } catch (err) {
+          clearInterval(keepAlive);
           const errorMsg = err instanceof Error ? err.message : 'Streaming error'
           controller.enqueue(encoder.encode(`\n\n[LỖI]: ${errorMsg}`))
         } finally {
