@@ -885,9 +885,9 @@ export default function AiChatPage() {
                   value={aiModel}
                   onChange={(e) => setAiModel(e.target.value)}
                 >
-                  <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                  <option value="gemini-flash-latest">Gemini Flash Latest</option>
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gemini-3.5-flash">Gemini 3.5 Flash (Thông minh, giải bài khó)</option>
+                  <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Nhanh nhất, 15 req/phút)</option>
+                  <option value="gemini-3-flash">Gemini 3 Flash (Dự phòng)</option>
                 </select>
                 <button
                   className={styles.settingsToggle}

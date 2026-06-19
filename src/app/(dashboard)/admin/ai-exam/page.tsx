@@ -974,9 +974,9 @@ export default function AiExamPage() {
                   marginTop: '8px'
                 }}
               >
-                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                <option value="gemini-flash-latest">Gemini Flash Latest</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Đọc ảnh tốt nhất, 5 req/phút)</option>
+                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Nhanh nhất, 15 req/phút)</option>
+                <option value="gemini-3-flash">Gemini 3 Flash (Dự phòng)</option>
               </select>
               <div className={styles.settingsLabel} style={{ color: '#be185d', marginTop: '12px' }}>API Key (không bắt buộc)</div>
               <input 
