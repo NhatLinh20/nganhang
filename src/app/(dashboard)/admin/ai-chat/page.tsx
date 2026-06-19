@@ -493,7 +493,10 @@ export default function AiChatPage() {
         })
 
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({ error: 'Lỗi không xác định' }))
+          const errData = await res.json().catch(() => {
+            if (res.status === 504) return { error: 'timeout' }
+            return { error: 'Lỗi không xác định' }
+          })
           throw new Error(errData.error || `HTTP ${res.status}`)
         }
 
