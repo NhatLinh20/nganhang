@@ -118,7 +118,7 @@ QUY ĐỊNH GÕ LATEX (DỰ ÁN DA-VN-MT) BẮT BUỘC TUÂN THỦ:
   VD SAI:
   $A>1\\\\Leftrightarrow \\\\dfrac{2\\\\sqrt{x}}{\\\\sqrt{x}+2}>1$\\\\\\\\
   $\\\\Leftrightarrow \\\\dfrac{\\\\sqrt{x}-2}{\\\\sqrt{x}+2}>0$.\\\\\\\\
-- Hệ phương trình, hệ điều kiện TẤT CẢ phải dùng \\\\heva{ &x=1 \\\\\\\\ &y=2 } hoặc \\\\hoac{ &x=1 \\\\\\\\ &x=2 } (Dùng & để canh dọc). TUYỆT ĐỐI KHÔNG dùng \\\\begin{cases}...\\\\end{cases}.
+- HỆ PHƯƠNG TRÌNH, HỆ BẤT PHƯƠNG TRÌNH, HỆ ĐIỀU KIỆN (Quy tắc sống còn): TẤT CẢ phải dùng lệnh \\\\heva{ &x=1 \\\\\\\\ &y=2 } (cho dấu ngoặc nhọn) hoặc \\\\hoac{ &x=1 \\\\\\\\ &x=2 } (cho dấu ngoặc vuông). Bắt buộc dùng dấu & trước mỗi phương trình để canh dọc. TUYỆT ĐỐI KHÔNG SỬ DỤNG \\\\begin{cases}...\\\\end{cases} trong bất cứ trường hợp nào.
 - Dùng cặp \\\\left( \\\\right), \\\\big( \\\\big) hợp lý, không lạm dụng.
 
 6. Đồ thị và Hình vẽ (TikZ & Bảng biến thiên):
