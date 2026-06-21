@@ -160,7 +160,7 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 %Tạo biến đếm số đề và khung tiêu đề
 \def\khoi{12}
 \def\made{1010}
-\newcounter{demsode}[chapter]
+\newcounter{demsode}[section]
 \setcounter{demsode}{0}
 \newenvironment{name}[8]{
 	\setcounter{phan}{0}
@@ -186,16 +186,14 @@ footskip=22pt  % khoảng cách từ nội dung xuống footer
 	\textit{Số báo danh:}\tikz \draw[dotted,very thin] (0,0)--(\textwidth/4.6,0);\quad
 	Mã đề: \fbox{\color{blue} \bf \large\fontfamily{anttlc}\selectfont \made}
 	%=====
-	\addtocounter{demsode}{1}
-	\phantomsection
-	\addcontentsline{toc}{section}
-	{Đề \thedemsode. \MakeUppercase{#5}, Môn Toán \khoi}
+	\stepcounter{demsode}
+	\addcontentsline{toc}{section}{Đề \thedemsode. \MakeUppercase{#5}, Môn Toán \khoi}
 	%	\gdef\socaulc{12}
 	%	\gdef\socauds{4}
 	%	\gdef\socaukq{6}
 	%	\gdef\socautl{3}
 }
-
+{}
 %%%%%%%%%%%%%%
 \newcommand{\indapan}[1]{
 	%	\begin{center}
