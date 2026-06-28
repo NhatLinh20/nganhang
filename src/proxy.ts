@@ -120,8 +120,8 @@ export async function proxy(request: NextRequest) {
     // Xử lý các route admin và teacher
     if (pathname.startsWith('/admin') || pathname.startsWith('/teacher')) {
       if (role === 'teacher') {
-        // Giáo viên được phép vào /teacher/*, /admin/ai-exam, /admin/questions, /admin/lesson-builder, /admin/ai-chat
-        if (!pathname.startsWith('/teacher') && pathname !== '/admin/ai-exam' && pathname !== '/admin/questions' && pathname !== '/admin/lesson-builder' && pathname !== '/admin/ai-chat') {
+        // Giáo viên được phép vào /teacher/*, /admin/ai-exam, /admin/questions, /admin/lesson-builder, /admin/ai-chat, /admin/tex-processor
+        if (!pathname.startsWith('/teacher') && pathname !== '/admin/ai-exam' && pathname !== '/admin/questions' && pathname !== '/admin/lesson-builder' && pathname !== '/admin/ai-chat' && pathname !== '/admin/tex-processor') {
           return NextResponse.redirect(new URL('/admin/questions', request.url))
         }
       } else if (role === 'student') {
