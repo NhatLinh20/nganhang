@@ -223,6 +223,25 @@ export function trimSpaceAfterChoiceBrace(content: string): string {
   );
 }
 
+export function replaceCasesWithHeva(content: string): string {
+  // Thay thế \begin{cases} ... \end{cases} thành \heva{ ... }
+  // Đồng thời thêm dấu & ở đầu mỗi dòng phương trình (nếu chưa có)
+  return content.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g, (match, innerContent) => {
+    const lines = innerContent.split('\\\\');
+    const processedLines = lines.map((line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return trimmed; // Bỏ qua dòng trống
+      // Nếu dòng chưa bắt đầu bằng & thì thêm & vào
+      if (!trimmed.startsWith('&')) {
+        return `&${trimmed}`;
+      }
+      return trimmed;
+    });
+    // Trả về lệnh \heva và ghép các dòng lại bằng \\ (không có dấu cách thừa)
+    return `\\heva{${processedLines.join('\\\\')}}`;
+  });
+}
+
 const NORMALIZE_RULES: NormalizeRule[] = [
   normalizeLineEndings,   // ← chạy trước để chuẩn hóa \r\n → \n
   stripInvisibleChars,    // ← xóa ký tự vô hình (Zero-Width)
@@ -236,6 +255,7 @@ const NORMALIZE_RULES: NormalizeRule[] = [
   replaceMiddleWithMid, // ← đổi \middle| thành \mid
   replaceLimWithLimits, // ← đổi \lim_{} thành \lim\limits_{}
   replaceBarWithOverline, // ← đổi \bar{} thành \overline{}
+  replaceCasesWithHeva, // ← đổi \begin{cases} thành \heva và chèn &
   removeTrailingDotInChoice, // ← bỏ dấu chấm cuối đáp án trong \choice
   wrapBareNumbersInChoice, // ← bọc số đơn lẻ trong \choice bằng $...$
   wrapBareMathInChoice, // ← bọc biểu thức toán thiếu $ trong \choice
