@@ -186,53 +186,48 @@ export default function AiChatPage() {
     let assignedCount = 0
 
     try {
-      for (const block of blocks) {
-        try {
-          const res = await fetch('/api/ai/suggest-id', {
+      // Gọi song song tất cả API suggest-id (nhanh gấp N lần so với tuần tự)
+      const results = await Promise.allSettled(
+        blocks.map(block =>
+          fetch('/api/ai/suggest-id', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               latex_content: block,
               custom_api_key: customApiKey 
             }),
+          }).then(async res => {
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}))
+              throw new Error(errData.error || res.statusText)
+            }
+            return res.json()
           })
-          
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}))
-            console.error('Suggest ID failed for a block:', errData)
-            alert(`Lỗi API suggest-id: ${errData.error || res.statusText}`)
-            continue
-          }
+        )
+      )
 
-          const data = await res.json()
-          if (!data.best_id) {
-            console.warn('No best_id returned:', data)
-            alert('Không tìm thấy ID nào tương tự trong ngân hàng.')
-            continue
-          }
-          if (data.similarity < 0.6) {
-            console.warn('Similarity too low:', data.similarity)
-            alert(`Tìm thấy ID ${data.best_id} nhưng độ chính xác quá thấp (${Math.round(data.similarity * 100)}%). Bỏ qua để tránh gán sai.`)
-            continue
-          }
-
-          const newId = `%[${data.best_id}]`
-
-          if (block.includes('%[')) {
-            // Câu đã có ID → thay thế
-            const newBlock = block.replace(/%\[[^\]]+\]/, newId)
-            updatedContent = updatedContent.replace(block, newBlock)
-          } else {
-            // Câu chưa có ID → chèn sau \begin{ex}
-            const newBlock = block.replace('\\begin{ex}', `\\begin{ex}${newId}`)
-            updatedContent = updatedContent.replace(block, newBlock)
-          }
-          assignedCount++
-        } catch {
-          // Bỏ qua lỗi từng câu, tiếp tục xử lý câu khác
-          continue
+      // Áp dụng kết quả theo thứ tự
+      results.forEach((result, i) => {
+        if (result.status !== 'fulfilled') {
+          console.error('Suggest ID failed for block:', result.reason)
+          return
         }
-      }
+        const data = result.value
+        if (!data.best_id) return
+        if (data.similarity < 0.6) return
+
+        const block = blocks[i]
+        const newId = `%[${data.best_id}]`
+
+        if (block.includes('%[')) {
+          const newBlock = block.replace(/%\[[^\]]+\]/, newId)
+          updatedContent = updatedContent.replace(block, newBlock)
+        } else {
+          const newBlock = block.replace('\\begin{ex}', `\\begin{ex}${newId}`)
+          updatedContent = updatedContent.replace(block, newBlock)
+        }
+        assignedCount++
+      })
 
       setEditorContent(updatedContent)
       alert(`✅ Đã gán ID cho ${assignedCount}/${blocks.length} câu hỏi`)

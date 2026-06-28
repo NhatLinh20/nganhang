@@ -760,42 +760,40 @@ export default function TexProcessorPage() {
     let assignedCount = 0
 
     try {
-      for (const block of blocks) {
-        try {
-          const res = await fetch('/api/ai/suggest-id', {
+      // Gọi song song tất cả API suggest-id (nhanh gấp N lần so với tuần tự)
+      const results = await Promise.allSettled(
+        blocks.map(block =>
+          fetch('/api/ai/suggest-id', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               latex_content: block
             }),
+          }).then(async res => {
+            if (!res.ok) throw new Error('API error')
+            return res.json()
           })
-          
-          if (!res.ok) {
-            continue
-          }
+        )
+      )
 
-          const data = await res.json()
-          if (!data.best_id || data.similarity < 0.6) {
-            continue
-          }
+      // Áp dụng kết quả theo thứ tự
+      results.forEach((result, i) => {
+        if (result.status !== 'fulfilled') return
+        const data = result.value
+        if (!data.best_id || data.similarity < 0.6) return
 
-          const newId = `%[${data.best_id}]`
+        const block = blocks[i]
+        const newId = `%[${data.best_id}]`
 
-          if (block.includes('%[')) {
-            // Câu đã có ID → thay thế
-            const newBlock = block.replace(/%\[[^\]]+\]/, newId)
-            updatedContent = updatedContent.replace(block, newBlock)
-          } else {
-            // Câu chưa có ID → chèn sau \begin{ex}
-            const newBlock = block.replace('\\begin{ex}', `\\begin{ex}${newId}`)
-            updatedContent = updatedContent.replace(block, newBlock)
-          }
-          assignedCount++
-        } catch {
-          // Bỏ qua lỗi từng câu, tiếp tục xử lý câu khác
-          continue
+        if (block.includes('%[')) {
+          const newBlock = block.replace(/%\[[^\]]+\]/, newId)
+          updatedContent = updatedContent.replace(block, newBlock)
+        } else {
+          const newBlock = block.replace('\\begin{ex}', `\\begin{ex}${newId}`)
+          updatedContent = updatedContent.replace(block, newBlock)
         }
-      }
+        assignedCount++
+      })
 
       if (updatedContent !== editorContent) {
         pushHistory(updatedContent)
