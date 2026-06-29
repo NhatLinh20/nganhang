@@ -34,6 +34,7 @@ const navItems = [
       { href: '/admin/ai-chat', icon: '💬', label: 'Trợ lý AI' },
       { href: '/admin/tex-processor', icon: '🔧', label: 'Xử lí TeX' },
       { href: '/admin/lesson-builder', icon: '📖', label: 'Tạo bài học' },
+      { href: '/admin/slideshow', icon: '🖥️', label: 'Trình chiếu' },
     ],
   },
   {
@@ -71,7 +72,8 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
             item.href === '/teacher/exams' ||
             item.href === '/teacher/shuffle' ||
             item.href === '/teacher/scan' ||
-            item.href === '/admin/lesson-builder'
+            item.href === '/admin/lesson-builder' ||
+            item.href === '/admin/slideshow'
           )
         }
       }

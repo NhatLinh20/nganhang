@@ -156,15 +156,17 @@ export async function loginWithGoogle(): Promise<{ error?: string; url?: string 
 
   // Lấy origin ưu tiên từ biến môi trường (Vercel)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  const headersList = await headers()
+  const host = headersList.get('host') || 'localhost:3000'
   
   let origin = 'http://localhost:3000'
-  if (siteUrl) {
+  if (host.includes('localhost')) {
+    origin = `http://${host}`
+  } else if (siteUrl) {
     // Đảm bảo không có dấu slash ở cuối
     origin = siteUrl.replace(/\/$/, '')
   } else {
-    const headersList = await headers()
-    const host = headersList.get('host') || 'localhost:3000'
-    const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https')
+    const protocol = headersList.get('x-forwarded-proto') || 'https'
     origin = `${protocol}://${host}`
   }
 

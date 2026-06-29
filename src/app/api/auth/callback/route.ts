@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
   const host = request.headers.get('host')
 
   let origin: string
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
+  if (host && host.includes('localhost')) {
+    origin = `http://${host}`
+  } else if (process.env.NEXT_PUBLIC_SITE_URL) {
     origin = process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
   } else if (forwardedHost) {
     origin = `${forwardedProto}://${forwardedHost}`
