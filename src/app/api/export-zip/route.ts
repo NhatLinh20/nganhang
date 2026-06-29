@@ -882,6 +882,7 @@ export async function POST(request: NextRequest) {
       'ex_tkz-euclide.sty',
       'tkz-linknodes.sty',
       'tkz-tab-vn.sty',
+      'twemojis.sty',
     ]
 
     for (const filename of sharedFiles) {

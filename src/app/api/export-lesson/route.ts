@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     const configDir = path.join(process.cwd(), 'public', 'latex-config')
 
     // 1. Add shared config files
-    const sharedFiles = ['khaibaochung.tex', 'ex_test.sty', 'ex_tkz-euclide.sty', 'tkz-linknodes.sty', 'tkz-tab-vn.sty']
+    const sharedFiles = ['khaibaochung.tex', 'ex_test.sty', 'ex_tkz-euclide.sty', 'tkz-linknodes.sty', 'tkz-tab-vn.sty', 'twemojis.sty']
     for (const filename of sharedFiles) {
       const filePath = path.join(configDir, filename)
       if (fs.existsSync(filePath)) {
