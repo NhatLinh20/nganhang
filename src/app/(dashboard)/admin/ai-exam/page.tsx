@@ -9,6 +9,8 @@ import { CURRICULUM } from '../questions/QuestionsClient'
 import { createClient } from '@/lib/supabase/client'
 import { isLimitedRole, TEACHER_LIMITS, checkExportQuota, logExport } from '@/lib/export-limiter'
 import LimitModal from '@/components/LimitModal'
+import { compilePdfZip } from '@/lib/tikz-api'
+import PdfPreviewModal from '@/components/PdfPreviewModal'
 
 interface ExamQuestion {
   id: string
@@ -765,6 +767,73 @@ export default function AiExamPage() {
     }
   };
 
+  // ── Compile PDF ──
+  const [isCompilingPdf, setIsCompilingPdf] = useState(false)
+  const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null)
+  const [showPdfPreview, setShowPdfPreview] = useState(false)
+
+  const handleCompilePdf = async () => {
+    if (questions.length === 0) return
+    setIsCompilingPdf(true)
+    setShowPdfPreview(true)
+    setPdfPreviewBlob(null)
+
+    const currentAllExams = [...allExamsQuestions]
+    if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions
+
+    try {
+      const title = result?.exam_info?.title || 'Đề thi mới'
+      const bodyPayload: Record<string, unknown> = {
+        title,
+        headerLabels,
+        headerStyles,
+        examCodes,
+        duration: result?.exam_info?.duration || 90,
+        grade: result?.exam_info?.grade || 12,
+        excelOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
+      }
+
+      if (currentAllExams.length > 1) {
+        bodyPayload.exams = currentAllExams.map(qs => ({
+          questions: qs.map(q => ({
+            id: q.id, latex_content: q.latex_content, question_type: q.question_type,
+            correct_answer: q.correct_answer ?? '', phan: q.phan,
+          })),
+        }))
+      } else {
+        bodyPayload.questions = questions.map(q => ({
+          id: q.id, latex_content: q.latex_content, question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '', phan: q.phan,
+        }))
+      }
+
+      const res = await fetch('/api/export-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload),
+      })
+
+      if (!res.ok) {
+        const json = await res.json()
+        showToast('error', 'Tạo dữ liệu LaTeX thất bại: ' + (json.error || 'Lỗi'))
+        setShowPdfPreview(false)
+        return
+      }
+
+      const zipBlob = await res.blob()
+      const pdfBlob = await compilePdfZip(zipBlob)
+      setPdfPreviewBlob(pdfBlob)
+    } catch (err) {
+      showToast('error', 'Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'))
+      setShowPdfPreview(false)
+    } finally {
+      setIsCompilingPdf(false)
+    }
+  }
+
   // Get available chapters for the selected custom grade and subject
   const customChaptersMap = CURRICULUM[customGrade]?.[customSubject] || {}
   const availableChapters = Object.keys(customChaptersMap).map(Number)
@@ -1163,6 +1232,15 @@ export default function AiExamPage() {
                     style={{ background: '#10b981', color: 'white', border: 'none' }}
                   >
                     📥 Xuất LaTeX (.tex)
+                  </button>
+
+                  <button
+                    className="btn btn-sm"
+                    onClick={handleCompilePdf}
+                    disabled={questions.length === 0 || isCompilingPdf}
+                    style={{ background: '#6366f1', color: 'white', border: 'none', fontWeight: 600, opacity: (questions.length === 0 || isCompilingPdf) ? 0.7 : 1, cursor: isCompilingPdf ? 'wait' : 'pointer' }}
+                  >
+                    {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
                   </button>
 
                   <button
@@ -2176,6 +2254,13 @@ export default function AiExamPage() {
           to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        pdfBlob={pdfPreviewBlob}
+        onClose={() => { setShowPdfPreview(false); setPdfPreviewBlob(null) }}
+        fileName={`${(result?.exam_info?.title || 'de_thi_ai').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'exam'}.pdf`}
+        isLoading={isCompilingPdf && !pdfPreviewBlob}
+      />
     </div>
   )
 }

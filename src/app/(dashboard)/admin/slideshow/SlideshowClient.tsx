@@ -12,6 +12,7 @@ import {
   type SlideQuestion,
   type ContentSegment,
 } from '@/lib/latex-parser/slideshow-parser'
+import { compileTikz } from '@/lib/tikz-api'
 
 // ═══════════════════════════════════════════════════
 // CONSTANTS
@@ -131,29 +132,52 @@ function RenderedLatex({ content, className }: { content: string; className?: st
 // ═══════════════════════════════════════════════════
 
 function RenderedSegments({
-  segments, questionId, part, imageMap, onUploadClick,
+  segments, questionId, part, imageMap, onUploadClick, isCompiling
 }: {
   segments: ContentSegment[]
   questionId: string
   part: string
   imageMap: Record<string, string>
   onUploadClick?: (key: string) => void
+  isCompiling?: boolean
 }) {
   return (
     <>
       {segments.map((seg, idx) => {
         const imgKey = `${questionId}:${part}:${idx}`
         if (seg.type === 'image') {
-          const img = imageMap[imgKey]
-          return img ? (
-            <img key={imgKey} src={img} alt="Hình" className={styles.tikzImageSmall}
-              onClick={() => onUploadClick?.(imgKey)}
-              style={{ cursor: onUploadClick ? 'pointer' : 'default' }} />
-          ) : (
+          const svg = imageMap[imgKey]
+          if (svg) {
+            // Check if it's a data URL (manually uploaded image) or raw SVG
+            if (svg.startsWith('data:')) {
+              return (
+                <img key={imgKey} src={svg} alt="Hình" className={styles.tikzImageSmall}
+                  onClick={() => onUploadClick?.(imgKey)}
+                  style={{ cursor: onUploadClick ? 'pointer' : 'default' }} />
+              )
+            }
+            return (
+              <div key={imgKey} className={styles.tikzImageSmall}
+                style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: onUploadClick ? 'pointer' : 'default' }}
+                onClick={() => onUploadClick?.(imgKey)}
+                dangerouslySetInnerHTML={{ __html: svg }} />
+            )
+          }
+          // If still compiling, show a loading placeholder
+          if (isCompiling) {
+            return (
+              <div key={imgKey} className={styles.tikzPlaceholderSmall}
+                style={{ border: '1px dashed #3b82f6', color: '#3b82f6', padding: '12px', textAlign: 'center', borderRadius: 8 }}>
+                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span> Đang biên dịch...
+              </div>
+            )
+          }
+          // Compilation failed or not yet compiled — clickable fallback for manual upload
+          return (
             <div key={imgKey} className={styles.tikzPlaceholderSmall}
               onClick={() => onUploadClick?.(imgKey)}
-              style={{ cursor: onUploadClick ? 'pointer' : 'default' }}>
-              🖼️ {onUploadClick ? 'Bấm để upload hình' : 'Hình ảnh TikZ'}
+              style={{ border: '1px dashed #ef4444', color: '#ef4444', padding: '12px', textAlign: 'center', borderRadius: 8, cursor: onUploadClick ? 'pointer' : 'default' }}>
+              ⚠️ {onUploadClick ? 'Biên dịch lỗi. Bấm để upload hình thủ công' : 'Hình ảnh TikZ (Lỗi biên dịch)'}
             </div>
           )
         }
@@ -182,7 +206,11 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   const [imageMap, setImageMap] = useState<Record<string, string>>({})
   const [expandedSolutions, setExpandedSolutions] = useState<Set<string>>(new Set())
 
-  // ─── Image Upload ───
+  // ─── Batch Compile Progress ───
+  const [isCompiling, setIsCompiling] = useState(false)
+  const [compileProgress, setCompileProgress] = useState({ done: 0, total: 0 })
+
+  // ─── Image Upload (fallback) ───
   const [uploadKey, setUploadKey] = useState<string | null>(null)
   const [tempImage, setTempImage] = useState<string | null>(null)
   const uploadFileRef = useRef<HTMLInputElement>(null)
@@ -251,13 +279,69 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   // HANDLERS
   // ═══════════════════════════════════════════════
 
-  const handleParse = () => {
+  const handleParse = async () => {
     if (!editorContent.trim()) return
     const blocks = extractRawExBlocks(editorContent)
     const parsed = parseAllSlideQuestions(editorContent)
     setRawBlocks(blocks)
     setQuestions(parsed)
+
+    // Collect all TikZ image segments for batch compilation
+    const tikzJobs: { key: string; code: string }[] = []
+    for (const q of parsed) {
+      const collectFromSegments = (segs: ContentSegment[], part: string) => {
+        segs.forEach((seg, idx) => {
+          if (seg.type === 'image') {
+            tikzJobs.push({ key: `${q.id}:${part}:${idx}`, code: seg.content })
+          }
+        })
+      }
+      collectFromSegments(q.bodySegments, 'body')
+      if (q.choices) q.choices.forEach(c => {
+        if (c.segments) collectFromSegments(c.segments, `choice-${c.label}`)
+      })
+      if (q.tfStatements) q.tfStatements.forEach(s => {
+        if (s.segments) collectFromSegments(s.segments, `tf-${s.label}`)
+      })
+      if (q.solutionSegments) collectFromSegments(q.solutionSegments, 'sol')
+    }
+
+    if (tikzJobs.length === 0) {
+      setPhase('review')
+      saveToStorage()
+      return
+    }
+
+    // Batch compile with concurrency limit
+    setIsCompiling(true)
+    setCompileProgress({ done: 0, total: tikzJobs.length })
     setPhase('review')
+
+    const newImageMap: Record<string, string> = {}
+    const CONCURRENCY = 4
+    let doneCount = 0
+
+    const runJob = async (job: { key: string; code: string }) => {
+      try {
+        const svg = await compileTikz(job.code)
+        newImageMap[job.key] = svg
+      } catch (err) {
+        console.warn(`TikZ compile failed for ${job.key}:`, err)
+      }
+      doneCount++
+      setCompileProgress({ done: doneCount, total: tikzJobs.length })
+    }
+
+    // Process in batches of CONCURRENCY
+    for (let i = 0; i < tikzJobs.length; i += CONCURRENCY) {
+      const batch = tikzJobs.slice(i, i + CONCURRENCY)
+      await Promise.all(batch.map(runJob))
+      // Update imageMap progressively so images appear as they compile
+      setImageMap(prev => ({ ...prev, ...newImageMap }))
+    }
+
+    setImageMap(prev => ({ ...prev, ...newImageMap }))
+    setIsCompiling(false)
     saveToStorage()
   }
 
@@ -280,7 +364,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
 
   const handleBackToInput = () => setPhase('input')
 
-  // ─── Image Upload ───
+  // ─── Image Upload (fallback for failed TikZ) ───
   const openImageUpload = (key: string) => { setUploadKey(key); setTempImage(imageMap[key] || null) }
   const handleImagePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items
@@ -387,11 +471,29 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
                 title={{dark:'Tối', light:'Sáng', blue:'Xanh dương', purple:'Tím', green:'Xanh lá', orange:'Cam'}[t]} />
             ))}
           </div>
-          <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0}>
+          <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0 || isCompiling}>
             🚀 Bắt đầu trình chiếu
           </button>
         </div>
       </div>
+
+      {/* ─── Compile Progress Overlay ─── */}
+      {isCompiling && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: 'linear-gradient(135deg, #1e293b, #334155)',
+          padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 16,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)', color: 'white',
+        }}>
+          <div style={{ width: 24, height: 24, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <span style={{ fontWeight: 600, fontSize: 14 }}>
+            ⏳ Đang biên dịch hình ảnh... ({compileProgress.done}/{compileProgress.total})
+          </span>
+          <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${compileProgress.total > 0 ? (compileProgress.done / compileProgress.total) * 100 : 0}%`, background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', borderRadius: 3, transition: 'width 0.3s ease' }} />
+          </div>
+        </div>
+      )}
 
       {/* ─── Question pairs: raw (left) + preview (right) ─── */}
       <div className={styles.reviewList}>
@@ -418,7 +520,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
               {/* Body */}
               <div className={styles.previewBody}>
                 <RenderedSegments segments={q.bodySegments} questionId={q.id} part="body"
-                  imageMap={imageMap} onUploadClick={openImageUpload} />
+                  imageMap={imageMap} onUploadClick={openImageUpload} isCompiling={isCompiling} />
               </div>
 
               {/* MC Choices */}
@@ -428,7 +530,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
                     <div key={c.label} className={`${styles.previewChoice} ${c.isCorrect ? styles.previewCorrect : ''}`}>
                       <strong>{c.label}.</strong>
                       <div className={styles.previewChoiceText}>
-                        <RenderedSegments segments={c.segments || [{type: 'text', content: c.content}]} questionId={q.id} part={`choice-${c.label}`} imageMap={imageMap} onUploadClick={openImageUpload} />
+                        <RenderedSegments segments={c.segments || [{type: 'text', content: c.content}]} questionId={q.id} part={`choice-${c.label}`} imageMap={imageMap} onUploadClick={openImageUpload} isCompiling={isCompiling} />
                       </div>
                     </div>
                   ))}
@@ -442,7 +544,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
                     <div key={s.label} className={`${styles.previewChoice} ${s.isTrue ? styles.previewCorrect : ''}`}>
                       <strong>{s.label})</strong>
                       <div className={styles.previewChoiceText}>
-                        <RenderedSegments segments={s.segments || [{type: 'text', content: s.content}]} questionId={q.id} part={`tf-${s.label}`} imageMap={imageMap} onUploadClick={openImageUpload} />
+                        <RenderedSegments segments={s.segments || [{type: 'text', content: s.content}]} questionId={q.id} part={`tf-${s.label}`} imageMap={imageMap} onUploadClick={openImageUpload} isCompiling={isCompiling} />
                       </div>
                       <span className={styles.previewTFMark}>{s.isTrue ? 'Đ' : 'S'}</span>
                     </div>
@@ -466,7 +568,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
                   {expandedSolutions.has(q.id) && (
                     <div className={styles.previewSolutionBody}>
                       <RenderedSegments segments={q.solutionSegments} questionId={q.id} part="sol"
-                        imageMap={imageMap} onUploadClick={openImageUpload} />
+                        imageMap={imageMap} onUploadClick={openImageUpload} isCompiling={isCompiling} />
                     </div>
                   )}
                 </div>
@@ -490,17 +592,17 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
                 title={{dark:'Tối', light:'Sáng', blue:'Xanh dương', purple:'Tím', green:'Xanh lá', orange:'Cam'}[t]} />
             ))}
           </div>
-          <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0}>
+          <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0 || isCompiling}>
             🚀 Bắt đầu trình chiếu
           </button>
         </div>
       </div>
 
-      {/* ─── Image Upload Modal ─── */}
+      {/* ─── Image Upload Modal (fallback) ─── */}
       {uploadKey !== null && (
         <div className={styles.imageUploadOverlay} onClick={() => { setUploadKey(null); setTempImage(null) }}>
           <div className={styles.imageUploadModal} onClick={e => e.stopPropagation()} onPaste={handleImagePaste}>
-            <h3>🖼️ Upload hình ảnh</h3>
+            <h3>🖼️ Upload hình ảnh (thay thế TikZ lỗi)</h3>
             <div className={styles.dropZone} onClick={() => uploadFileRef.current?.click()}>
               {tempImage
                 ? <img src={tempImage} alt="Preview" className={styles.imagePreview} />

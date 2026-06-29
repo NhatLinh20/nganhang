@@ -826,21 +826,21 @@ function buildMaTranTex(
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { title, duration, grade, questions, exams, headerLabels, headerStyles, examCodes, excelOptions, includeAnswerTable, includeAnswerSheet, qrCodeOptions } = body as {
-      title?: string
-      duration?: number
-      grade?: number
-      questions?: ExamQuestion[]
-      exams?: { questions: ExamQuestion[] }[]
-      headerLabels?: string[]
-      headerStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; color?: string }[]
-      examCodes?: string[]
-      excelOptions?: string[]
-      includeAnswerTable?: boolean
-      includeAnswerSheet?: boolean
-      qrCodeOptions?: string[]
-    }
+    const {
+      title,
+      duration,
+      grade,
+      questions,
+      exams,
+      headerLabels,
+      headerStyles,
+      examCodes,
+      excelOptions,
+      includeAnswerTable,
+      includeAnswerSheet,
+      qrCodeOptions,
+      action
+    } = await request.json()
 
     const displayTitle = title || 'ĐỀ THI TRẮC NGHIỆM'
     const displayGrade = grade || 12
@@ -898,14 +898,21 @@ export async function POST(request: NextRequest) {
     zip.addFile('ans/', Buffer.alloc(0))
     zip.addFile('data/', Buffer.alloc(0))
 
+    let mainTex = ''
     if (examSets.length === 1) {
       // ── Single exam ──
       const maTranTex = buildMaTranTex(examSets[0], displayTitle, displayGrade, undefined, validHeaderLabels, codes[0], validHeaderStyles, includeAnswerTable !== false, includeAnswerSheet === true)
       zip.addFile('data/ma_tran_de_thi_toan.tex', Buffer.from(maTranTex, 'utf-8'))
 
       const mainPath = path.join(configDir, 'main.tex')
-      if (fs.existsSync(mainPath)) {
-        zip.addFile('main.tex', fs.readFileSync(mainPath))
+      const mainContent = fs.existsSync(mainPath) ? fs.readFileSync(mainPath, 'utf-8') : '\\documentclass[12pt,a4paper,twoside]{book}\n\\input{khaibaochung}\n\\begin{document}\n\\input{data/ma_tran_de_thi_toan}\n\\end{document}'
+      mainTex = mainContent
+      
+      const sanitizedTitle = displayTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+      if (includeAnswerSheet && !includeAnswerSheet) {
+         zip.addFile(`${sanitizedTitle}.tex`, Buffer.from(mainTex, 'utf-8'))
+      } else {
+         zip.addFile('main.tex', Buffer.from(mainTex, 'utf-8'))
       }
     } else {
       // ── Multiple exams ──
@@ -915,7 +922,7 @@ export async function POST(request: NextRequest) {
         zip.addFile(`data/ma_tran_de_thi_toan${i + 1}.tex`, Buffer.from(maTranTex, 'utf-8'))
       }
 
-      let mainTex = '\\documentclass[12pt,a4paper,twoside]{book}\n'
+      mainTex = '\\documentclass[12pt,a4paper,twoside]{book}\n'
       mainTex += '\\input{khaibaochung}\n'
       mainTex += '%\\HeaderLoaiHai %Bật/tắt header đề thi/header bài dạy\n'
       mainTex += '%\\exitdapso %ẩn đs\n'
@@ -928,6 +935,14 @@ export async function POST(request: NextRequest) {
       mainTex += '\\end{document}\n'
 
       zip.addFile('main.tex', Buffer.from(mainTex, 'utf-8'))
+    }
+
+    if (action === 'get_tex') {
+      return new NextResponse(mainTex, {
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+      })
     }
 
     // ── Generate QR Codes for Apps (TNMaker, Smart Test, etc) ──

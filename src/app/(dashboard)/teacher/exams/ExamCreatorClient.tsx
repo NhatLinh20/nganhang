@@ -8,6 +8,8 @@ import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-lab
 import { CURRICULUM } from '../../admin/questions/QuestionsClient'
 import { isLimitedRole, TEACHER_LIMITS, checkExportQuota, logExport } from '@/lib/export-limiter'
 import LimitModal from '@/components/LimitModal'
+import { compilePdfZip } from '@/lib/tikz-api'
+import PdfPreviewModal from '@/components/PdfPreviewModal'
 
 // Re-use types from AI exam
 interface ExamQuestion {
@@ -124,6 +126,9 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
 
   // Export
   const [showExportModal, setShowExportModal] = useState(false)
+  const [isCompilingPdf, setIsCompilingPdf] = useState(false)
+  const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null)
+  const [showPdfPreview, setShowPdfPreview] = useState(false)
   const [examCodes, setExamCodes] = useState<string[]>([''])
   const [headerLabels, setHeaderLabels] = useState<string[]>([
     'SỞ GDĐT ...',
@@ -658,6 +663,74 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     }
   };
 
+  const handleCompilePdf = async () => {
+    if (questions.length === 0) return;
+    setIsCompilingPdf(true);
+
+    const currentAllExams = [...allExamsQuestions];
+    if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
+
+    try {
+      const payload: any = {
+        title: configTitle || 'De_Thi',
+        headerLabels,
+        headerStyles,
+        examCodes,
+        duration: configDuration || 90,
+        grade: filterGrade || 12,
+        excelOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
+      };
+
+      if (currentAllExams.length > 0) {
+        payload.exams = currentAllExams.map(qs => ({
+          questions: qs.map(q => ({
+            id: q.id,
+            latex_content: q.latex_content,
+            question_type: q.question_type,
+            correct_answer: q.correct_answer ?? '',
+            phan: q.phan,
+          }))
+        }));
+      } else {
+        payload.questions = questions.map(q => ({
+          id: q.id,
+          latex_content: q.latex_content,
+          question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '',
+          phan: q.phan,
+        }));
+      }
+
+      const res = await fetch('/api/export-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        alert('❌ Tạo dữ liệu LaTeX thất bại: ' + (json.error || 'Lỗi'));
+        setIsCompilingPdf(false);
+        return;
+      }
+
+      const zipBlob = await res.blob();
+      // Open PDF preview modal immediately in loading state
+      setShowPdfPreview(true);
+      setPdfPreviewBlob(null);
+
+      const pdfBlob = await compilePdfZip(zipBlob);
+      setPdfPreviewBlob(pdfBlob);
+    } catch (err) {
+      alert('Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'));
+    } finally {
+      setIsCompilingPdf(false);
+    }
+  };
+
   const groupedQuestions = questions.reduce((acc, q) => {
     const key = q.phan ?? 0
     if (!acc[key]) acc[key] = []
@@ -1061,6 +1134,15 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                 </button>
 
                 <button
+                  className="btn"
+                  onClick={handleCompilePdf}
+                  disabled={questions.length === 0 || isCompilingPdf}
+                  style={{ background: '#6366f1', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px', opacity: (questions.length === 0 || isCompilingPdf) ? 0.7 : 1, cursor: isCompilingPdf ? 'wait' : 'pointer' }}
+                >
+                  {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
+                </button>
+
+                <button
                   className={styles.mainTab}
                   onClick={() => {
                     const currentAllExams = [...allExamsQuestions]
@@ -1460,6 +1542,9 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
                     <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                    <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} className="btn btn-primary" style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
+                      {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1652,6 +1737,14 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       )}
 
       <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} reason={limitReason} detail={limitDetail} />
+
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        pdfBlob={pdfPreviewBlob}
+        onClose={() => { setShowPdfPreview(false); setPdfPreviewBlob(null) }}
+        fileName={`${configTitle.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'exam'}.pdf`}
+        isLoading={isCompilingPdf && !pdfPreviewBlob}
+      />
     </div>
   )
 }

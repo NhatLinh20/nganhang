@@ -111,7 +111,7 @@ function extractBracketedItems(text: string): string[] {
  * Phân tách nội dung thành các đoạn text + hình ảnh TikZ.
  * Nhận diện cả dạng bọc \begin{center}...\end{center} lẫn standalone.
  */
-function segmentContent(text: string): ContentSegment[] {
+export function segmentContent(text: string): ContentSegment[] {
   if (!text || !text.trim()) return []
 
   const segments: ContentSegment[] = []
@@ -123,7 +123,8 @@ function segmentContent(text: string): ContentSegment[] {
   while ((match = mediaRegex.exec(text)) !== null) {
     const beforeText = text.slice(lastIdx, match.index).trim()
     if (beforeText) segments.push({ type: 'text', content: beforeText })
-    segments.push({ type: 'image', content: match[0] })
+    const imageContent = match[0].replace(/\\begin\{center\}/g, '').replace(/\\end\{center\}/g, '').trim()
+    segments.push({ type: 'image', content: imageContent })
     lastIdx = match.index + match[0].length
   }
 

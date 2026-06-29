@@ -1,0 +1,226 @@
+/* PdfPreviewModal.module.css */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Toolbar ─────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: #1e293b;
+  color: #f1f5f9;
+  flex-shrink: 0;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.toolbarCenter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.navBtn {
+  composes: toolBtn;
+  background: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+}
+.navBtn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.2);
+}
+.navBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.zoomBtn {
+  composes: toolBtn;
+  background: rgba(255,255,255,0.08);
+  color: #cbd5e1;
+  padding: 6px 8px;
+  font-size: 15px;
+}
+.zoomBtn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.zoomLabel {
+  font-size: 12px;
+  color: #94a3b8;
+  min-width: 38px;
+  text-align: center;
+}
+
+.downloadBtn {
+  composes: toolBtn;
+  background: #3b82f6;
+  color: white;
+}
+.downloadBtn:hover {
+  background: #2563eb;
+}
+
+.printBtn {
+  composes: toolBtn;
+  background: #8b5cf6;
+  color: white;
+}
+.printBtn:hover {
+  background: #7c3aed;
+}
+
+.closeBtn {
+  composes: toolBtn;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  font-size: 18px;
+  padding: 4px 10px;
+  line-height: 1;
+}
+.closeBtn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.pageInput {
+  width: 40px;
+  padding: 3px 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pageInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* ── PDF Viewport ────────────────────────────────────────── */
+.viewport {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  gap: 16px;
+}
+
+.pageWrapper {
+  background: white;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  border-radius: 4px;
+  line-height: 0;
+}
+
+.pageCanvas {
+  display: block;
+}
+
+/* ── Loading state ───────────────────────────────────────── */
+.loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  gap: 16px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ── Empty state ─────────────────────────────────────────── */
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 15px;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .toolbarCenter {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+  .downloadBtn span,
+  .printBtn span {
+    display: none;
+  }
+  .viewport {
+    padding: 12px 8px;
+  }
+}

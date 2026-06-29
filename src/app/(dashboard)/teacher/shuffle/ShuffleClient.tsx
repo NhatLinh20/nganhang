@@ -5,6 +5,8 @@ import styles from './shuffle.module.css'
 import { isLimitedRole, checkExportQuota, logExport, TEACHER_LIMITS } from '@/lib/export-limiter'
 import LimitModal from '@/components/LimitModal'
 import { processImportFiles, type ImportedFileInfo, type ImportedExamQuestion } from '@/lib/latex-parser/tex-import-parser'
+import { compilePdfZip } from '@/lib/tikz-api'
+import PdfPreviewModal from '@/components/PdfPreviewModal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -209,6 +211,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
   const [isImporting, setIsImporting] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [importGlobalErrors, setImportGlobalErrors] = useState<string[]>([])
+  
+  // ─── Compile PDF state ───────────────────────────────────────────────────────
+  const [isCompilingPdf, setIsCompilingPdf] = useState(false)
+  const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null)
+  const [showPdfPreview, setShowPdfPreview] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const addFileInputRef = useRef<HTMLInputElement>(null)
   const hasImportedFiles = importedFiles.length > 0
@@ -760,6 +768,66 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       }
     } catch (err) {
       alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+    }
+  }
+
+  const handleCompilePdf = async () => {
+    if (shuffledExams.length === 0) return
+    setIsCompilingPdf(true)
+
+    try {
+      // 1. Tạo Payload giống hệt lúc tải ZIP
+      const payload: Record<string, unknown> = {
+        title: sourceData?.configTitle || 'Đề thi trộn',
+        headerLabels,
+        headerStyles,
+        examCodes: shuffledExams.map(e => e.code),
+        duration: sourceData?.configDuration || 90,
+        grade: sourceData?.filterGrade || 12,
+        excelOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
+      }
+
+      payload.exams = shuffledExams.map(e => ({
+        questions: e.questions.map(q => ({
+          id: q.id,
+          latex_content: q.latex_content,
+          question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '',
+          phan: q.phan,
+        })),
+      }))
+
+      // 2. Lấy ZIP file từ Next.js server
+      const res = await fetch('/api/export-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const json = await res.json()
+        alert('❌ Tạo dữ liệu LaTeX thất bại: ' + (json.error || 'Lỗi'))
+        setIsCompilingPdf(false)
+        return
+      }
+
+      const zipBlob = await res.blob()
+
+      // Open PDF preview modal immediately in loading state
+      setShowPdfPreview(true)
+      setPdfPreviewBlob(null)
+
+      // 3. Gửi ZIP lên VPS để biên dịch thành PDF
+      const pdfBlob = await compilePdfZip(zipBlob)
+      setPdfPreviewBlob(pdfBlob)
+
+    } catch (err) {
+      alert('Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'))
+    } finally {
+      setIsCompilingPdf(false)
     }
   }
 
@@ -1358,6 +1426,24 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                   >
                     📥 Xuất file .tex
                   </button>
+                  <button
+                    onClick={handleCompilePdf}
+                    disabled={isCompilingPdf}
+                    style={{
+                      background: '#6366f1',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 24px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      cursor: isCompilingPdf ? 'wait' : 'pointer',
+                      opacity: isCompilingPdf ? 0.7 : 1,
+                      boxShadow: '0 4px 6px rgba(99,102,241,0.3)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
+                  </button>
                 </div>
               </div>
             </>
@@ -1519,6 +1605,9 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button onClick={() => setShowExportModal(false)} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Hủy bỏ</button>
                     <button onClick={() => { setShowExportModal(false); handleExportTex() }} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                    <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', cursor: isCompilingPdf ? 'wait' : 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', opacity: isCompilingPdf ? 0.7 : 1 }}>
+                      {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1662,6 +1751,14 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         </div>
       )}
       <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} reason={limitReason} detail={limitDetail} />
+
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        pdfBlob={pdfPreviewBlob}
+        onClose={() => { setShowPdfPreview(false); setPdfPreviewBlob(null) }}
+        fileName={`${(sourceData?.configTitle || 'de_thi_tron').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'exam'}.pdf`}
+        isLoading={isCompilingPdf && !pdfPreviewBlob}
+      />
     </div>
   )
 }

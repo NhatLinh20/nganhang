@@ -19,6 +19,9 @@ headsep=10pt,   % nhỏ lại
 footskip=22pt  % khoảng cách từ nội dung xuống footer
 ]{geometry}
 \usepackage[hidelinks,unicode,hypertexnames=false]{hyperref}
+\makeatletter
+\let\MakeUppercaseUnsupportedInPdfStrings\@firstofone
+\makeatother
 \usepackage[final]{pdfpages}
 \usepackage{tcolorbox,diagbox}
 \tcbuselibrary{theorems, breakable, skins}
