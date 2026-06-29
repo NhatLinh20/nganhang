@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header'
 import styles from './slideshow.module.css'
 import {
   parseAllSlideQuestions,
+  extractRawExBlocks,
   type SlideQuestion,
   type ContentSegment,
 } from '@/lib/latex-parser/slideshow-parser'
@@ -36,13 +37,13 @@ const TYPE_CSS: Record<string, string> = {
 }
 
 const STORAGE_KEY = 'nht_slideshow_data'
-type Theme = 'dark' | 'light' | 'blue'
+type Theme = 'dark' | 'light' | 'blue' | 'purple' | 'green' | 'orange'
 
 // ═══════════════════════════════════════════════════
 // KaTeX RENDERING
 // ═══════════════════════════════════════════════════
 
-const KATEX_MACROS = {
+const KATEX_MACROS: Record<string, string> = {
   '\\heva': '\\left\\{\\begin{aligned}#1\\end{aligned}\\right.',
   '\\hoac': '\\left[\\begin{aligned}#1\\end{aligned}\\right.',
   '\\vv': '\\overrightarrow{#1}',
@@ -50,16 +51,10 @@ const KATEX_MACROS = {
 
 function renderKatex(math: string, displayMode: boolean): string {
   try {
-    return katex.renderToString(math, { 
-      displayMode, 
-      throwOnError: false, 
-      trust: true, 
-      strict: false,
-      macros: KATEX_MACROS
+    return katex.renderToString(math, {
+      displayMode, throwOnError: false, trust: true, strict: false, macros: KATEX_MACROS,
     })
-  } catch {
-    return `<code>${escapeHtml(math)}</code>`
-  }
+  } catch { return `<code>${escapeHtml(math)}</code>` }
 }
 
 function escapeHtml(text: string): string {
@@ -67,23 +62,49 @@ function escapeHtml(text: string): string {
 }
 
 function processTextSegment(text: string): string {
-  let html = escapeHtml(text)
+  // Loại bỏ comment LaTeX (dấu % đến hết dòng, trừ khi bị escape \%)
+  let cleanText = text.replace(/(^|[^\\])%.*/g, '$1')
+  
+  let html = escapeHtml(cleanText)
   html = html.replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
   html = html.replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
   html = html.replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
   html = html.replace(/\\text\{([^}]+)\}/g, '$1')
+  
+  // List environments
+  html = html.replace(/\\begin\{itemize\}/g, '<ul style="margin: 0.5em 0; padding-left: 1.5em; list-style-type: disc;">')
+  html = html.replace(/\\end\{itemize\}/g, '</ul>')
+  html = html.replace(/\\item\b/g, '<li>')
+  
+  // TF solution environments
+  html = html.replace(/\\begin\{itemchoice\}/g, '<ol type="a" style="margin: 0.5em 0; padding-left: 1.5em;">')
+  html = html.replace(/\\end\{itemchoice\}/g, '</ol>')
+  html = html.replace(/\\itemch\b/g, '<li>')
+
+  // Spaces, breaks and ignored commands
   html = html.replace(/\\qquad/g, '&emsp;&emsp;')
   html = html.replace(/\\quad/g, '&emsp;')
+  html = html.replace(/\\,/g, '&thinsp;')
+  html = html.replace(/\\par/g, '')
+  html = html.replace(/\\allowdisplaybreaks/g, '')
   html = html.replace(/\\\\/g, '<br>')
+  html = html.replace(/\\break/g, '<br>')
   html = html.replace(/\n/g, '<br>')
-  // Cleanup tab/indent
   html = html.replace(/\t/g, '')
   return html
 }
 
-/** Render mixed LaTeX: $...$ → KaTeX inline, $$...$$ → KaTeX display */
 function renderLatexContent(text: string): string {
   if (!text) return ''
+  
+  // Chuẩn hóa eqnarray thành aligned để KaTeX render được
+  text = text.replace(/\\begin\{eqnarray\*\}([\s\S]*?)\\end\{eqnarray\*\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
+  text = text.replace(/\\begin\{eqnarray\}([\s\S]*?)\\end\{eqnarray\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
+
+  // Chuẩn hóa \[ \] thành $$ $$ và \( \) thành $ $ để đồng nhất phân tích
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$')
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$')
+
   let html = ''
   const displayParts = text.split(/(\$\$[\s\S]*?\$\$)/g)
   for (const part of displayParts) {
@@ -94,9 +115,7 @@ function renderLatexContent(text: string): string {
       for (const iPart of inlineParts) {
         if (iPart.startsWith('$') && iPart.endsWith('$') && iPart.length > 2) {
           html += renderKatex(iPart.slice(1, -1), false)
-        } else {
-          html += processTextSegment(iPart)
-        }
+        } else { html += processTextSegment(iPart) }
       }
     }
   }
@@ -108,18 +127,17 @@ function RenderedLatex({ content, className }: { content: string; className?: st
 }
 
 // ═══════════════════════════════════════════════════
-// SEGMENT RENDERER — text + image blocks
+// SEGMENT RENDERER
 // ═══════════════════════════════════════════════════
 
 function RenderedSegments({
-  segments, questionId, part, imageMap, onUploadClick, small,
+  segments, questionId, part, imageMap, onUploadClick,
 }: {
   segments: ContentSegment[]
   questionId: string
-  part: 'body' | 'sol'
+  part: string
   imageMap: Record<string, string>
   onUploadClick?: (key: string) => void
-  small?: boolean
 }) {
   return (
     <>
@@ -127,30 +145,19 @@ function RenderedSegments({
         const imgKey = `${questionId}:${part}:${idx}`
         if (seg.type === 'image') {
           const img = imageMap[imgKey]
-          if (img) {
-            return (
-              <img
-                key={imgKey}
-                src={img}
-                alt="Hình minh họa"
-                className={small ? styles.tikzImageSmall : styles.tikzImage}
-                onClick={() => onUploadClick?.(imgKey)}
-                style={{ cursor: onUploadClick ? 'pointer' : 'default' }}
-              />
-            )
-          }
-          return (
-            <div
-              key={imgKey}
-              className={small ? styles.tikzPlaceholderSmall : styles.tikzPlaceholder}
+          return img ? (
+            <img key={imgKey} src={img} alt="Hình" className={styles.tikzImageSmall}
               onClick={() => onUploadClick?.(imgKey)}
-              style={{ cursor: onUploadClick ? 'pointer' : 'default' }}
-            >
-              🖼️ {onUploadClick ? 'Bấm để upload hình' : 'Hình ảnh TikZ — Chưa có ảnh'}
+              style={{ cursor: onUploadClick ? 'pointer' : 'default' }} />
+          ) : (
+            <div key={imgKey} className={styles.tikzPlaceholderSmall}
+              onClick={() => onUploadClick?.(imgKey)}
+              style={{ cursor: onUploadClick ? 'pointer' : 'default' }}>
+              🖼️ {onUploadClick ? 'Bấm để upload hình' : 'Hình ảnh TikZ'}
             </div>
           )
         }
-        return <RenderedLatex key={imgKey} content={seg.content} className={small ? styles.previewText : undefined} />
+        return <RenderedLatex key={imgKey} content={seg.content} className={styles.previewText} />
       })}
     </>
   )
@@ -161,58 +168,66 @@ function RenderedSegments({
 // ═══════════════════════════════════════════════════
 
 export default function SlideshowClient({ userRole }: { userRole: string }) {
-  // ─── Phase ─────────────────────────────────────
-  const [phase, setPhase] = useState<'editor' | 'present'>('editor')
+  // ─── Phase: input → review → present ───
+  const [phase, setPhase] = useState<'input' | 'review' | 'present'>('input')
 
-  // ─── Editor State ──────────────────────────────
+  // ─── Input State ───
   const [editorContent, setEditorContent] = useState('')
-  const [questions, setQuestions] = useState<SlideQuestion[]>([])
-  const [theme, setTheme] = useState<Theme>('dark')
-  const [savedMsg, setSavedMsg] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ─── Image Map: key = "qId:body:idx" or "qId:sol:idx" → Data URL ───
+  // ─── Review State ───
+  const [rawBlocks, setRawBlocks] = useState<string[]>([])
+  const [questions, setQuestions] = useState<SlideQuestion[]>([])
+  const [theme, setTheme] = useState<Theme>('dark')
   const [imageMap, setImageMap] = useState<Record<string, string>>({})
-  const [uploadKey, setUploadKey] = useState<string | null>(null) // currently uploading
+  const [expandedSolutions, setExpandedSolutions] = useState<Set<string>>(new Set())
+
+  // ─── Image Upload ───
+  const [uploadKey, setUploadKey] = useState<string | null>(null)
   const [tempImage, setTempImage] = useState<string | null>(null)
   const uploadFileRef = useRef<HTMLInputElement>(null)
 
-  // ─── Solution Expand ───────────────────────────
-  const [expandedSolutions, setExpandedSolutions] = useState<Set<string>>(new Set())
-
-  // ─── Present State ─────────────────────────────
+  // ─── Present State ───
   const [currentSlide, setCurrentSlide] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
   const [showSolution, setShowSolution] = useState(false)
   const [slideKey, setSlideKey] = useState(0)
   const [slideDirection, setSlideDirection] = useState<'next' | 'prev'>('next')
+  const [zoomLevel, setZoomLevel] = useState(100)
 
   // ═══════════════════════════════════════════════
-  // LOAD / SAVE localStorage
+  // ON MOUNT: check sessionStorage for code from other pages
   // ═══════════════════════════════════════════════
   useEffect(() => {
     try {
+      const fromOtherPage = sessionStorage.getItem('slideshow_code')
+      if (fromOtherPage) {
+        setEditorContent(fromOtherPage)
+        sessionStorage.removeItem('slideshow_code')
+        return
+      }
+      // Fallback: load saved state
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
         const data = JSON.parse(raw)
         if (data.editorContent) setEditorContent(data.editorContent)
-        if (data.questions?.length) setQuestions(data.questions)
         if (data.theme) setTheme(data.theme)
         if (data.imageMap) setImageMap(data.imageMap)
       }
     } catch { /* ignore */ }
   }, [])
 
+  // ═══════════════════════════════════════════════
+  // SAVE
+  // ═══════════════════════════════════════════════
   const saveToStorage = useCallback(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ editorContent, questions, theme, imageMap }))
-      setSavedMsg('✓ Đã lưu')
-      setTimeout(() => setSavedMsg(''), 2000)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ editorContent, theme, imageMap }))
     } catch { /* ignore */ }
-  }, [editorContent, questions, theme, imageMap])
+  }, [editorContent, theme, imageMap])
 
   // ═══════════════════════════════════════════════
-  // KEYBOARD SHORTCUTS (PRESENT MODE)
+  // KEYBOARD (PRESENT)
   // ═══════════════════════════════════════════════
   useEffect(() => {
     if (phase !== 'present') return
@@ -223,6 +238,8 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
         case 'ArrowLeft': e.preventDefault(); goPrev(); break
         case 'a': case 'A': setShowAnswer(p => !p); break
         case 's': case 'S': setShowSolution(p => !p); break
+        case '+': case '=': setZoomLevel(p => Math.min(p + 10, 250)); break
+        case '-': case '_': setZoomLevel(p => Math.max(p - 10, 50)); break
         case 'Escape': exitPresent(); break
       }
     }
@@ -236,8 +253,12 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
 
   const handleParse = () => {
     if (!editorContent.trim()) return
+    const blocks = extractRawExBlocks(editorContent)
     const parsed = parseAllSlideQuestions(editorContent)
+    setRawBlocks(blocks)
     setQuestions(parsed)
+    setPhase('review')
+    saveToStorage()
   }
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,236 +274,225 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   }
 
   const handleDeleteQuestion = (idx: number) => {
+    setRawBlocks(prev => prev.filter((_, i) => i !== idx))
     setQuestions(prev => prev.filter((_, i) => i !== idx))
   }
 
-  // ─── Image Upload ──────────────────────────────
-  const openImageUpload = (key: string) => {
-    setUploadKey(key)
-    setTempImage(imageMap[key] || null)
-  }
+  const handleBackToInput = () => setPhase('input')
 
+  // ─── Image Upload ───
+  const openImageUpload = (key: string) => { setUploadKey(key); setTempImage(imageMap[key] || null) }
   const handleImagePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items
     if (!items) return
     for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (file) readImageFile(file)
-        break
-      }
+      if (item.type.startsWith('image/')) { const file = item.getAsFile(); if (file) readImageFile(file); break }
     }
   }
-
-  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) readImageFile(file)
-  }
-
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) readImageFile(file) }
   const readImageFile = (file: File) => {
     const reader = new FileReader()
     reader.onload = (ev) => setTempImage(ev.target?.result as string)
     reader.readAsDataURL(file)
   }
-
   const confirmImageUpload = () => {
-    if (uploadKey && tempImage) {
-      setImageMap(prev => ({ ...prev, [uploadKey]: tempImage }))
-    }
-    setUploadKey(null)
-    setTempImage(null)
+    if (uploadKey && tempImage) setImageMap(prev => ({ ...prev, [uploadKey]: tempImage }))
+    setUploadKey(null); setTempImage(null)
   }
 
-  // ─── Solution toggle in preview ────────────────
   const toggleSolution = (qId: string) => {
-    setExpandedSolutions(prev => {
-      const next = new Set(prev)
-      next.has(qId) ? next.delete(qId) : next.add(qId)
-      return next
-    })
+    setExpandedSolutions(prev => { const n = new Set(prev); n.has(qId) ? n.delete(qId) : n.add(qId); return n })
   }
 
-  // ─── Present Navigation ────────────────────────
+  // ─── Present Nav ───
   const goNext = useCallback(() => {
     if (currentSlide < questions.length - 1) {
-      setSlideDirection('next')
-      setCurrentSlide(p => p + 1)
-      setSlideKey(p => p + 1)
-      setShowAnswer(false)
-      setShowSolution(false)
+      setSlideDirection('next'); setCurrentSlide(p => p + 1); setSlideKey(p => p + 1)
+      setShowAnswer(false); setShowSolution(false)
     }
   }, [currentSlide, questions.length])
 
   const goPrev = useCallback(() => {
     if (currentSlide > 0) {
-      setSlideDirection('prev')
-      setCurrentSlide(p => p - 1)
-      setSlideKey(p => p + 1)
-      setShowAnswer(false)
-      setShowSolution(false)
+      setSlideDirection('prev'); setCurrentSlide(p => p - 1); setSlideKey(p => p + 1)
+      setShowAnswer(false); setShowSolution(false)
     }
   }, [currentSlide])
 
   const startPresent = () => {
     if (questions.length === 0) return
-    setCurrentSlide(0)
-    setShowAnswer(false)
-    setShowSolution(false)
-    setSlideKey(0)
-    setSlideDirection('next')
-    setPhase('present')
+    setCurrentSlide(0); setShowAnswer(false); setShowSolution(false)
+    setSlideKey(0); setSlideDirection('next'); setPhase('present')
     try { document.documentElement.requestFullscreen?.() } catch { /* ok */ }
   }
 
-  const exitPresent = () => {
-    setPhase('editor')
-    try { document.exitFullscreen?.() } catch { /* ok */ }
-  }
+  const exitPresent = () => { setPhase('review'); try { document.exitFullscreen?.() } catch { /* ok */ } }
 
   // ═══════════════════════════════════════════════
-  // RENDER: EDITOR PHASE
+  // RENDER: BƯỚC 1 — NHẬP CODE
   // ═══════════════════════════════════════════════
 
-  const renderEditor = () => (
+  const renderInput = () => (
     <>
       <Header title="🖥️ Trình chiếu câu hỏi" />
-      <div className={styles.editorLayout}>
-        {/* ─── LEFT: Code Editor ─── */}
-        <div className={styles.leftPanel}>
-          <div className={styles.editorHeader}>
-            <h3>📝 Nhập code LaTeX</h3>
-            <button className={styles.importBtn} onClick={() => fileInputRef.current?.click()}>📁 Import .tex</button>
-            <input ref={fileInputRef} type="file" accept=".tex,.txt" style={{ display: 'none' }} onChange={handleImportFile} />
-            <button className={styles.importBtn} onClick={saveToStorage}>💾 Lưu</button>
-            {savedMsg && <span style={{ fontSize: '0.78rem', color: '#69f0ae' }}>{savedMsg}</span>}
+      <div className={styles.inputPhase}>
+        <div className={styles.inputCard}>
+          <div className={styles.inputHeader}>
+            <h2 className={styles.inputTitle}>📝 Nhập code LaTeX</h2>
+            <p className={styles.inputSubtitle}>
+              Paste code câu hỏi (bọc trong <code>\begin&#123;ex&#125;...\end&#123;ex&#125;</code>) hoặc import file .tex
+            </p>
           </div>
+
           <textarea
-            className={styles.codeTextarea}
+            className={styles.inputTextarea}
             value={editorContent}
             onChange={e => setEditorContent(e.target.value)}
-            placeholder={`Paste code LaTeX chứa câu hỏi vào đây...\n\n\\begin{ex}%[...]\n\tCâu hỏi...\n\t\\choice\n\t{A}{\\True B}{C}{D}\n\t\\loigiai{...}\n\\end{ex}\n\nHoặc bấm "Import .tex" để tải file từ máy.`}
+            placeholder={`Paste code LaTeX câu hỏi vào đây...\n\n\\begin{ex}\n\tCâu hỏi...\n\t\\choice\n\t{A}{\\True B}{C}{D}\n\t\\loigiai{...}\n\\end{ex}`}
             spellCheck={false}
           />
-          <button className={styles.parseBtn} onClick={handleParse} disabled={!editorContent.trim()}>
-            ⚡ Parse câu hỏi
+
+          <div className={styles.inputActions}>
+            <button className={styles.importFileBtn} onClick={() => fileInputRef.current?.click()}>
+              📁 Import file .tex
+            </button>
+            <input ref={fileInputRef} type="file" accept=".tex,.txt" style={{ display: 'none' }} onChange={handleImportFile} />
+
+            <button className={styles.parseMainBtn} onClick={handleParse} disabled={!editorContent.trim()}>
+              ⚡ Parse câu hỏi
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+
+  // ═══════════════════════════════════════════════
+  // RENDER: BƯỚC 2 — XEM & CẤU HÌNH
+  // ═══════════════════════════════════════════════
+
+  const renderReview = () => (
+    <>
+      <Header title="🖥️ Trình chiếu câu hỏi" />
+      {/* ─── Review toolbar ─── */}
+      <div className={styles.reviewToolbar}>
+        <button className={styles.backBtn} onClick={handleBackToInput}>← Quay lại</button>
+        <span className={styles.reviewCount}>📋 {questions.length} câu hỏi</span>
+        <div className={styles.reviewRight}>
+          <div className={styles.themeSelector}>
+            {(['dark', 'light', 'blue', 'purple', 'green', 'orange'] as Theme[]).map(t => (
+              <button key={t}
+                className={`${styles.themeBtn} ${styles[('theme' + t.charAt(0).toUpperCase() + t.slice(1)) as keyof typeof styles]} ${theme === t ? styles.active : ''}`}
+                onClick={() => setTheme(t)}
+                title={{dark:'Tối', light:'Sáng', blue:'Xanh dương', purple:'Tím', green:'Xanh lá', orange:'Cam'}[t]} />
+            ))}
+          </div>
+          <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0}>
+            🚀 Bắt đầu trình chiếu
           </button>
         </div>
+      </div>
 
-        {/* ─── RIGHT: Preview danh sách câu hỏi ─── */}
-        <div className={styles.rightPanel}>
-          <div className={styles.rightHeader}>
-            <h3>📋 Preview câu hỏi</h3>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {questions.length > 0 && (
-                <span className={styles.questionCount}>{questions.length} câu</span>
-              )}
-            </div>
-          </div>
-
-          <div className={styles.questionList}>
-            {questions.length === 0 ? (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyIcon}>📭</div>
-                <div>Chưa có câu hỏi nào</div>
-                <div style={{ fontSize: '0.78rem' }}>Paste code LaTeX bên trái rồi bấm &quot;Parse&quot;</div>
+      {/* ─── Question pairs: raw (left) + preview (right) ─── */}
+      <div className={styles.reviewList}>
+        {questions.map((q, idx) => (
+          <div key={q.id} className={styles.reviewRow}>
+            {/* Left: Raw LaTeX */}
+            <div className={styles.rawColumn}>
+              <div className={styles.rawHeader}>
+                <span className={styles.rawNum}>Câu {idx + 1}</span>
+                <button className={styles.rawDelete} onClick={() => handleDeleteQuestion(idx)} title="Xóa câu">✕</button>
               </div>
-            ) : (
-              questions.map((q, idx) => (
-                <div key={q.id} className={styles.previewCard}>
-                  {/* Header */}
-                  <div className={styles.previewHeader}>
-                    <span className={styles.cardNum}>{idx + 1}</span>
-                    <span className={`${styles.typeBadge} ${styles[TYPE_CSS[q.questionType]]}`}>
-                      {TYPE_ICONS[q.questionType]} {TYPE_LABELS[q.questionType]}
-                    </span>
-                    {q.hasTikz && <span className={styles.tikzBadge}>🖼️ TikZ</span>}
-                    <button className={styles.cardDelete} onClick={() => handleDeleteQuestion(idx)} title="Xóa câu">✕</button>
-                  </div>
+              <pre className={styles.rawCode}>{rawBlocks[idx] || q.rawLatex}</pre>
+            </div>
 
-                  {/* Body segments: text + hình */}
-                  <div className={styles.previewBody}>
-                    <RenderedSegments
-                      segments={q.bodySegments}
-                      questionId={q.id}
-                      part="body"
-                      imageMap={imageMap}
-                      onUploadClick={openImageUpload}
-                      small
-                    />
-                  </div>
+            {/* Right: Preview */}
+            <div className={styles.previewColumn}>
+              <div className={styles.previewHeader}>
+                <span className={`${styles.typeBadge} ${styles[TYPE_CSS[q.questionType]]}`}>
+                  {TYPE_ICONS[q.questionType]} {TYPE_LABELS[q.questionType]}
+                </span>
+                {q.hasTikz && <span className={styles.tikzBadge}>🖼️ TikZ</span>}
+              </div>
 
-                  {/* Choices / TF / ShortAnswer */}
-                  {q.questionType === 'multiple_choice' && q.choices && (
-                    <div className={styles.previewChoices}>
-                      {q.choices.map(c => (
-                        <div key={c.label} className={`${styles.previewChoice} ${c.isCorrect ? styles.previewCorrect : ''}`}>
-                          <strong>{c.label}.</strong> <RenderedLatex content={c.content} className={styles.previewChoiceText} />
-                        </div>
-                      ))}
+              {/* Body */}
+              <div className={styles.previewBody}>
+                <RenderedSegments segments={q.bodySegments} questionId={q.id} part="body"
+                  imageMap={imageMap} onUploadClick={openImageUpload} />
+              </div>
+
+              {/* MC Choices */}
+              {q.questionType === 'multiple_choice' && q.choices && (
+                <div className={styles.previewChoices}>
+                  {q.choices.map(c => (
+                    <div key={c.label} className={`${styles.previewChoice} ${c.isCorrect ? styles.previewCorrect : ''}`}>
+                      <strong>{c.label}.</strong>
+                      <div className={styles.previewChoiceText}>
+                        <RenderedSegments segments={c.segments || [{type: 'text', content: c.content}]} questionId={q.id} part={`choice-${c.label}`} imageMap={imageMap} onUploadClick={openImageUpload} />
+                      </div>
                     </div>
-                  )}
+                  ))}
+                </div>
+              )}
 
-                  {q.questionType === 'true_false' && q.tfStatements && (
-                    <div className={styles.previewChoices}>
-                      {q.tfStatements.map(s => (
-                        <div key={s.label} className={`${styles.previewChoice} ${s.isTrue ? styles.previewCorrect : ''}`}>
-                          <strong>{s.label})</strong> <RenderedLatex content={s.content} className={styles.previewChoiceText} />
-                          <span className={styles.previewTFMark}>{s.isTrue ? 'Đ' : 'S'}</span>
-                        </div>
-                      ))}
+              {/* TF */}
+              {q.questionType === 'true_false' && q.tfStatements && (
+                <div className={styles.previewChoices}>
+                  {q.tfStatements.map(s => (
+                    <div key={s.label} className={`${styles.previewChoice} ${s.isTrue ? styles.previewCorrect : ''}`}>
+                      <strong>{s.label})</strong>
+                      <div className={styles.previewChoiceText}>
+                        <RenderedSegments segments={s.segments || [{type: 'text', content: s.content}]} questionId={q.id} part={`tf-${s.label}`} imageMap={imageMap} onUploadClick={openImageUpload} />
+                      </div>
+                      <span className={styles.previewTFMark}>{s.isTrue ? 'Đ' : 'S'}</span>
                     </div>
-                  )}
+                  ))}
+                </div>
+              )}
 
-                  {q.questionType === 'short_answer' && q.shortAnswer && (
-                    <div className={styles.previewShortAns}>
-                      Đáp số: <RenderedLatex content={`$${q.shortAnswer}$`} className={styles.previewShortAnsValue} />
-                    </div>
-                  )}
+              {/* Short Answer */}
+              {q.questionType === 'short_answer' && q.shortAnswer && (
+                <div className={styles.previewShortAns}>
+                  Đáp số: <RenderedLatex content={`$${q.shortAnswer}$`} className={styles.previewShortAnsValue} />
+                </div>
+              )}
 
-                  {/* Solution toggle */}
-                  {q.solutionSegments && q.solutionSegments.length > 0 && (
-                    <div className={styles.previewSolutionWrap}>
-                      <button className={styles.previewSolutionToggle} onClick={() => toggleSolution(q.id)}>
-                        {expandedSolutions.has(q.id) ? '▾' : '▸'} Lời giải
-                      </button>
-                      {expandedSolutions.has(q.id) && (
-                        <div className={styles.previewSolutionBody}>
-                          <RenderedSegments
-                            segments={q.solutionSegments}
-                            questionId={q.id}
-                            part="sol"
-                            imageMap={imageMap}
-                            onUploadClick={openImageUpload}
-                            small
-                          />
-                        </div>
-                      )}
+              {/* Solution */}
+              {q.solutionSegments && q.solutionSegments.length > 0 && (
+                <div className={styles.previewSolutionWrap}>
+                  <button className={styles.previewSolutionToggle} onClick={() => toggleSolution(q.id)}>
+                    {expandedSolutions.has(q.id) ? '▾' : '▸'} Lời giải
+                  </button>
+                  {expandedSolutions.has(q.id) && (
+                    <div className={styles.previewSolutionBody}>
+                      <RenderedSegments segments={q.solutionSegments} questionId={q.id} part="sol"
+                        imageMap={imageMap} onUploadClick={openImageUpload} />
                     </div>
                   )}
                 </div>
-              ))
-            )}
-          </div>
-
-          {/* Config + Start */}
-          <div className={styles.configSection}>
-            <div className={styles.configRow}>
-              <span className={styles.configLabel}>Theme:</span>
-              <div className={styles.themeSelector}>
-                {(['dark', 'light', 'blue'] as Theme[]).map(t => (
-                  <button
-                    key={t}
-                    className={`${styles.themeBtn} ${styles[('theme' + t.charAt(0).toUpperCase() + t.slice(1)) as keyof typeof styles]} ${theme === t ? styles.active : ''}`}
-                    onClick={() => setTheme(t)}
-                    title={t === 'dark' ? 'Tối' : t === 'light' ? 'Sáng' : 'Xanh'}
-                  />
-                ))}
-              </div>
+              )}
             </div>
-            <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0}>
-              🚀 Bắt đầu trình chiếu
-            </button>
           </div>
+        ))}
+      </div>
+
+      {/* ─── Fixed bottom action bar ─── */}
+      <div className={styles.reviewBottomBar}>
+        <button className={styles.backBtn} onClick={handleBackToInput}>← Quay lại nhập code</button>
+        <span className={styles.reviewCount}>📋 {questions.length} câu hỏi</span>
+        <div className={styles.reviewRight}>
+          <span style={{ fontSize: '0.8rem', color: '#666' }}>Theme:</span>
+          <div className={styles.themeSelector}>
+            {(['dark', 'light', 'blue', 'purple', 'green', 'orange'] as Theme[]).map(t => (
+              <button key={t}
+                className={`${styles.themeBtn} ${styles[('theme' + t.charAt(0).toUpperCase() + t.slice(1)) as keyof typeof styles]} ${theme === t ? styles.active : ''}`}
+                onClick={() => setTheme(t)}
+                title={{dark:'Tối', light:'Sáng', blue:'Xanh dương', purple:'Tím', green:'Xanh lá', orange:'Cam'}[t]} />
+            ))}
+          </div>
+          <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0}>
+            🚀 Bắt đầu trình chiếu
+          </button>
         </div>
       </div>
 
@@ -508,20 +518,18 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   )
 
   // ═══════════════════════════════════════════════
-  // RENDER: PRESENT PHASE
+  // RENDER: TRÌNH CHIẾU
   // ═══════════════════════════════════════════════
 
   const renderPresent = () => {
     const q = questions[currentSlide]
     if (!q) return null
-
-    const themeClass = theme === 'dark' ? styles.themeDark : theme === 'light' ? styles.themeLight : styles.themeBlue
+    const themeClass = styles[('theme' + theme.charAt(0).toUpperCase() + theme.slice(1)) as keyof typeof styles]
     const animClass = slideDirection === 'next' ? styles.slideAnimateRight : styles.slideAnimateLeft
     const progress = ((currentSlide + 1) / questions.length) * 100
 
     return (
       <div className={`${styles.presentOverlay} ${themeClass}`}>
-        {/* Top Bar */}
         <div className={styles.topBar}>
           <div className={styles.topLeft}>
             <span className={styles.slideCounter}>Câu {currentSlide + 1}/{questions.length}</span>
@@ -529,52 +537,50 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
               {TYPE_ICONS[q.questionType]} {TYPE_LABELS[q.questionType]}
             </span>
           </div>
-          <button className={styles.exitBtn} onClick={exitPresent}>✕ Thoát</button>
+          <div className={styles.topRight} style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className={styles.exitBtn} onClick={() => setZoomLevel(p => Math.max(p - 10, 50))} title="Thu nhỏ (-)">A-</button>
+            <button className={styles.exitBtn} onClick={() => setZoomLevel(p => Math.min(p + 10, 250))} title="Phóng to (+)">A+</button>
+            <button className={styles.exitBtn} onClick={exitPresent} style={{ marginLeft: '0.5rem' }}>✕ Thoát</button>
+          </div>
         </div>
 
-        {/* Progress */}
         <div className={styles.progressBar}>
           <div className={styles.progressFill} style={{ width: `${progress}%` }} />
         </div>
 
-        {/* Slide Content */}
-        <div className={`${styles.slideContent} ${animClass}`} key={slideKey}>
+        <div className={`${styles.slideContent} ${animClass}`} key={slideKey} style={{ fontSize: `${zoomLevel}%` }}>
           <div className={styles.slideInner}>
-            {/* Body segments */}
             <div className={styles.questionBodyArea}>
               <RenderedSegments segments={q.bodySegments} questionId={q.id} part="body" imageMap={imageMap} />
             </div>
 
-            {/* MC Choices */}
             {q.questionType === 'multiple_choice' && q.choices && (
               <div className={styles.choicesGrid}>
                 {q.choices.map(c => (
                   <div key={c.label} className={`${styles.choiceCard} ${showAnswer ? (c.isCorrect ? styles.correct : styles.incorrect) : ''}`}>
                     <div className={styles.choiceLabel}>{c.label}</div>
-                    <RenderedLatex content={c.content} className={styles.choiceText} />
+                    <div className={styles.choiceText}>
+                      <RenderedSegments segments={c.segments || [{type: 'text', content: c.content}]} questionId={q.id} part={`choice-${c.label}`} imageMap={imageMap} />
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* TF */}
             {q.questionType === 'true_false' && q.tfStatements && (
               <div className={styles.tfList}>
                 {q.tfStatements.map(s => (
                   <div key={s.label} className={styles.tfItem}>
                     <div className={styles.tfLabel}>{s.label})</div>
-                    <RenderedLatex content={s.content} className={styles.tfContent} />
-                    {showAnswer && (
-                      <span className={`${styles.tfAnswer} ${s.isTrue ? styles.tfTrue : styles.tfFalse}`}>
-                        {s.isTrue ? 'Đ' : 'S'}
-                      </span>
-                    )}
+                    <div className={styles.tfContent}>
+                      <RenderedSegments segments={s.segments || [{type: 'text', content: s.content}]} questionId={q.id} part={`tf-${s.label}`} imageMap={imageMap} />
+                    </div>
+                    {showAnswer && <span className={`${styles.tfAnswer} ${s.isTrue ? styles.tfTrue : styles.tfFalse}`}>{s.isTrue ? 'Đ' : 'S'}</span>}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Short Answer */}
             {q.questionType === 'short_answer' && (
               <div className={styles.shortAnswerBox}>
                 <span className={styles.saLabel}>Đáp số:</span>
@@ -584,7 +590,6 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
               </div>
             )}
 
-            {/* Solution */}
             {showSolution && q.solutionSegments && q.solutionSegments.length > 0 && (
               <div className={styles.solutionBox}>
                 <div className={styles.solutionHeader}>📖 Lời giải</div>
@@ -596,7 +601,6 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
           </div>
         </div>
 
-        {/* Bottom Bar */}
         <div className={styles.bottomBar}>
           <button className={styles.navBtn} onClick={goPrev} disabled={currentSlide === 0}>
             ◀ Trước <span className={styles.shortcutHint}>←</span>
@@ -619,5 +623,6 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
 
   // ═══════════════════════════════════════════════
   if (phase === 'present') return renderPresent()
-  return renderEditor()
+  if (phase === 'review') return renderReview()
+  return renderInput()
 }

@@ -19,12 +19,14 @@ export interface ContentSegment {
 export interface SlideChoice {
   label: string       // 'A', 'B', 'C', 'D'
   content: string     // Nội dung phương án (raw LaTeX)
+  segments?: ContentSegment[]
   isCorrect: boolean
 }
 
 export interface SlideTFStatement {
   label: string       // 'a', 'b', 'c', 'd'
   content: string     // Nội dung mệnh đề
+  segments?: ContentSegment[]
   isTrue: boolean
 }
 
@@ -113,12 +115,12 @@ function segmentContent(text: string): ContentSegment[] {
   if (!text || !text.trim()) return []
 
   const segments: ContentSegment[] = []
-  // Regex: khớp tikzpicture có hoặc không bọc trong \begin{center}...\end{center}
-  const tikzRegex = /(?:\\begin\{center\}\s*)?\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}\s*(?:\\end\{center\})?/g
+  // Regex: khớp tikzpicture hoặc tabular có hoặc không bọc trong \begin{center}...\end{center}
+  const mediaRegex = /(?:\\begin\{center\}\s*)?\\begin\{(tikzpicture|tabular)\}[\s\S]*?\\end\{\1\}\s*(?:\\end\{center\})?/g
 
   let lastIdx = 0
   let match: RegExpExecArray | null
-  while ((match = tikzRegex.exec(text)) !== null) {
+  while ((match = mediaRegex.exec(text)) !== null) {
     const beforeText = text.slice(lastIdx, match.index).trim()
     if (beforeText) segments.push({ type: 'text', content: beforeText })
     segments.push({ type: 'image', content: match[0] })
@@ -135,6 +137,54 @@ function segmentContent(text: string): ContentSegment[] {
   return segments
 }
 
+/**
+ * Chuyển đổi \immini[tùy chọn]{nội dung text}{hình ảnh tikz}
+ * thành "hình ảnh \n nội dung text" để parser hiện tại có thể phân tách.
+ */
+function unwrapImmini(text: string): string {
+  let result = text
+  let i = 0
+  while ((i = result.indexOf('\\immini', i)) !== -1) {
+    let curr = i + 7 // length of \immini
+    // Bỏ qua khoảng trắng
+    while (curr < result.length && /\s/.test(result[curr])) curr++
+    // Bỏ qua tham số tùy chọn [...]
+    if (curr < result.length && result[curr] === '[') {
+      const endBracket = result.indexOf(']', curr)
+      if (endBracket !== -1) {
+        curr = endBracket + 1
+      }
+    }
+    while (curr < result.length && /\s/.test(result[curr])) curr++
+    
+    // Ngoặc nhọn thứ nhất: {text}
+    if (curr < result.length && result[curr] === '{') {
+      const arg1 = extractBalancedContent(result, curr)
+      if (arg1) {
+        curr = arg1.endIdx + 1
+        while (curr < result.length && /\s/.test(result[curr])) curr++
+        
+        // Ngoặc nhọn thứ hai: {image}
+        if (curr < result.length && result[curr] === '{') {
+          const arg2 = extractBalancedContent(result, curr)
+          if (arg2) {
+            const before = result.slice(0, i)
+            const after = result.slice(arg2.endIdx + 1)
+            // Đặt hình ảnh lên trước nội dung chữ
+            result = before + arg2.content + '\n' + arg1.content + after
+            // Tiếp tục quét từ vị trí mới
+            i = before.length + arg2.content.length + 1 + arg1.content.length
+            continue
+          }
+        }
+      }
+    }
+    // Nếu không parse thành công (không đúng định dạng), bỏ qua \immini này
+    i += 7
+  }
+  return result
+}
+
 // ═══════════════════════════════════════════════════
 // MAIN PARSER
 // ═══════════════════════════════════════════════════
@@ -146,13 +196,15 @@ export function parseSlideQuestion(latexBlock: string): SlideQuestion {
   const raw = latexBlock.trim()
   const id = generateSlideId()
   const questionType = detectQuestionType(raw)
-  const hasTikz = /\\begin\{tikzpicture\}/.test(raw)
+  const hasTikz = /\\begin\{(tikzpicture|tabular)\}/.test(raw)
 
-  // 1. Bỏ \begin{ex}...%[...] ở đầu và \end{ex} ở cuối
+  // 1. Bỏ \begin{ex}...%[...] ở đầu và \end{ex} ở cuối, và unwrap \immini
   let inner = raw
     .replace(/^\\begin\{ex\}[^\n]*\n?/, '')  // Bỏ dòng \begin{ex}%[...]
     .replace(/\\end\{ex\}\s*$/, '')            // Bỏ \end{ex} cuối
     .trim()
+  
+  inner = unwrapImmini(inner)
 
   // 2. Tách \loigiai{...} (nếu có) — dùng balanced brace parser
   let solutionRaw: string | undefined
@@ -190,7 +242,8 @@ export function parseSlideQuestion(latexBlock: string): SlideQuestion {
       choices = items.slice(0, 4).map((item, idx) => {
         const isCorrect = /\\True/.test(item)
         const content = item.replace(/\\True\s*/, '').trim()
-        return { label: labels[idx], content, isCorrect }
+        const segments = segmentContent(content)
+        return { label: labels[idx], content, segments, isCorrect }
       })
     } else {
       questionBodyRaw = inner
@@ -206,7 +259,8 @@ export function parseSlideQuestion(latexBlock: string): SlideQuestion {
       tfStatements = items.slice(0, 4).map((item, idx) => {
         const isTrue = /\\True/.test(item)
         const content = item.replace(/\\True\s*/, '').trim()
-        return { label: labels[idx], content, isTrue }
+        const segments = segmentContent(content)
+        return { label: labels[idx], content, segments, isTrue }
       })
     } else {
       questionBodyRaw = inner
@@ -262,4 +316,12 @@ export function parseAllSlideQuestions(rawText: string): SlideQuestion[] {
   const cleaned = preprocessTexContent(rawText)
   const blocks = extractExBlocks(cleaned)
   return blocks.map(block => parseSlideQuestion(block))
+}
+
+/**
+ * Chỉ trích xuất các raw block \begin{ex}...\end{ex} dạng text thuần
+ */
+export function extractRawExBlocks(rawText: string): string[] {
+  const cleaned = preprocessTexContent(rawText)
+  return extractExBlocks(cleaned)
 }
