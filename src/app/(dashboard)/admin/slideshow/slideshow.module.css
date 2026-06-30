@@ -770,3 +770,7 @@
   .choiceText { font-size: 0.95rem; }
   .tfContent { font-size: 0.92rem; }
 }
+
+.latexEnumerate { list-style-type: none; counter-reset: latex-enum; padding-left: 1.5em; margin: 0.5em 0; }
+.latexEnumerate > li { counter-increment: latex-enum; position: relative; }
+.latexEnumerate > li::before { content: counter(latex-enum, lower-alpha) ")"; position: absolute; left: -1.5em; }

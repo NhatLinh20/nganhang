@@ -75,6 +75,8 @@ function processTextSegment(text: string): string {
   // List environments
   html = html.replace(/\\begin\{itemize\}/g, '<ul style="margin: 0.5em 0; padding-left: 1.5em; list-style-type: disc;">')
   html = html.replace(/\\end\{itemize\}/g, '</ul>')
+  html = html.replace(/\\begin\{enumerate\}(?:\[[^\]]*\])?/g, `<ol class="${styles.latexEnumerate}">`)
+  html = html.replace(/\\end\{enumerate\}/g, '</ol>')
   html = html.replace(/\\item\b/g, '<li>')
   
   // TF solution environments
@@ -82,15 +84,30 @@ function processTextSegment(text: string): string {
   html = html.replace(/\\end\{itemchoice\}/g, '</ol>')
   html = html.replace(/\\itemch\b/g, '<li>')
 
+  // Quotes
+  html = html.replace(/\\lq\\lq\s*/g, '“')
+  html = html.replace(/\\rq\\rq\s*/g, '”')
+  html = html.replace(/\\lq\s*/g, '‘')
+  html = html.replace(/\\rq\s*/g, '’')
+
   // Spaces, breaks and ignored commands
+  html = html.replace(/~/g, '&nbsp;')
   html = html.replace(/\\qquad/g, '&emsp;&emsp;')
   html = html.replace(/\\quad/g, '&emsp;')
   html = html.replace(/\\,/g, '&thinsp;')
-  html = html.replace(/\\par/g, '')
+  html = html.replace(/\\par\b/g, '<br><br>')
   html = html.replace(/\\allowdisplaybreaks/g, '')
   html = html.replace(/\\\\/g, '<br>')
   html = html.replace(/\\break/g, '<br>')
+  
+  // Xử lý xuống dòng: LaTeX dùng 1 enter là space, 2 enter là paragraph.
+  // Tuy nhiên để dễ nhìn trên web cho người dùng phổ thông, ta vẫn giữ <br> cho 1 enter, 
+  // nhưng PHẢI xóa <br> thừa xung quanh các thẻ block (ul, ol, li) để tránh tạo khoảng trắng khổng lồ.
+  html = html.replace(/\n\n+/g, '<br><br>')
   html = html.replace(/\n/g, '<br>')
+  html = html.replace(/(<\/?(?:ul|ol|li)[^>]*>)\s*<br>/g, '$1')
+  html = html.replace(/<br>\s*(<\/?(?:ul|ol|li)[^>]*>)/g, '$1')
+  
   html = html.replace(/\t/g, '')
   return html
 }
@@ -410,7 +427,12 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     try { document.documentElement.requestFullscreen?.() } catch { /* ok */ }
   }
 
-  const exitPresent = () => { setPhase('review'); try { document.exitFullscreen?.() } catch { /* ok */ } }
+  const exitPresent = () => { 
+    setPhase('review'); 
+    try { 
+      if (document.fullscreenElement) document.exitFullscreen?.() 
+    } catch { /* ok */ } 
+  }
 
   // ═══════════════════════════════════════════════
   // RENDER: BƯỚC 1 — NHẬP CODE
