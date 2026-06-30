@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header'
 import styles from './slideshow.module.css'
 import {
   parseAllSlideQuestions,
+  parseSlideQuestion,
   extractRawExBlocks,
   type SlideQuestion,
   type ContentSegment,
@@ -375,11 +376,59 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   }
 
   const handleDeleteQuestion = (idx: number) => {
-    setRawBlocks(prev => prev.filter((_, i) => i !== idx))
     setQuestions(prev => prev.filter((_, i) => i !== idx))
+    setRawBlocks(prev => prev.filter((_, i) => i !== idx))
   }
 
-  const handleBackToInput = () => setPhase('input')
+  const handleEditRawBlock = (idx: number, newCode: string) => {
+    // Cập nhật rawBlocks
+    setRawBlocks(prev => { const next = [...prev]; next[idx] = newCode; return next })
+    // Re-parse câu hỏi đơn lẻ
+    try {
+      const reparsed = parseSlideQuestion(newCode)
+      setQuestions(prev => {
+        const next = [...prev]
+        next[idx] = { ...reparsed, id: prev[idx].id } // Giữ nguyên id để không bị re-mount
+        return next
+      })
+      // Re-compile TikZ nếu có hình mới
+      if (reparsed.hasTikz) {
+        const tikzJobs: { key: string; code: string }[] = []
+        const qId = questions[idx]?.id || reparsed.id
+        const collectSegs = (segs: ContentSegment[], part: string) => {
+          segs.forEach((seg, i) => {
+            if (seg.type === 'image') tikzJobs.push({ key: `${qId}:${part}:${i}`, code: seg.content })
+          })
+        }
+        collectSegs(reparsed.bodySegments, 'body')
+        if (reparsed.choices) reparsed.choices.forEach(c => {
+          if (c.segments) collectSegs(c.segments, `choice-${c.label}`)
+        })
+        if (reparsed.tfStatements) reparsed.tfStatements.forEach(s => {
+          if (s.segments) collectSegs(s.segments, `tf-${s.label}`)
+        })
+        if (reparsed.solutionSegments) reparsed.solutionSegments.forEach(s => {
+             if (s.type === 'image') tikzJobs.push({ key: `${qId}:sol:${s.content}`, code: s.content })
+        })
+        // Compile từng hình (không block UI)
+        for (const job of tikzJobs) {
+          if (!imageMap[job.key]) {
+            compileTikz(job.code).then(svg => {
+              setImageMap(prev => ({ ...prev, [job.key]: svg }))
+            }).catch(() => {})
+          }
+        }
+      }
+    } catch { /* parse lỗi thì giữ nguyên, chờ user sửa tiếp */ }
+  }
+
+  const toggleSolution = (id: string) => {
+    setExpandedSolutions(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
 
   // ─── Image Upload (fallback for failed TikZ) ───
   const openImageUpload = (key: string) => { setUploadKey(key); setTempImage(imageMap[key] || null) }
@@ -399,10 +448,6 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   const confirmImageUpload = () => {
     if (uploadKey && tempImage) setImageMap(prev => ({ ...prev, [uploadKey]: tempImage }))
     setUploadKey(null); setTempImage(null)
-  }
-
-  const toggleSolution = (qId: string) => {
-    setExpandedSolutions(prev => { const n = new Set(prev); n.has(qId) ? n.delete(qId) : n.add(qId); return n })
   }
 
   // ─── Present Nav ───
@@ -482,7 +527,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
       <Header title="🖥️ Trình chiếu câu hỏi" />
       {/* ─── Review toolbar ─── */}
       <div className={styles.reviewToolbar}>
-        <button className={styles.backBtn} onClick={handleBackToInput}>← Quay lại</button>
+        <button className={styles.backBtn} onClick={() => setPhase('input')}>← Quay lại</button>
         <span className={styles.reviewCount}>📋 {questions.length} câu hỏi</span>
         <div className={styles.reviewRight}>
           <div className={styles.themeSelector}>
@@ -527,7 +572,12 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
                 <span className={styles.rawNum}>Câu {idx + 1}</span>
                 <button className={styles.rawDelete} onClick={() => handleDeleteQuestion(idx)} title="Xóa câu">✕</button>
               </div>
-              <pre className={styles.rawCode}>{rawBlocks[idx] || q.rawLatex}</pre>
+              <textarea
+                className={styles.rawCode}
+                value={rawBlocks[idx] ?? q.rawLatex}
+                onChange={e => handleEditRawBlock(idx, e.target.value)}
+                spellCheck={false}
+              />
             </div>
 
             {/* Right: Preview */}
@@ -602,7 +652,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
 
       {/* ─── Fixed bottom action bar ─── */}
       <div className={styles.reviewBottomBar}>
-        <button className={styles.backBtn} onClick={handleBackToInput}>← Quay lại nhập code</button>
+        <button className={styles.backBtn} onClick={() => setPhase('input')}>← Quay lại nhập code</button>
         <span className={styles.reviewCount}>📋 {questions.length} câu hỏi</span>
         <div className={styles.reviewRight}>
           <span style={{ fontSize: '0.8rem', color: '#666' }}>Theme:</span>

@@ -251,6 +251,13 @@
   font-size: 0.78rem;
   line-height: 1.6;
   color: #d4d4d4;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  width: 100%;
+  flex: 1;
+  min-height: 120px;
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-all;

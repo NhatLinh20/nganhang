@@ -1267,6 +1267,18 @@ export default function AiExamPage() {
                     🔀 Chuyển sang Trộn đề
                   </button>
 
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => {
+                      const combinedLatex = questions.map(q => q.latex_content).join('\n\n')
+                      sessionStorage.setItem('slideshow_code', combinedLatex)
+                      window.location.href = '/admin/slideshow'
+                    }}
+                    disabled={questions.length === 0}
+                    style={{ background: '#f59e0b', color: 'white', border: 'none', fontWeight: 600, opacity: questions.length > 0 ? 1 : 0.5, cursor: questions.length > 0 ? 'pointer' : 'not-allowed' }}
+                  >
+                    🖥️ Trình chiếu
+                  </button>
                 </div>
               </div>
 

@@ -1444,6 +1444,29 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                   >
                     {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
                   </button>
+                  <button
+                    onClick={() => {
+                      const currentQuestions = shuffledExams[activeTab]?.questions || []
+                      const combinedLatex = currentQuestions.map(q => q.latex_content).join('\n\n')
+                      sessionStorage.setItem('slideshow_code', combinedLatex)
+                      window.location.href = '/admin/slideshow'
+                    }}
+                    disabled={shuffledExams.length === 0}
+                    style={{
+                      background: '#f59e0b',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 24px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      cursor: shuffledExams.length > 0 ? 'pointer' : 'not-allowed',
+                      opacity: shuffledExams.length > 0 ? 1 : 0.5,
+                      boxShadow: '0 4px 6px rgba(245,158,11,0.3)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    🖥️ Trình chiếu
+                  </button>
                 </div>
               </div>
             </>
