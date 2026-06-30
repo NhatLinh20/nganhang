@@ -2,7 +2,7 @@
  * Calls the external VPS API to compile TikZ code into an SVG string.
  */
 export async function compileTikz(tikzCode: string): Promise<string> {
-  const apiUrl = process.env.NEXT_PUBLIC_TIKZ_API_URL || 'http://42.96.15.5:3001'
+  const apiUrl = process.env.NEXT_PUBLIC_TIKZ_API_URL || '/api/tikz'
   
   try {
     const response = await fetch(`${apiUrl}/compile`, {
@@ -29,7 +29,7 @@ export async function compileTikz(tikzCode: string): Promise<string> {
  * Calls the external VPS API to compile a ZIP containing LaTeX files into a PDF Blob.
  */
 export async function compilePdfZip(zipBlob: Blob): Promise<Blob> {
-  const apiUrl = process.env.NEXT_PUBLIC_TIKZ_API_URL || 'http://42.96.15.5:3001'
+  const apiUrl = process.env.NEXT_PUBLIC_TIKZ_API_URL || '/api/tikz'
   
   const formData = new FormData()
   formData.append('file', zipBlob, 'exam.zip')

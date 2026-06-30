@@ -23,6 +23,14 @@ const nextConfig: NextConfig = {
       ],
     },
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/tikz/:path*',
+        destination: 'http://42.96.15.5:3001/:path*', // Proxy qua Vercel để tránh lỗi Mixed Content HTTPS -> HTTP
+      },
+    ]
+  },
 };
 
 export default nextConfig;
