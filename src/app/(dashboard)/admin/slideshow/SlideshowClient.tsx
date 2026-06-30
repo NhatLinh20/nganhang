@@ -336,7 +336,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     setPhase('review')
 
     const newImageMap: Record<string, string> = {}
-    const CONCURRENCY = 4
+    const CONCURRENCY = 2 // Giảm xuống 2 để tránh quá tải VPS
     let doneCount = 0
 
     const runJob = async (job: { key: string; code: string }) => {
