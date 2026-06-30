@@ -63,15 +63,43 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function processTextSegment(text: string): string {
-  // Loại bỏ comment LaTeX (dấu % đến hết dòng, trừ khi bị escape \%)
-  let cleanText = text.replace(/(^|[^\\])%.*/g, '$1')
+function renderLatexContent(text: string): string {
+  if (!text) return ''
   
-  let html = escapeHtml(cleanText)
-  html = html.replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
-  html = html.replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
-  html = html.replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
-  html = html.replace(/\\text\{([^}]+)\}/g, '$1')
+  // 1. Loại bỏ comment LaTeX (dấu % đến hết dòng, trừ khi bị escape \%)
+  let processed = text.replace(/(^|[^\\])%.*/g, '$1')
+
+  // 2. Chuẩn hóa môi trường align*, align, eqnarray*, eqnarray
+  processed = processed.replace(/\\begin\{align\*\}([\s\S]*?)\\end\{align\*\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
+  processed = processed.replace(/\\begin\{align\}([\s\S]*?)\\end\{align\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
+  processed = processed.replace(/\\begin\{eqnarray\*\}([\s\S]*?)\\end\{eqnarray\*\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
+  processed = processed.replace(/\\begin\{eqnarray\}([\s\S]*?)\\end\{eqnarray\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
+
+  // Chuẩn hóa \[ \] thành $$ $$ và \( \) thành $ $ để đồng nhất phân tích
+  processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$')
+  processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$')
+
+  // 3. Trích xuất toán học thành các placeholder (để không bị ảnh hưởng bởi format HTML)
+  const mathBlocks: string[] = []
+  
+  processed = processed.replace(/(\$\$[\s\S]*?\$\$)/g, (match) => {
+    mathBlocks.push(renderKatex(match.slice(2, -2).trim(), true))
+    return `__DISPLAY_MATH_${mathBlocks.length - 1}__`
+  })
+  
+  processed = processed.replace(/(\$[^\n$]+?\$)/g, (match) => {
+    mathBlocks.push(renderKatex(match.slice(1, -1), false))
+    return `__INLINE_MATH_${mathBlocks.length - 1}__`
+  })
+
+  // 4. Xử lý phần văn bản còn lại
+  let html = escapeHtml(processed)
+  
+  // Regex hỗ trợ lồng nhau 1 cấp và bao trùm toàn bộ nội dung đã bị mã hóa hoặc chứa placeholder
+  html = html.replace(/\\textbf\{((?:[^{}]|(?:\{[^{}]*\}))+)\}/g, '<strong>$1</strong>')
+  html = html.replace(/\\textit\{((?:[^{}]|(?:\{[^{}]*\}))+)\}/g, '<em>$1</em>')
+  html = html.replace(/\\underline\{((?:[^{}]|(?:\{[^{}]*\}))+)\}/g, '<u>$1</u>')
+  html = html.replace(/\\text\{((?:[^{}]|(?:\{[^{}]*\}))+)\}/g, '$1')
   
   // List environments
   html = html.replace(/\\begin\{itemize\}/g, '<ul style="margin: 0.5em 0; padding-left: 1.5em; list-style-type: disc;">')
@@ -80,6 +108,10 @@ function processTextSegment(text: string): string {
   html = html.replace(/\\end\{enumerate\}/g, '</ol>')
   html = html.replace(/\\item\b/g, '<li>')
   
+  // Center environment
+  html = html.replace(/\\begin\{center\}/g, '<div style="text-align: center;">')
+  html = html.replace(/\\end\{center\}/g, '</div>')
+
   // TF solution environments
   html = html.replace(/\\begin\{itemchoice\}/g, '<ol type="a" style="margin: 0.5em 0; padding-left: 1.5em;">')
   html = html.replace(/\\end\{itemchoice\}/g, '</ol>')
@@ -98,46 +130,27 @@ function processTextSegment(text: string): string {
   html = html.replace(/\\,/g, '&thinsp;')
   html = html.replace(/\\par\b/g, '<br><br>')
   html = html.replace(/\\allowdisplaybreaks/g, '')
-  html = html.replace(/\\\\/g, '<br>')
+  html = html.replace(/\\\\(?:\s*\n)?/g, '<br>')
   html = html.replace(/\\break/g, '<br>')
   
   // Xử lý xuống dòng: LaTeX dùng 1 enter là space, 2 enter là paragraph.
-  // Tuy nhiên để dễ nhìn trên web cho người dùng phổ thông, ta vẫn giữ <br> cho 1 enter, 
-  // nhưng PHẢI xóa <br> thừa xung quanh các thẻ block (ul, ol, li) để tránh tạo khoảng trắng khổng lồ.
   html = html.replace(/\n\n+/g, '<br><br>')
   html = html.replace(/\n/g, '<br>')
-  html = html.replace(/(<\/?(?:ul|ol|li)[^>]*>)\s*<br>/g, '$1')
-  html = html.replace(/<br>\s*(<\/?(?:ul|ol|li)[^>]*>)/g, '$1')
+  
+  // PHẢI xóa <br> thừa xung quanh các thẻ block (ul, ol, li, div) để tránh tạo khoảng trắng khổng lồ.
+  html = html.replace(/(<\/?(?:ul|ol|li|div)[^>]*>)\s*(?:<br>)+/g, '$1')
+  html = html.replace(/(?:<br>)+\s*(<\/?(?:ul|ol|li|div)[^>]*>)/g, '$1')
+  
+  // Xóa <br> thừa xung quanh công thức hiển thị dạng block (Display Math)
+  html = html.replace(/(?:<br>)*\s*__DISPLAY_MATH_(\d+)__\s*(?:<br>)*/g, '__DISPLAY_MATH_$1__')
   
   html = html.replace(/\t/g, '')
-  return html
-}
 
-function renderLatexContent(text: string): string {
-  if (!text) return ''
-  
-  // Chuẩn hóa eqnarray thành aligned để KaTeX render được
-  text = text.replace(/\\begin\{eqnarray\*\}([\s\S]*?)\\end\{eqnarray\*\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
-  text = text.replace(/\\begin\{eqnarray\}([\s\S]*?)\\end\{eqnarray\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
+  // 5. Trả lại các khối toán học
+  html = html.replace(/__(DISPLAY|INLINE)_MATH_(\d+)__/g, (match, type, index) => {
+    return mathBlocks[Number(index)]
+  })
 
-  // Chuẩn hóa \[ \] thành $$ $$ và \( \) thành $ $ để đồng nhất phân tích
-  text = text.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$')
-  text = text.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$')
-
-  let html = ''
-  const displayParts = text.split(/(\$\$[\s\S]*?\$\$)/g)
-  for (const part of displayParts) {
-    if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
-      html += renderKatex(part.slice(2, -2).trim(), true)
-    } else {
-      const inlineParts = part.split(/(\$[^\n$]+?\$)/g)
-      for (const iPart of inlineParts) {
-        if (iPart.startsWith('$') && iPart.endsWith('$') && iPart.length > 2) {
-          html += renderKatex(iPart.slice(1, -1), false)
-        } else { html += processTextSegment(iPart) }
-      }
-    }
-  }
   return html
 }
 
