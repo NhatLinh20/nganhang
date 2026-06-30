@@ -489,10 +489,24 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
       <div className={styles.inputPhase}>
         <div className={styles.inputCard}>
           <div className={styles.inputHeader}>
-            <h2 className={styles.inputTitle}>📝 Nhập code LaTeX</h2>
-            <p className={styles.inputSubtitle}>
-              Paste code câu hỏi (bọc trong <code>\begin&#123;ex&#125;...\end&#123;ex&#125;</code>) hoặc import file .tex
-            </p>
+            <h2 className={styles.inputTitle}>📝 Nhập dữ liệu Trình chiếu</h2>
+            
+            <div className={styles.instructionBox}>
+              <h3 className={styles.instructionTitle}>
+                💡 Hướng dẫn cách đưa câu hỏi vào Trình chiếu:
+              </h3>
+              <ul className={styles.instructionList}>
+                <li>
+                  <strong>Cách 1 (Tự động):</strong> Bấm nút <strong>"🖥️ Trình chiếu"</strong> trực tiếp từ các trang <strong>Tạo đề thi</strong>, <strong>Trộn đề</strong>, hoặc <strong>AI tạo đề</strong> để hệ thống tự động chuyển toàn bộ câu hỏi sang đây.
+                </li>
+                <li>
+                  <strong>Cách 2 (Thủ công):</strong> Copy code LaTeX của câu hỏi và dán trực tiếp vào ô bên dưới.
+                </li>
+                <li>
+                  <strong>Cách 3 (Từ file):</strong> Bấm nút <strong>"📁 Import file .tex"</strong> ở bên dưới để tải lên file chứa code câu hỏi.
+                </li>
+              </ul>
+            </div>
           </div>
 
           <textarea

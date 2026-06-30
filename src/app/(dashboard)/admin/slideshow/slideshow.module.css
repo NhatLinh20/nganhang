@@ -14,7 +14,7 @@
 
 .inputCard {
   width: 100%;
-  max-width: 800px;
+  max-width: 1000px;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -30,21 +30,59 @@
 }
 
 .inputSubtitle {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--color-gray-500, #666);
   margin: 0;
+  line-height: 1.5;
 }
 
-.inputSubtitle code {
-  background: var(--color-gray-100, #f3f4f6);
-  padding: 0.1rem 0.3rem;
+.instructionBox {
+  background: var(--color-primary-50, #eff6ff);
+  border: 1px solid var(--color-primary-100, #dbeafe);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.instructionTitle {
+  font-weight: 600;
+  color: var(--color-primary-800, #1e40af);
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.instructionList {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: var(--color-gray-700, #374151);
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.instructionList li::marker {
+  color: var(--color-primary-500, #3b82f6);
+}
+
+.instructionList code {
+  background: white;
+  border: 1px solid var(--color-primary-100, #dbeafe);
+  padding: 0.15rem 0.4rem;
   border-radius: 4px;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
+  color: var(--color-primary-700, #1d4ed8);
 }
 
 .inputTextarea {
   width: 100%;
-  min-height: 400px;
+  height: 300px;
+  min-height: 150px;
+  max-height: 50vh;
   padding: 1rem;
   border-radius: 10px;
   border: 1px solid var(--color-gray-200, #e5e7eb);
