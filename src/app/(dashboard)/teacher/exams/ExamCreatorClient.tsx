@@ -1166,6 +1166,19 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   🔀 Chuyển sang Trộn đề
                 </button>
 
+                <button
+                  className={styles.mainTab}
+                  onClick={() => {
+                    const combinedLatex = questions.map(q => q.latex_content).join('\n\n')
+                    sessionStorage.setItem('slideshow_code', combinedLatex)
+                    window.location.href = '/admin/slideshow'
+                  }}
+                  disabled={questions.length === 0}
+                  style={{ background: '#f59e0b', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px', borderRadius: 6, cursor: questions.length > 0 ? 'pointer' : 'not-allowed', opacity: questions.length > 0 ? 1 : 0.5 }}
+                >
+                  🖥️ Trình chiếu
+                </button>
+
               </div>
             </div>
 
