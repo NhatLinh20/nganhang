@@ -385,11 +385,9 @@ export async function POST(request: NextRequest) {
 
       // Build đề thuần
       const examTex = buildExamLatex({ header, questions: wordQuestions, imagePaths })
-      require('fs').writeFileSync('d:/nganhang/debug_export.tex', examTex)
 
       // Build đề + lời giải
       const examWithSolTex = buildExamWithSolutionLatex({ header, questions: wordQuestions, imagePaths })
-      require('fs').writeFileSync('d:/nganhang/debug_export_loigiai.tex', examWithSolTex)
 
       try {
         const t1 = Date.now()
@@ -403,8 +401,6 @@ export async function POST(request: NextRequest) {
         console.log(`[export-word] Converted de_${code}_loigiai.docx in ${Date.now() - t2}ms`)
       } catch (err) {
         console.error(`[export-word] Convert failed for code=${code}:`, err)
-        require('fs').writeFileSync(`d:/nganhang/LOFAIL_ERROR_${code}.txt`, String(err) + '\n' + (err as any).stack)
-        // Thêm file .tex thay thế nếu pandoc lỗi
         outputZip.addFile(`de_${code}_LOFAIL.tex`, Buffer.from(examTex, 'utf-8'))
         outputZip.addFile(`de_${code}_loigiai_LOFAIL.tex`, Buffer.from(examWithSolTex, 'utf-8'))
       }
