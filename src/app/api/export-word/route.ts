@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
         outputZip.addFile(`de_${code}_loigiai.docx`, solDocxBuffer)
         console.log(`[export-word] Converted de_${code}_loigiai.docx in ${Date.now() - t2}ms`)
       } catch (err) {
-        const errorMsg = String(err) + (err as any).stack ? '\n' + (err as any).stack : ''
+        const errorMsg = String(err) + ((err as any).stack ? '\n' + (err as any).stack : '')
         console.error(`[export-word] Convert failed for code=${code}:`, err)
         outputZip.addFile(`de_${code}_LOFAIL.tex`, Buffer.from(examTex + '\n\n% ERROR:\n% ' + errorMsg, 'utf-8'))
         outputZip.addFile(`de_${code}_loigiai_LOFAIL.tex`, Buffer.from(examWithSolTex + '\n\n% ERROR:\n% ' + errorMsg, 'utf-8'))
