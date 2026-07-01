@@ -508,12 +508,9 @@
 
 .themeBtn:hover { transform: scale(1.15); }
 .themeBtn.active { border-color: var(--color-primary-500, #3b82f6); box-shadow: 0 0 8px rgba(59,130,246,0.3); }
-.themeDark { background: linear-gradient(135deg, #0f0c29, #302b63); }
-.themeLight { background: linear-gradient(135deg, #e8eaf6, #f5f5f5); }
+.themeMinimal { background: #ffffff; border: 1px solid #e5e7eb; }
 .themeBlue { background: linear-gradient(135deg, #0a1628, #1a237e); }
-.themePurple { background: linear-gradient(135deg, #2e0854, #7e22ce); }
-.themeGreen { background: linear-gradient(135deg, #064e3b, #10b981); }
-.themeOrange { background: linear-gradient(135deg, #7c2d12, #f97316); }
+.themeLight { background: linear-gradient(135deg, #e8eaf6, #f5f5f5); }
 
 .startBtn {
   display: flex;
@@ -630,30 +627,48 @@
 }
 
 /* Themes */
-.presentOverlay.themeDark {
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-  color: #f0f0f0;
-}
-.presentOverlay.themeLight {
-  background: linear-gradient(135deg, #e8eaf6 0%, #f5f5f5 50%, #e0e0e0 100%);
-  color: #212121;
+.presentOverlay.themeMinimal {
+  background: #ffffff;
+  color: #1f2937;
 }
 .presentOverlay.themeBlue {
   background: linear-gradient(135deg, #0a1628 0%, #1a237e 50%, #0d47a1 100%);
   color: #e3f2fd;
 }
-.presentOverlay.themePurple {
-  background: linear-gradient(135deg, #2e0854 0%, #7e22ce 50%, #4c1d95 100%);
-  color: #f3e8ff;
+.presentOverlay.themeLight {
+  background: linear-gradient(135deg, #e8eaf6 0%, #f5f5f5 50%, #e0e0e0 100%);
+  color: #212121;
 }
-.presentOverlay.themeGreen {
-  background: linear-gradient(135deg, #064e3b 0%, #059669 50%, #047857 100%);
-  color: #ecfdf5;
-}
-.presentOverlay.themeOrange {
-  background: linear-gradient(135deg, #7c2d12 0%, #ea580c 50%, #c2410c 100%);
-  color: #fff7ed;
-}
+
+/* Minimal Theme Specific Overrides */
+.themeMinimal .slideCounter { background: rgba(0,0,0,0.05); color: #4b5563; }
+.themeMinimal .slideTypeBadge.mc { background: #eff6ff; color: #2563eb; }
+.themeMinimal .slideTypeBadge.tf { background: #f0fdf4; color: #16a34a; }
+.themeMinimal .slideTypeBadge.sa { background: #fefce8; color: #ca8a04; }
+.themeMinimal .slideTypeBadge.es { background: #fdf2f8; color: #db2777; }
+.themeMinimal .exitBtn { border-color: #e5e7eb; background: #ffffff; color: #4b5563; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.themeMinimal .exitBtn:hover { background: #f9fafb; color: #ef4444; border-color: #fca5a5; }
+.themeMinimal .progressBar { background: #f3f4f6; }
+.themeMinimal .progressFill { background: linear-gradient(90deg, #3b82f6, #10b981); }
+.themeMinimal .tikzPlaceholder { border-color: #e5e7eb; color: #9ca3af; }
+.themeMinimal .choiceCard { border-color: #f3f4f6; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.themeMinimal .choiceLabel { background: #f3f4f6; color: #4b5563; }
+.themeMinimal .choiceCard.correct { border-color: #bbf7d0; background: #f0fdf4; box-shadow: 0 0 0 1px #22c55e; }
+.themeMinimal .choiceCard.correct .choiceLabel { background: #22c55e; color: #ffffff; }
+.themeMinimal .tfItem { border-color: #f3f4f6; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.themeMinimal .tfLabel { background: #f3f4f6; color: #4b5563; }
+.themeMinimal .tfTrue { color: #15803d; background: #dcfce7; }
+.themeMinimal .tfFalse { color: #b91c1c; background: #fee2e2; }
+.themeMinimal .shortAnswerBox { border-color: #f3f4f6; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.themeMinimal .saLabel { color: #6b7280; }
+.themeMinimal .saAnswer { color: #15803d; }
+.themeMinimal .saPlaceholder { border-color: #d1d5db; }
+.themeMinimal .solutionBox { border-color: #e0f2fe; background: #f0f9ff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.themeMinimal .solutionHeader { color: #0369a1; }
+.themeMinimal .solutionBody { color: #334155; }
+.themeMinimal .bottomBar { background: rgba(255,255,255,0.9); border-top: 1px solid #e5e7eb; }
+.themeMinimal .navBtn { border-color: #e5e7eb; background: #ffffff; color: #4b5563; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.themeMinimal .navBtn:hover { background: #f3f4f6; color: #111827; }
 
 /* Top Bar */
 .topBar {

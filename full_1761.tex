@@ -1,0 +1,208 @@
+\begin{ex}%[2D1N1-2]
+Cho hàm số $y = f(x)$ xác định trên $\mathbb{R}$ và có bảng biến thiên như hình vẽ sau
+\begin{center}
+    \begin{tikzpicture}
+\tkzTabInit[nocadre=false,lgt=1,espcl=2.5,deltacl=0.6]
+{$x$ /.7,$y'$ /.7,$y$ /2}{$-\infty$,$-1$,$0$,$1$,$+\infty$}
+\tkzTabLine{,-,$0$,+,$0$,-,$0$,+,}
+\tkzTabVar{+/ $+\infty$ ,-/$-1$,+/$4$,-/$-1$,+/$+\infty$} 
+\end{tikzpicture}
+\end{center}
+Hàm số đã cho đồng biến trên khoảng nào dưới đây?
+\choice
+{$(0;1)$}
+{$(-\infty;-1)$}
+{$(-1;1)$}
+{\True $(-1;0)$}
+\loigiai{
+Từ bảng biến thiên suy ra hàm số đồng biến trên khoảng $(-1;0)$.
+}
+\end{ex}
+
+\begin{ex}%[2D1N1-2]
+	Cho hàm số $y=f(x)$ có bảng biến thiên như sau
+	\begin{center}
+		\begin{tikzpicture}
+			\tkzTabInit[lgt=2,espcl=2]
+			{$x$/1, $f'(x)$/1, $f(x)$/2}
+			{$-\infty$, $-1$, $0$, $1$, $+\infty$}
+			\tkzTabLine{, -, z, +, z, -, z, +,}
+			\tkzTabVar{+/$+\infty$, -/$0$, +/$3$, -/$0$, +/$+\infty$}
+		\end{tikzpicture}
+	\end{center}
+	Hàm số đã cho nghịch biến trên khoảng nào dưới đây?
+	\choice
+	{$(1 ;+\infty)$}
+	{\True $(0 ; 1)$}
+	{$(-1 ; 0)$}
+	{$(0 ;+\infty)$}
+	\loigiai{
+		Dựa vào bảng biến thiên, hàm số đã cho nghịch biến trên các khoảng $(-\infty ;-1)$ và $(0 ; 1)$.
+	}
+\end{ex}
+
+\begin{ex}%[2D1H1-2]
+Cho hàm số $y=f(x)=\dfrac{ax^2+bx+c}{mx+n}$ (với $a, m \ne 0$) có đồ thị là đường cong như hình.
+\begin{center}
+\begin{tikzpicture}[scale=0.8, font=\footnotesize, line join=round, line cap=round, >=stealth]
+0	\def\xmin{-6}\def\xmax{2}\def\ymin{-6}\def\ymax{4}
+	\draw[->] (\xmin-0.2,0)--(\xmax+0.2,0) node[below] {\footnotesize $x$};
+	\draw[->] (0,\ymin-0.2)--(0,\ymax+0.2) node[right] {\footnotesize $y$};
+	\fill (0,0)circle (1pt) node [below left] {\footnotesize $O$};
+	\foreach \x in {-1}
+	\fill (\x,0)circle (1pt) node [below] {$\x$};
+	\foreach \x in {-3,-2}
+	\fill (\x,0)circle (1pt) node [below left] {$\x$};
+	\foreach \y in {-3,-1,1}
+	\fill (0,\y)circle (1pt) node [right] {$\y$};
+	\clip (\xmin,\ymin) rectangle (\xmax,\ymax);
+	\draw[dashed] (-2,\ymin)--(-2,\ymax);
+	\draw[dashed,domain=\xmin:\xmax] plot (\x,{(\x)+1});
+	\draw[smooth,samples=200,domain=\xmin:-2.1] plot (\x,{(((\x)^2)+3*(\x)+3)/(1*(\x)+2)});
+	\draw[smooth,samples=200,domain=-1.9:\xmax] plot (\x,{(((\x)^2)+3*(\x)+3)/(1*(\x)+2)});
+	\draw[dashed] (-3,0)--(-3,-3)--(0,-3)
+	 (-2,0)--(-2,-1)--(0,-1)
+	;\fill (-3,-7) circle (1pt);
+	\draw[dashed] (-1,0)--(-1,1)--(0,1) ;\fill (-1,1) circle (1pt);
+\end{tikzpicture}	
+\end{center}	
+	\choiceTF
+	{\True Hàm số đồng biến trên các khoảng $(-\infty;-3)$ và $\left(-1;+\infty\right)$}
+	{\True $f(2024)<f(2025)$}
+	{Đồ thị hàm số có tiệm cận đứng $x=-3$ và đường tiệm cận xiên $y=x+1$}
+	{\True Đồ thị hàm số đi qua điểm $A\left(2;\dfrac{13}{4}\right)$}
+	\loigiai{
+	\begin{itemchoice}
+			\itemch %Đúng.\\
+Dựa vào đồ thị hàm số, ta nhận thấy hàm số đồng biến trên các khoảng $(-\infty;-3)$ và $\left(-1;+\infty\right)$.			
+			\itemch %Đúng.\\
+			Hàm số đồng biến trên các khoảng  $\left(-1;+\infty\right)$.\\
+Mà $2024$; $2025 \in \left(-1;+\infty\right)$  nên $f(2024)<f(2025)$.			
+			\itemch %Sai.\\
+Đồ thị hàm số có tiệm cận đứng là $x=-2$.\\
+Gọi đường tiệm cận xiên có dạng $y=a'x+b'$.\\
+Dựa vào đồ thị, ta thấy đường tiệm cận xiên đi qua hai điểm $(0;1)$ và $(-2;-1)$.\\
+Suy ra $\heva{&b'=1\\&-2a'+b'=-1} \Leftrightarrow \heva{&b'=1\\&a'=1.}$\\
+Vậy đường tiệm cận xiên là $y=x+1$.
+\itemch %Đúng.\\
+	Vì đồ thị hàm số có tiệm cận xiên là $y=x+1$ và tiệm cận đứng là $x=-2$ nên hàm số có dạng $y=x+1+\dfrac{k}{x+2}$.\\
+	Vì đồ thị hàm số đi qua điểm $(-1;1)$ nên ta có $1=-1+1+\dfrac{k}{-1+2}\Rightarrow k=1$.\\
+	Do đó hàm số đã cho là $y=x+1+\dfrac{1}{x+2}=\dfrac{x^2+3x+3}{x+2}$.\\
+	Thay $x=2$ ta tính được $y=\dfrac{13}{4}$ nên đồ thị hàm số đã cho đi qua điểm $A\left(2;\dfrac{13}{4}\right)$.
+		\end{itemchoice}
+		}	
+\end{ex}
+
+\begin{ex}%[2D1H1-5]
+	Trong thời gian $8$ phút đầu kể từ khi xuất phát, độ cao $h$ (tính bằng mét) so với mặt đất của một quả bóng bay vào thời điểm $t$ phút được cho bởi công thức $h(t) = 6t^3 - 81t^2 +324t$.
+	\choiceTF
+	{\True Tại thời điểm ban đầu, quả bóng đang ở mặt đất}
+	{Sau $1$ phút, quả bóng bay đạt độ cao $250$ mét so với mặt đất}
+	{\True Trong $3$ phút đầu tiên, quả bóng bay tăng dần độ cao}
+	{Từ phút thứ $3$ đến phút thứ $8$, quả bóng bay đang tăng dần độ cao}
+	\loigiai{
+		Xét $h(t)=6t^3 -81t^2 +324t$ ($0\leq t\leq 8$).\\
+		Ta có $h'(t) = 18t^2 -162t +324$; $h'(t) = 0 \Leftrightarrow \hoac{&t=3\\&t=6.}$\\
+					Bảng biến thiên $h(t)$
+					\begin{center}
+						\begin{tikzpicture}
+							\tkzTabInit[nocadre=false,lgt=1.2,espcl=2,deltacl=.6]
+							{$t$/0.7,$h'(t)$/0.7,$h(t)$/2}
+							{$0$,$3$,$6$,$8$}
+							\tkzTabLine{,+,0,-,0,+}
+							\tkzTabVar{-/$0$,+/$405$,-/$324$,+/$480$}
+						\end{tikzpicture}
+					\end{center}
+		\begin{itemchoice}
+			\itemch Ta có $h(0) = 0$. Suy ra tại thời điểm ban đầu, quả bóng đang ở mặt đất.
+			\itemch Ta có $h(1) = 6\cdot 1 -81\cdot 1+324\cdot 1 = 249$.\\
+			Suy ra sau $1$ phút, quả bóng bay đạt độ cao $249$ mét so với mặt đất.
+			\itemch Từ bảng biến thiên, ta thấy trong $3$ phút đầu tiên, quả bóng bay tăng dần độ cao.
+			\itemch Từ bảng biến thiên ta thấy từ phút thứ $3$ đến phút thứ $6$ quả bóng bay giảm dần độ cao. Sau đó từ phút thứ $6$ đến phút thứ $8$, quả bóng tăng dần độ cao.
+		\end{itemchoice}
+	}
+\end{ex}
+
+\begin{ex}%[2D1H1-1]
+	Biết rằng khoảng nghịch biến lớn nhất của hàm số $y = \dfrac{x^2 + 2x + 2}{x + 1}$ là hai khoảng $(a;b)$, $(b;c)$ với $a < b < c$. Tính $T = a + b + c$.
+\par	\shortans[oly]{-3}
+	\loigiai{
+	Tập xác định: $\mathbb{R}\setminus\left\{-1\right\}$.\\
+			Đạo hàm $y'=\dfrac{x^2 + 2 x}{\left(x + 1\right)^2}$;\\
+			$y'=0 \Leftrightarrow x=-2$ hoặc $x=0$.\\
+			\begin{center}
+				\begin{tikzpicture}[font=\normalsize,t style/.style={style=solid}]
+					\tkzTabInit[nocadre=true,lgt=1.2,espcl=3,deltacl=0.65]
+					{$x$/0.75, $y'$/0.75, $y$/2.25}
+					{$ -\infty $, $-2$, $-1$, $0$, $ +\infty $}
+					%dòng xét dấu
+					\tkzTabLine{ , +,0,-,d ,-,0, +, }
+					%dòng biến thiên
+					\tkzTabVar { -/$-\infty$, +/$-2$ , -D+/$-\infty$/$+\infty$, -/$2$, +/$+\infty$}
+				\end{tikzpicture}
+			\end{center}
+	Hàm số nghịch biến trên $(-2;-1)$ và  $(-1;0)$ nên $a=-2$, $b=-1$ và $c=0$ nên\break $T=a+b+c=-3$.	
+	}
+\end{ex}
+
+\begin{ex}%[2D1H1-1]
+	Thể tích $V$ của $1$ kg nước (tính bằng cm$^3$) ở nhiệt độ $T$ (đơn vị $^\circ$C) khi thay đổi từ $0^\circ $C đến $30^\circ$C được cho xấp xỉ bởi công thức
+	$V=999{,}87-0{,}06426T+0{,}0085043T^2-0{,}0000769T^3$ (nguồn: James Stewart, T. ($2015$). Calculus.Cengage Learning $8$th edition, p.$284$). Biết rằng kể từ $T_0^\circ$ C trở đi, với $0^\circ\le T_0\le 30^\circ$ thể tích $V$ tăng, tìm $T_0$ (kết quả làm tròn đến hàng đơn vị).
+	\shortans[]{$4$}
+	\loigiai{
+		Ta có $V'=-0{,}06426+0{,}0170086T-0{,}0002307T^2$, $V'=0\Leftrightarrow \hoac{&T\approx 4\in [0;30]\\&T\approx 70.}$\\
+		Bảng biến thiên của $V$ trên $[0;30]$.
+		\begin{center}
+			\begin{tikzpicture}[>=stealth, scale=1,line join=round, line cap=round, font=\footnotesize]
+				\tkzTabInit[lgt=1,espcl=2.3]
+				{$T$/0.8,$V'$/0.8,$V$/2}
+				{$0$,$4$,$30$}
+				\tkzTabLine{,-,0,+,}
+				\path
+				(N11)node[shift={(0,-1.2)}](A){}
+				(N23)node[shift={(0,0.2)}](B){}
+				(N31)node[shift={(0,-1)}](C){};
+				\foreach\X/\Y in{A/B,B/C}\draw[->](\X)--(\Y);
+			\end{tikzpicture}
+		\end{center}
+		Vậy thể tích $V$ tăng trên khoảng $(4;30)$.\\
+		Suy ra $T_0=4$.
+	}
+\end{ex}
+
+\begin{ex}%[2D1H1-5]
+	[Trích đề ôn tập HKI-Lớp 12-THPT Bùi Thị Xuân-Năm học 2024-2025]
+	Một vật đang đứng yên thì bắt đầu chuyển động theo quy luật $s(t)=-t^3+3t^2+6t$, với $t$ (giây) là khoảng thời gian tính từ lúc bắt đầu chuyển động và $s$ (mét) là quãng đường vật đi được trong khoảng thời gian đó. Hỏi vật tăng tốc trong khoảng thời gian bao nhiêu giây tính từ lúc bắt đầu chuyển động?
+	\loigiai{Vận tốc của vật là $v(t)=s'(t)=-3t^2+6t+6$.\\
+		Ta có $v'(t)=-6t+6$.\\
+		Cho $v'(t)=0\Leftrightarrow t=1$.\\
+		Bảng biến thiên\\
+		\begin{center}
+			\begin{tikzpicture}
+				\tkzTabInit[lgt=1.2,espcl=2.5,deltacl=0.6]
+				{$t$/0.6,$v'(t)$/0.6,$v(t)$/2}{$0$,$1$,$+\infty$}
+				\tkzTabLine{,+,0,-,}
+				\tkzTabVar{-/$6$,+/$9$,-/$-\infty$}
+			\end{tikzpicture}
+		\end{center}
+		Dựa vào bảng biến thiên, ta thấy $v(t)$ tăng khi $t\in (0;1)$. Vậy vật tăng tốc trong khoảng thời gian từ gian $1$ giây tính từ lúc bắt đầu chuyển động.
+	}
+\end{ex}
+
+\begin{ex}%[2D1H1-5]
+	Sau khi phát hiện một bệnh dịch, các chuyên gia y tế ước tính số người nhiễm bệnh kể từ ngày xuất hiện bệnh nhân đầu tiên đến ngày thứ $t$ là $f(t)=45t^2-t^3$, $ t=0$, $1$, $2$, $\ldots$, $25$. Nếu coi $f(t)$ là hàm số xác định trên đoạn $[0; 25]$ thì đạo hàm $f'(t)$ được xem là tốc độ truyền bệnh (người/ngày) tại thời điểm $t$. Giả sử khoảng thời gian mà tốc độ truyền bệnh giảm là từ ngày thứ $m$ đến ngày thứ $n$. Khi đó $n-m$ bằng bao nhiêu?
+	\loigiai{
+		Tốc độ truyền bệnh $y=f'(t)=-3t^2+90t$ với $t\in [0; 25]$.\\
+		Ta có $y'=-6t+90$; $y'=0\Leftrightarrow t=15$.\\
+		Bảng biến thiên
+		\begin{center}
+			\begin{tikzpicture}[>=stealth,font=\footnotesize,scale=1]
+				\tkzTabInit[nocadre=false,lgt=1.2,espcl=3,deltacl=.55]{$x$ /1, $y'$ /1, $y$ /2}{$0$, $15$, $25$}
+				\tkzTabLine{, +, 0, -, }
+				\tkzTabVar{-/ $0$,+/$675$,-/$375$}
+			\end{tikzpicture}
+		\end{center}
+		Tốc độ truyền bệnh giảm từ ngày $15$ đến ngày $25$.\\
+		Do đó $m=15$, $n=25$.\\ Suy ra $m-n=10$.
+	}
+\end{ex}

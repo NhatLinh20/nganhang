@@ -39,7 +39,7 @@ const TYPE_CSS: Record<string, string> = {
 }
 
 const STORAGE_KEY = 'nht_slideshow_data'
-type Theme = 'dark' | 'light' | 'blue' | 'purple' | 'green' | 'orange'
+type Theme = 'minimal' | 'blue' | 'light'
 
 // ═══════════════════════════════════════════════════
 // KaTeX RENDERING
@@ -233,7 +233,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   // ─── Review State ───
   const [rawBlocks, setRawBlocks] = useState<string[]>([])
   const [questions, setQuestions] = useState<SlideQuestion[]>([])
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [theme, setTheme] = useState<Theme>('minimal')
   const [imageMap, setImageMap] = useState<Record<string, string>>({})
   const [expandedSolutions, setExpandedSolutions] = useState<Set<string>>(new Set())
 
@@ -558,11 +558,11 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
         <span className={styles.reviewCount}>📋 {questions.length} câu hỏi</span>
         <div className={styles.reviewRight}>
           <div className={styles.themeSelector}>
-            {(['dark', 'light', 'blue', 'purple', 'green', 'orange'] as Theme[]).map(t => (
+            {(['minimal', 'blue', 'light'] as Theme[]).map(t => (
               <button key={t}
                 className={`${styles.themeBtn} ${styles[('theme' + t.charAt(0).toUpperCase() + t.slice(1)) as keyof typeof styles]} ${theme === t ? styles.active : ''}`}
                 onClick={() => setTheme(t)}
-                title={{dark:'Tối', light:'Sáng', blue:'Xanh dương', purple:'Tím', green:'Xanh lá', orange:'Cam'}[t]} />
+                title={{minimal: 'Minimal (Khuyến nghị)', blue: 'Xanh đen', light: 'Trắng'}[t]} />
             ))}
           </div>
           <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0 || isCompiling}>
@@ -684,11 +684,11 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
         <div className={styles.reviewRight}>
           <span style={{ fontSize: '0.8rem', color: '#666' }}>Theme:</span>
           <div className={styles.themeSelector}>
-            {(['dark', 'light', 'blue', 'purple', 'green', 'orange'] as Theme[]).map(t => (
+            {(['minimal', 'blue', 'light'] as Theme[]).map(t => (
               <button key={t}
                 className={`${styles.themeBtn} ${styles[('theme' + t.charAt(0).toUpperCase() + t.slice(1)) as keyof typeof styles]} ${theme === t ? styles.active : ''}`}
                 onClick={() => setTheme(t)}
-                title={{dark:'Tối', light:'Sáng', blue:'Xanh dương', purple:'Tím', green:'Xanh lá', orange:'Cam'}[t]} />
+                title={{minimal: 'Minimal (Khuyến nghị)', blue: 'Xanh đen', light: 'Trắng'}[t]} />
             ))}
           </div>
           <button className={styles.startBtn} onClick={startPresent} disabled={questions.length === 0 || isCompiling}>

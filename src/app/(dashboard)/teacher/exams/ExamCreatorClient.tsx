@@ -151,6 +151,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
   const [includeAnswerSheet, setIncludeAnswerSheet] = useState<boolean>(false)
   const [qrCodeOptions, setQrCodeOptions] = useState<string[]>([])
   const [showQrDropdown, setShowQrDropdown] = useState<boolean>(false)
+  const [isExportingWord, setIsExportingWord] = useState(false)
 
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
   const [isLoaded, setIsLoaded] = useState(false)
@@ -660,6 +661,96 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       }
     } catch (err) {
       alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'));
+    }
+  };
+
+  const handleExportWord = async () => {
+    if (questions.length === 0) return;
+    
+    const currentAllExams = [...allExamsQuestions];
+    if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
+    
+    // Giới hạn giáo viên
+    if (isLimitedRole(userRole)) {
+      const examsToCheck = currentAllExams.length > 0 ? currentAllExams : [questions];
+      if (examsToCheck.length > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+        setLimitReason('question_limit')
+        setLimitDetail(`Số lượng đề: ${examsToCheck.length}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề. Giảm số đề hoặc liên hệ Admin.`)
+        setShowLimitModal(true)
+        return;
+      }
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setLimitReason('daily_limit')
+        setLimitDetail('')
+        setShowLimitModal(true)
+        return;
+      }
+    }
+
+    setIsExportingWord(true);
+    try {
+      const payload: any = {
+        title: configTitle || 'De_Thi',
+        headerLabels,
+        headerStyles,
+        examCodes,
+        duration: configDuration || 90,
+        grade: filterGrade || 12,
+        excelOptions,
+        qrCodeOptions,
+      };
+
+      if (currentAllExams.length > 1) {
+        payload.exams = currentAllExams.map(qs => ({
+          questions: qs.map(q => ({
+            id: q.id,
+            latex_content: q.latex_content,
+            question_type: q.question_type,
+            correct_answer: q.correct_answer ?? '',
+            phan: q.phan,
+          })),
+        }));
+      } else {
+        payload.questions = questions.map(q => ({
+          id: q.id,
+          latex_content: q.latex_content,
+          question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '',
+          phan: q.phan,
+        }));
+      }
+
+      const res = await fetch('/api/export-word', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: 'Lỗi không xác định' }));
+        alert('❌ Xuất Word thất bại: ' + (json.error || 'Lỗi'));
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const sanitizedTitle = configTitle.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      link.download = `${sanitizedTitle || 'exam_package'}_word.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      if (isLimitedRole(userRole)) {
+        await logExport('manual_exam_word', '/teacher/exams');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'));
+    } finally {
+      setIsExportingWord(false);
     }
   };
 
@@ -1555,6 +1646,14 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
                     <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                    <button
+                      onClick={() => { setShowExportModal(false); handleExportWord() }}
+                      disabled={isExportingWord}
+                      className="btn btn-primary"
+                      style={{ background: '#2563eb', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(37,99,235,0.3)', cursor: isExportingWord ? 'wait' : 'pointer', opacity: isExportingWord ? 0.7 : 1 }}
+                    >
+                      {isExportingWord ? '⏳ Đang xuất Word...' : '📝 Xuất file Word'}
+                    </button>
                     <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} className="btn btn-primary" style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
                       {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
                     </button>
