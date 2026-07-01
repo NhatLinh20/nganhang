@@ -77,7 +77,7 @@ function postProcessDocx(buffer: Buffer): Buffer {
       let xml = zip.readAsText(entry)
 
       // 1. Canh giữa dòng HẾT và hình ảnh
-      xml = xml.replace(/<w:p(?=[^>]*>|>)(?:(?!<\/w:p>).)*?(?:HẾT|<w:drawing>)(?:(?!<\/w:p>).)*?<\/w:p>/g, match => {
+      xml = xml.replace(/<w:p(?=[^>]*>|>)(?:(?!<\/w:p>).)*?(?:HẾT|<w:drawing>)(?:(?!<\/w:p>).)*?<\/w:p>/g, (match: string) => {
         if (!match.includes('<w:jc w:val="center"/>')) {
           if (match.includes('<w:pPr>')) {
             return match.replace('</w:pPr>', '<w:jc w:val="center"/></w:pPr>')
@@ -146,7 +146,7 @@ function postProcessDocx(buffer: Buffer): Buffer {
 
           // Thêm gridSpan và tcW (phần trăm) vào tcPr của từng ô.
           let cellIdx = 0
-          rowXml = rowXml.replace(/<w:tcPr(\s*\/>|>)/g, (match, suffix) => {
+          rowXml = rowXml.replace(/<w:tcPr(\s*\/>|>)/g, (match: string, suffix: string) => {
             const isFirstCol = cellIdx === 0
             const span = isFirstCol ? span1 : span2
             const widthPct = isFirstCol 
