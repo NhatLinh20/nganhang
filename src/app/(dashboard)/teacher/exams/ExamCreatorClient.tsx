@@ -699,6 +699,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         grade: filterGrade || 12,
         excelOptions,
         qrCodeOptions,
+        includeAnswerTable,
       };
 
       if (currentAllExams.length > 1) {

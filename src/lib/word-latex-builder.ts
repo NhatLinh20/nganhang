@@ -24,6 +24,7 @@ export interface BuildLatexOptions {
   /** Map từ tikz key → đường dẫn tương đối trong ZIP (VD: 'images/tikz_abc.png') */
   imagePaths: Map<string, string>
   includeSolution?: boolean
+  includeAnswerTable?: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -231,12 +232,8 @@ function renderSolutionQuestion(q: WordQuestion, num: number, imagePaths: Map<st
 
   // Lời giải
   if (q.solutionSegments && q.solutionSegments.length > 0) {
-    let solText = renderSegments(q.solutionSegments, imagePaths)
+    const solText = renderSegments(q.solutionSegments, imagePaths)
     
-    // Xóa các lựa chọn a) b) c) d) dư thừa ở cuối nội dung lời giải do Pandoc không parse được itemchoice đúng ý
-    // Hoặc do preprocess của ta gắn vào.
-    solText = solText.replace(/\n\s*[a-h]\)\s*.*$/gm, '')
-
     lines.push(`\\noindent\\textbf{Lời giải.}`)
     lines.push('')
     lines.push(solText.trim())
@@ -295,6 +292,59 @@ function buildSectionHeaders(questions: WordQuestion[]): { part: number; label: 
 // MAIN BUILD FUNCTION
 // ─────────────────────────────────────────────────────────────────
 
+
+function buildAnswerTable(questions: WordQuestion[]): string {
+  const mcQs = questions.filter(q => q.questionType === 'multiple_choice')
+  const tfQs = questions.filter(q => q.questionType === 'true_false')
+  const saQs = questions.filter(q => q.questionType === 'short_answer')
+  
+  if (mcQs.length === 0 && tfQs.length === 0 && saQs.length === 0) return ''
+
+  const lines: string[] = []
+  lines.push('\\vspace{1cm}')
+  lines.push('\\begin{center}')
+  lines.push('\\Large BẢNG ĐÁP ÁN')
+  lines.push('\\end{center}')
+  lines.push('')
+
+  if (mcQs.length > 0) {
+    lines.push('\\noindent PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn')
+    lines.push('')
+    const mcAns: string[] = []
+    for (let i = 0; i < mcQs.length; i++) {
+       const q = mcQs[i]
+       const correctChoice = q.choices?.find(ch => ch.isCorrect)?.label || ''
+       mcAns.push(`${i + 1}${correctChoice}`)
+    }
+    lines.push('\\noindent ' + mcAns.join(', '))
+    lines.push('')
+  }
+
+  if (tfQs.length > 0) {
+    lines.push('\\noindent PHẦN II. Câu trắc nghiệm đúng sai')
+    lines.push('')
+    for (let i = 0; i < tfQs.length; i++) {
+       const q = tfQs[i]
+       const ans = q.tfStatements?.map(s => s.isTrue ? 'Đ' : 'S').join('') || ''
+       lines.push(`\\noindent Câu ${i + 1}. ${ans}`)
+       lines.push('')
+    }
+  }
+
+  if (saQs.length > 0) {
+    lines.push('\\noindent PHẦN III. Câu trả lời ngắn')
+    lines.push('')
+    for (let i = 0; i < saQs.length; i++) {
+       const q = saQs[i]
+       const ans = q.shortAnswer || ''
+       lines.push(`\\noindent Câu ${i + 1}. ${ans}`)
+       lines.push('')
+    }
+  }
+
+  return lines.join('\n')
+}
+
 function fixPandocCenterline(tex: string): string {
   // Pandoc sẽ crash (exit 64) nếu có block \begin{center} nằm trong \centerline{}
   return tex.replace(/\\centerline\{\s*\\begin\{center\}([\s\S]*?)\\end\{center\}\s*\}/g, '\\begin{center}$1\\end{center}')
@@ -349,6 +399,9 @@ export function buildExamLatex(options: BuildLatexOptions): string {
   // HẾT
   lines.push('')
   lines.push('\\textbf{------------ HẾT ------------}')
+  if (options.includeAnswerTable) {
+    lines.push(buildAnswerTable(questions))
+  }
   lines.push('\\label{lastpage}')
 
   lines.push('')
@@ -407,6 +460,9 @@ export function buildExamWithSolutionLatex(options: BuildLatexOptions): string {
   }
 
   lines.push('')
+  if (options.includeAnswerTable) {
+    lines.push(buildAnswerTable(questions))
+  }
   lines.push('\\end{document}')
 
   return fixPandocCenterline(lines.join('\n'))
