@@ -30,7 +30,8 @@ interface ExamQuestion {
 async function convertToDocs(
   texContent: string,
   imagePaths: Map<string, { svgBuffer: Buffer; filename: string }>,
-  referencePath?: string
+  referencePath: string | undefined,
+  examCode: string
 ): Promise<Buffer> {
   const apiUrl = process.env.NEXT_PUBLIC_TIKZ_API_URL || process.env.TIKZ_API_URL || ''
   if (!apiUrl) throw new Error('TIKZ_API_URL không được cấu hình — không thể gọi VPS')
@@ -65,10 +66,10 @@ async function convertToDocs(
   }
 
   const docxBuffer = Buffer.from(await response.arrayBuffer())
-  return postProcessDocx(docxBuffer)
+  return postProcessDocx(docxBuffer, examCode)
 }
 
-function postProcessDocx(buffer: Buffer): Buffer {
+function postProcessDocx(buffer: Buffer, examCode: string): Buffer {
   try {
     const AdmZip = require('adm-zip')
     const zip = new AdmZip(buffer)
@@ -192,6 +193,56 @@ function postProcessDocx(buffer: Buffer): Buffer {
       }
 
       zip.updateFile(entry, Buffer.from(xml))
+
+      // ─────────────────────────────────────────────────────────────────
+      // INJECT FOOTER
+      // ─────────────────────────────────────────────────────────────────
+      const footerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:p>
+    <w:pPr>
+      <w:pStyle w:val="Footer"/>
+      <w:jc w:val="right"/>
+    </w:pPr>
+    <w:r>
+      <w:t xml:space="preserve">Trang </w:t>
+    </w:r>
+    <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+    <w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>
+    <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+    <w:r><w:t>1</w:t></w:r>
+    <w:r><w:fldChar w:fldCharType="end"/></w:r>
+    <w:r><w:t>/</w:t></w:r>
+    <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+    <w:r><w:instrText xml:space="preserve"> NUMPAGES </w:instrText></w:r>
+    <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+    <w:r><w:t>1</w:t></w:r>
+    <w:r><w:fldChar w:fldCharType="end"/></w:r>
+    <w:r>
+      <w:t xml:space="preserve"> - Mã đề ${examCode}</w:t>
+    </w:r>
+  </w:p>
+</w:ftr>`;
+      zip.addFile('word/footer1.xml', Buffer.from(footerXml, 'utf-8'));
+
+      let relsXml = zip.readAsText('word/_rels/document.xml.rels');
+      if (relsXml && !relsXml.includes('footer1.xml')) {
+        relsXml = relsXml.replace('</Relationships>', '  <Relationship Id="rIdFooter1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>\n</Relationships>');
+        zip.updateFile('word/_rels/document.xml.rels', Buffer.from(relsXml, 'utf-8'));
+      }
+
+      let contentTypes = zip.readAsText('[Content_Types].xml');
+      if (contentTypes && !contentTypes.includes('/word/footer1.xml')) {
+        contentTypes = contentTypes.replace('</Types>', '  <Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>\n</Types>');
+        zip.updateFile('[Content_Types].xml', Buffer.from(contentTypes, 'utf-8'));
+      }
+
+      const footerRef = '<w:footerReference w:type="default" r:id="rIdFooter1"/>';
+      if (!xml.includes(footerRef)) {
+        xml = xml.replace(/(<w:sectPr[^>]*>)/g, `$1${footerRef}`);
+        zip.updateFile('word/document.xml', Buffer.from(xml, 'utf-8'));
+      }
+
       return zip.toBuffer()
     }
   } catch (e) {
@@ -391,12 +442,12 @@ export async function POST(request: NextRequest) {
 
       try {
         const t1 = Date.now()
-        const docxBuffer = await convertToDocs(examTex, imageFiles, referencePath)
+        const docxBuffer = await convertToDocs(examTex, imageFiles, referencePath, code)
         outputZip.addFile(`de_${code}.docx`, docxBuffer)
         console.log(`[export-word] Converted de_${code}.docx in ${Date.now() - t1}ms`)
 
         const t2 = Date.now()
-        const solDocxBuffer = await convertToDocs(examWithSolTex, imageFiles, referencePath)
+        const solDocxBuffer = await convertToDocs(examWithSolTex, imageFiles, referencePath, code)
         outputZip.addFile(`de_${code}_loigiai.docx`, solDocxBuffer)
         console.log(`[export-word] Converted de_${code}_loigiai.docx in ${Date.now() - t2}ms`)
       } catch (err) {
