@@ -259,7 +259,6 @@ export async function POST(request: NextRequest) {
 
   try {
     const bodyText = await request.text()
-    require('fs').writeFileSync('d:/nganhang/LAST_REQUEST.json', bodyText)
     const {
       title,
       duration,
