@@ -2,7 +2,8 @@
  * Calls the external VPS API to compile TikZ code into an SVG string.
  */
 export async function compileTikz(tikzCode: string): Promise<string> {
-  const apiUrl = process.env.NEXT_PUBLIC_TIKZ_API_URL || '/api/tikz'
+  // Use Next.js API route as a proxy to avoid Mixed Content (HTTPS -> HTTP) errors
+  const apiUrl = typeof window !== 'undefined' ? '/api/tikz' : (process.env.TIKZ_API_URL || process.env.NEXT_PUBLIC_TIKZ_API_URL || '/api/tikz')
   
   try {
     const response = await fetch(`${apiUrl}/compile`, {
@@ -29,7 +30,8 @@ export async function compileTikz(tikzCode: string): Promise<string> {
  * Calls the external VPS API to compile a ZIP containing LaTeX files into a PDF Blob.
  */
 export async function compilePdfZip(zipBlob: Blob): Promise<Blob> {
-  const apiUrl = process.env.NEXT_PUBLIC_TIKZ_API_URL || '/api/tikz'
+  // Use Next.js API route as a proxy to avoid Mixed Content (HTTPS -> HTTP) errors
+  const apiUrl = typeof window !== 'undefined' ? '/api/tikz' : (process.env.TIKZ_API_URL || process.env.NEXT_PUBLIC_TIKZ_API_URL || '/api/tikz')
   
   const formData = new FormData()
   formData.append('file', zipBlob, 'exam.zip')
