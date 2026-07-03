@@ -916,15 +916,25 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
         qrCodeOptions,
       }
 
-      payload.exams = shuffledExams.map(e => ({
-        questions: e.questions.map(q => ({
+      if (shuffledExams.length > 1) {
+        payload.exams = shuffledExams.map(e => ({
+          questions: e.questions.map(q => ({
+            id: q.id,
+            latex_content: q.latex_content,
+            question_type: q.question_type,
+            correct_answer: q.correct_answer ?? '',
+            phan: q.phan,
+          })),
+        }))
+      } else {
+        payload.questions = shuffledExams[0].questions.map(q => ({
           id: q.id,
           latex_content: q.latex_content,
           question_type: q.question_type,
           correct_answer: q.correct_answer ?? '',
           phan: q.phan,
-        })),
-      }))
+        }))
+      }
 
       // 2. Lấy ZIP file từ Next.js server
       const res = await fetch('/api/export-zip', {
@@ -942,13 +952,10 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
 
       const zipBlob = await res.blob()
 
-      // Open PDF preview modal immediately in loading state
-      setShowPdfPreview(true)
-      setPdfPreviewBlob(null)
-
       // 3. Gửi ZIP lên VPS để biên dịch thành PDF
       const pdfBlob = await compilePdfZip(zipBlob)
-      setPdfPreviewBlob(pdfBlob)
+      const url = URL.createObjectURL(pdfBlob)
+      window.open(url, '_blank')
 
     } catch (err) {
       alert('Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'))
@@ -1737,11 +1744,11 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: 16 }}>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button onClick={() => setShowExportModal(false)} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Hủy bỏ</button>
-                    <button onClick={() => { setShowExportModal(false); handleExportWord() }} disabled={isExportingWord} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#0ea5e9', color: 'white', cursor: isExportingWord ? 'wait' : 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(14,165,233,0.3)', opacity: isExportingWord ? 0.7 : 1 }}>
+                    <button onClick={() => { handleExportWord() }} disabled={isExportingWord} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#0ea5e9', color: 'white', cursor: isExportingWord ? 'wait' : 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(14,165,233,0.3)', opacity: isExportingWord ? 0.7 : 1 }}>
                       {isExportingWord ? '⏳ Đang xuất Word...' : '📝 Xuất file Word'}
                     </button>
-                    <button onClick={() => { setShowExportModal(false); handleExportTex() }} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
-                    <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', cursor: isCompilingPdf ? 'wait' : 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', opacity: isCompilingPdf ? 0.7 : 1 }}>
+                    <button onClick={() => { handleExportTex() }} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                    <button onClick={() => { handleCompilePdf() }} disabled={isCompilingPdf} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', cursor: isCompilingPdf ? 'wait' : 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', opacity: isCompilingPdf ? 0.7 : 1 }}>
                       {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
                     </button>
                   </div>

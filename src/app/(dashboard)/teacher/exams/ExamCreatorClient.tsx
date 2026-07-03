@@ -788,7 +788,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         qrCodeOptions,
       };
 
-      if (currentAllExams.length > 0) {
+      if (currentAllExams.length > 1) {
         payload.exams = currentAllExams.map(qs => ({
           questions: qs.map(q => ({
             id: q.id,
@@ -822,12 +822,10 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
       }
 
       const zipBlob = await res.blob();
-      // Open PDF preview modal immediately in loading state
-      setShowPdfPreview(true);
-      setPdfPreviewBlob(null);
 
       const pdfBlob = await compilePdfZip(zipBlob);
-      setPdfPreviewBlob(pdfBlob);
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, '_blank');
     } catch (err) {
       alert('Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'));
     } finally {
@@ -1652,16 +1650,16 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
-                    <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                    <button onClick={() => { handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
                     <button
-                      onClick={() => { setShowExportModal(false); handleExportWord() }}
+                      onClick={() => { handleExportWord() }}
                       disabled={isExportingWord}
                       className="btn btn-primary"
                       style={{ background: '#2563eb', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(37,99,235,0.3)', cursor: isExportingWord ? 'wait' : 'pointer', opacity: isExportingWord ? 0.7 : 1 }}
                     >
                       {isExportingWord ? '⏳ Đang xuất Word...' : '📝 Xuất file Word'}
                     </button>
-                    <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} className="btn btn-primary" style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
+                    <button onClick={() => { handleCompilePdf() }} disabled={isCompilingPdf} className="btn btn-primary" style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
                       {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
                     </button>
                   </div>

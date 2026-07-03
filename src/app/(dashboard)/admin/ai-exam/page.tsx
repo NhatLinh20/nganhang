@@ -873,8 +873,6 @@ export default function AiExamPage() {
   const handleCompilePdf = async () => {
     if (questions.length === 0) return
     setIsCompilingPdf(true)
-    setShowPdfPreview(true)
-    setPdfPreviewBlob(null)
 
     const currentAllExams = [...allExamsQuestions]
     if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions
@@ -917,16 +915,15 @@ export default function AiExamPage() {
       if (!res.ok) {
         const json = await res.json()
         showToast('error', 'Tạo dữ liệu LaTeX thất bại: ' + (json.error || 'Lỗi'))
-        setShowPdfPreview(false)
         return
       }
 
       const zipBlob = await res.blob()
       const pdfBlob = await compilePdfZip(zipBlob)
-      setPdfPreviewBlob(pdfBlob)
+      const url = URL.createObjectURL(pdfBlob)
+      window.open(url, '_blank')
     } catch (err) {
       showToast('error', 'Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'))
-      setShowPdfPreview(false)
     } finally {
       setIsCompilingPdf(false)
     }
@@ -1858,16 +1855,16 @@ export default function AiExamPage() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
-                    <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                    <button onClick={() => { handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
                     <button
-                      onClick={() => { setShowExportModal(false); handleExportWord() }}
+                      onClick={() => { handleExportWord() }}
                       disabled={isExportingWord}
                       className="btn btn-primary"
                       style={{ background: '#2563eb', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(37,99,235,0.3)', cursor: isExportingWord ? 'wait' : 'pointer', opacity: isExportingWord ? 0.7 : 1 }}
                     >
                       {isExportingWord ? '⏳ Đang xuất Word...' : '📝 Xuất file Word'}
                     </button>
-                    <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} className="btn btn-primary" style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
+                    <button onClick={() => { handleCompilePdf() }} disabled={isCompilingPdf} className="btn btn-primary" style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
                       {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
                     </button>
                   </div>
