@@ -15,9 +15,10 @@ const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI
 
 // DANH SÁCH API KEY Lấy từ biến môi trường để bảo mật, chống lộ key lên GitHub
 const API_KEYS = (process.env.GEMINI_API_KEYS || '')
+  .replace(/"/g, '')
   .split(',')
   .map(k => k.trim())
-  .filter(Boolean)
+  .filter(k => k.startsWith('AIza'))
 
 if (API_KEYS.length === 0) {
   console.error('❌ KHÔNG TÌM THẤY GEMINI_API_KEYS! Hãy thêm vào file .env.local theo định dạng:')

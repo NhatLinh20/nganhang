@@ -11,6 +11,17 @@ import LimitModal from '@/components/LimitModal'
 import { compilePdfZip } from '@/lib/tikz-api'
 import PdfPreviewModal from '@/components/PdfPreviewModal'
 
+const HEADER_PLACEHOLDERS = [
+  'SỞ GDĐT HÀ NỘI',
+  'TRƯỜNG THPT CHU VĂN AN',
+  'Đề chính thức',
+  '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
+  'ĐỀ KIỂM TRA GIỮA HỌC KÌ I NĂM 2026-2027',
+  'Môn: TOÁN 12',
+  'Thời gian: 90 phút',
+  'không kể thời gian phát đề'
+]
+
 // Re-use types from AI exam
 interface ExamQuestion {
   id: string
@@ -600,7 +611,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     try {
       const payload: any = {
         title: configTitle || 'De_Thi',
-        headerLabels,
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
         headerStyles,
         examCodes,
         duration: configDuration || 90,
@@ -692,7 +703,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     try {
       const payload: any = {
         title: configTitle || 'De_Thi',
-        headerLabels,
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
         headerStyles,
         examCodes,
         duration: configDuration || 90,
@@ -700,6 +711,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
         excelOptions,
         qrCodeOptions,
         includeAnswerTable,
+        includeAnswerSheet,
       };
 
       if (currentAllExams.length > 1) {
@@ -765,7 +777,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
     try {
       const payload: any = {
         title: configTitle || 'De_Thi',
-        headerLabels,
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
         headerStyles,
         examCodes,
         duration: configDuration || 90,
@@ -1222,17 +1234,10 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   disabled={questions.length === 0}
                   style={{ background: '#10b981', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px' }}
                 >
-                  📥 Xuất LaTeX
+                  📥 Xuất file
                 </button>
 
-                <button
-                  className="btn"
-                  onClick={handleCompilePdf}
-                  disabled={questions.length === 0 || isCompilingPdf}
-                  style={{ background: '#6366f1', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px', opacity: (questions.length === 0 || isCompilingPdf) ? 0.7 : 1, cursor: isCompilingPdf ? 'wait' : 'pointer' }}
-                >
-                  {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
-                </button>
+
 
                 <button
                   className={styles.mainTab}
@@ -1567,11 +1572,11 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                       >
                         {isLocked ? '(Đề thi gồm có X trang) 🔒' : (
                           isSelected ? (
-                            <input type="text" value={headerLabels[i]} autoFocus
+                            <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
                               onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
                               onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
                               style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
-                          ) : (headerLabels[i] || '...')
+                          ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)
                         )}
                       </div>
                     )
@@ -1593,11 +1598,11 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                         onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                       >
                         {isSelected ? (
-                          <input type="text" value={headerLabels[i]} autoFocus
+                          <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
                             onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
                             onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
                             style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
-                        ) : (headerLabels[i] || '...')}
+                        ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)}
                       </div>
                     )
                   })}

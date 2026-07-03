@@ -55,10 +55,10 @@ function renderSegment(seg: WordSegment, imagePaths: Map<string, string>): strin
     case 'tikz': {
       const imgPath = imagePaths.get(seg.key)
       if (imgPath) {
-        return `\n\\begin{center}\n\\includegraphics[width=0.6\\textwidth]{${imgPath}}\n\\end{center}\n`
+        return `\n\n\\begin{center}\n\\includegraphics[width=0.6\\textwidth]{${imgPath}}\n\\end{center}\n\n`
       }
       // Hình không compile được → placeholder comment
-      return `\n% [Hình TikZ không compile được: ${seg.key}]\n`
+      return `\n\n% [Hình TikZ không compile được: ${seg.key}]\n\n`
     }
 
     case 'bold':
@@ -74,7 +74,7 @@ function renderSegment(seg: WordSegment, imagePaths: Map<string, string>): strin
       return '\\\\\n'
 
     case 'center':
-      return `\n\\begin{center}\n${renderSegments(seg.children, imagePaths)}\n\\end{center}\n`
+      return `\n\n\\begin{center}\n${renderSegments(seg.children, imagePaths)}\n\\end{center}\n\n`
 
     case 'list': {
       const env = seg.ordered ? 'enumerate' : 'itemize'
@@ -105,9 +105,11 @@ function buildHeader(header: ExamHeader): string {
   ]
 
   function applyStyle(text: string, idx: number): string {
-    if (!styles || !styles[idx]) return text
+    if (!styles || !styles[idx]) {
+      return text ? text.replace(/&/g, '\\&').replace(/%/g, '\\%').replace(/_/g, '\\_') : text
+    }
     const s = styles[idx]
-    let t = text
+    let t = text ? text.replace(/&/g, '\\&').replace(/%/g, '\\%').replace(/_/g, '\\_') : text
     if (s.underline) t = `\\underline{${t}}`
     if (s.italic) t = `\\textit{${t}}`
     if (s.bold) t = `\\textbf{${t}}`

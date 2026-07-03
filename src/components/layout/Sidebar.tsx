@@ -18,7 +18,7 @@ const navItems = [
     items: [
       { href: '/admin/questions', icon: '📚', label: 'Ngân hàng câu hỏi' },
       { href: '/admin/import', icon: '📥', label: 'Import file .tex' },
-      { href: '/admin/stats', icon: '📊', label: 'Thống kê' },
+
       { href: '/admin/users', icon: '👥', label: 'Quản lý người dùng' },
       { href: '/admin/courses', icon: '📚', label: 'Quản lý khóa học' },
       { href: '/admin/practice-exams', icon: '🏋️', label: 'Đề luyện tập' },

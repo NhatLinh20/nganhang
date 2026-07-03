@@ -464,7 +464,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
         }}>
           <div style={{ width: 24, height: 24, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <span style={{ fontWeight: 600, fontSize: 14 }}>
-            ⏳ Đang biên dịch hình ảnh... ({compileProgress.done}/{compileProgress.total})
+            ⏳ Đang load câu hỏi... ({compileProgress.done}/{compileProgress.total})
           </span>
           <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${compileProgress.total > 0 ? (compileProgress.done / compileProgress.total) * 100 : 0}%`, background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', borderRadius: 3, transition: 'width 0.3s ease' }} />

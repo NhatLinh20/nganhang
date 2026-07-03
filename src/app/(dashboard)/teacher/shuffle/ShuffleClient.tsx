@@ -8,6 +8,17 @@ import { processImportFiles, type ImportedFileInfo, type ImportedExamQuestion } 
 import { compilePdfZip } from '@/lib/tikz-api'
 import PdfPreviewModal from '@/components/PdfPreviewModal'
 
+const HEADER_PLACEHOLDERS = [
+  'SỞ GDĐT HÀ NỘI',
+  'TRƯỜNG THPT CHU VĂN AN',
+  'Đề chính thức',
+  '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
+  'ĐỀ KIỂM TRA GIỮA HỌC KÌ I NĂM 2026-2027',
+  'Môn: TOÁN 12',
+  'Thời gian: 90 phút',
+  'không kể thời gian phát đề'
+]
+
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
 interface ExamQuestion {
@@ -189,6 +200,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
 
   // Export
   const [showExportModal, setShowExportModal] = useState(false)
+  const [isExportingWord, setIsExportingWord] = useState(false)
   const [headerLabels, setHeaderLabels] = useState<string[]>([
     'SỞ GDĐT ...', 'TRƯỜNG THPT ...', 'Đề chính thức', '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
     'ĐỀ KIỂM TRA', 'Môn: TOÁN', 'Thời gian làm bài: 90 phút', '(Không kể thời gian phát đề)'
@@ -710,7 +722,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
     try {
       const payload: Record<string, unknown> = {
         title: sourceData?.configTitle || 'Đề thi trộn',
-        headerLabels,
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
         headerStyles,
         examCodes: shuffledExams.map(e => e.code),
         duration: sourceData?.configDuration || 90,
@@ -771,6 +783,120 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
     }
   }
 
+  const handleExportWord = async () => {
+    if (shuffledExams.length === 0) return
+
+    // Kiểm tra quota và số lượng đề GỐC (chỉ teacher)
+    if (isLimitedRole(userRole)) {
+      const numSourceExams = sourceData?.sourceExams?.length || shuffledExams.length
+      if (numSourceExams > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+        setLimitReason('question_limit')
+        setLimitDetail(`Số lượng đề gốc: ${numSourceExams}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề.`)
+        setShowLimitModal(true)
+        return
+      }
+
+      // Kiểm tra giới hạn số câu hỏi trên từng đề gốc
+      const examsToCheck = sourceData?.sourceExams || []
+      for (let i = 0; i < examsToCheck.length; i++) {
+        const qs = examsToCheck[i].questions
+
+        if (qs.length > TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM) {
+          setLimitReason('question_limit')
+          setLimitDetail(`Đề gốc ${i + 1}: ${qs.length}/${TEACHER_LIMITS.MAX_QUESTIONS_PER_EXAM} câu.`)
+          setShowLimitModal(true)
+          return
+        }
+
+        const mcCount = qs.filter(q => q.question_type === 'multiple_choice').length
+        const tfCount = qs.filter(q => q.question_type === 'true_false').length
+        const saCount = qs.filter(q => q.question_type === 'short_answer').length
+        const esCount = qs.filter(q => q.question_type === 'essay').length
+
+        if (mcCount > TEACHER_LIMITS.MAX_MC || tfCount > TEACHER_LIMITS.MAX_TF || saCount > TEACHER_LIMITS.MAX_SA || esCount > TEACHER_LIMITS.MAX_ES) {
+          setLimitReason('question_limit')
+          setLimitDetail(`Đề gốc ${i + 1}: TN ${mcCount}/${TEACHER_LIMITS.MAX_MC}, Đ/S ${tfCount}/${TEACHER_LIMITS.MAX_TF}, Ngắn ${saCount}/${TEACHER_LIMITS.MAX_SA}, TL ${esCount}/${TEACHER_LIMITS.MAX_ES}.`)
+          setShowLimitModal(true)
+          return
+        }
+      }
+
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setLimitReason('daily_limit')
+        setLimitDetail('')
+        setShowLimitModal(true)
+        return
+      }
+    }
+
+    setIsExportingWord(true)
+    try {
+      const payload: Record<string, unknown> = {
+        title: sourceData?.configTitle || 'Đề thi trộn',
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
+        headerStyles,
+        examCodes: shuffledExams.map(e => e.code),
+        duration: sourceData?.configDuration || 90,
+        grade: sourceData?.filterGrade || 12,
+        excelOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
+      }
+
+      payload.exams = shuffledExams.map(e => ({
+        questions: e.questions.map(q => ({
+          id: q.id,
+          latex_content: q.latex_content,
+          question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '',
+          phan: q.phan,
+        })),
+      }))
+
+      const res = await fetch('/api/export-word', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        alert('❌ Xuất Word thất bại: ' + (json.error || 'Lỗi'))
+        return
+      }
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+
+      const title = sourceData?.configTitle || 'de_thi_tron'
+      const sanitizedTitle = title
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .toLowerCase()
+
+      link.download = `${sanitizedTitle || 'exam_package'}_word.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      // Ghi log xuất file
+      if (isLimitedRole(userRole)) {
+        await logExport('shuffle_word', '/teacher/shuffle')
+      }
+    } catch (err) {
+      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+    } finally {
+      setIsExportingWord(false)
+    }
+  }
+
   const handleCompilePdf = async () => {
     if (shuffledExams.length === 0) return
     setIsCompilingPdf(true)
@@ -779,7 +905,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
       // 1. Tạo Payload giống hệt lúc tải ZIP
       const payload: Record<string, unknown> = {
         title: sourceData?.configTitle || 'Đề thi trộn',
-        headerLabels,
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
         headerStyles,
         examCodes: shuffledExams.map(e => e.code),
         duration: sourceData?.configDuration || 90,
@@ -1424,26 +1550,9 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                     onClick={() => setShowExportModal(true)}
                     className={styles.exportBtn}
                   >
-                    📥 Xuất file .tex
+                    📥 Xuất file
                   </button>
-                  <button
-                    onClick={handleCompilePdf}
-                    disabled={isCompilingPdf}
-                    style={{
-                      background: '#6366f1',
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 24px',
-                      borderRadius: '8px',
-                      fontWeight: 700,
-                      cursor: isCompilingPdf ? 'wait' : 'pointer',
-                      opacity: isCompilingPdf ? 0.7 : 1,
-                      boxShadow: '0 4px 6px rgba(99,102,241,0.3)',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
-                  </button>
+
                   <button
                     onClick={() => {
                       const currentQuestions = shuffledExams[activeTab]?.questions || []
@@ -1481,7 +1590,7 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
           <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 1120, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX</h3>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file LaTeX / Word</h3>
               </div>
               <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
             </div>
@@ -1555,12 +1664,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                       >
                         {isLocked ? '(Đề thi gồm có X trang) 🔒' : (
                           isSelected ? (
-                            <input type="text" value={headerLabels[i]} autoFocus
+                            <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
                               onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
                               onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
                               style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }}
                             />
-                          ) : (headerLabels[i] || '...')
+                          ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)
                         )}
                       </div>
                     )
@@ -1587,12 +1696,12 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                         onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                       >
                         {isSelected ? (
-                          <input type="text" value={headerLabels[i]} autoFocus
+                          <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
                             onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
                             onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
                             style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }}
                           />
-                        ) : (headerLabels[i] || '...')}
+                        ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)}
                       </div>
                     )
                   })}
@@ -1628,6 +1737,9 @@ export default function ShuffleClient({ userRole }: { userRole: string }) {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: 16 }}>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button onClick={() => setShowExportModal(false)} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Hủy bỏ</button>
+                    <button onClick={() => { setShowExportModal(false); handleExportWord() }} disabled={isExportingWord} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#0ea5e9', color: 'white', cursor: isExportingWord ? 'wait' : 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(14,165,233,0.3)', opacity: isExportingWord ? 0.7 : 1 }}>
+                      {isExportingWord ? '⏳ Đang xuất Word...' : '📝 Xuất file Word'}
+                    </button>
                     <button onClick={() => { setShowExportModal(false); handleExportTex() }} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
                     <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', cursor: isCompilingPdf ? 'wait' : 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', opacity: isCompilingPdf ? 0.7 : 1 }}>
                       {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}

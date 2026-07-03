@@ -222,6 +222,19 @@ export function parseSlideQuestion(latexBlock: string): SlideQuestion {
       const result = extractBalancedContent(inner, braceStart)
       if (result) {
         solutionRaw = result.content.trim()
+        
+        // Convert \begin{itemchoice} \itemch ... \end{itemchoice} to \textbf{a.} , \textbf{b.} ...
+        // to prevent segmentContent from breaking HTML lists when TikZ images are inside.
+        solutionRaw = solutionRaw.replace(/\\begin\{itemchoice\}([\s\S]*?)\\end\{itemchoice\}/g, (match, innerText) => {
+          let index = 0
+          const labels = ['a.', 'b.', 'c.', 'd.', 'e.', 'f.', 'g.', 'h.']
+          return innerText.replace(/\\itemch\b/g, () => {
+            const label = labels[index] || '*'
+            index++
+            return `\n\n\\textbf{${label}} `
+          }).trim()
+        })
+
         inner = inner.slice(0, loigiaiIdx).trim()
       }
     }

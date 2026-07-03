@@ -87,6 +87,10 @@ export async function GET(request: NextRequest) {
     const variantParam = searchParams.get('variant')
     const difficulty = searchParams.get('difficulty')
     const questionType = searchParams.get('question_type')
+    const hasImage = searchParams.get('has_image')
+    const categoryCode = searchParams.get('category_code')
+    const searchId = searchParams.get('search_id')
+    const searchContent = searchParams.get('search_content')
 
     const supabase = createAdminClient()
 
@@ -110,6 +114,10 @@ export async function GET(request: NextRequest) {
       if (variantParam) query = query.eq('variant', parseInt(variantParam))
       if (difficulty) query = query.eq('difficulty', difficulty)
       if (questionType) query = query.eq('question_type', questionType)
+      if (hasImage) query = query.eq('has_image', hasImage === 'true')
+      if (categoryCode) query = query.eq('category_code', categoryCode)
+      if (searchId) query = query.ilike('category_code', `${searchId}%`)
+      if (searchContent) query = query.ilike('latex_content', `%${searchContent}%`)
 
       const { data, error } = await query
 

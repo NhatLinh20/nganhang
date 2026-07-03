@@ -117,16 +117,20 @@ export default function AiExamPage() {
 
   // Export modal states
   const [showExportModal, setShowExportModal] = useState(false)
-  const [headerLabels, setHeaderLabels] = useState<string[]>([
-    'SỞ GDĐT ...',
-    'TRƯỜNG THPT ...',
+  const [isExportingWord, setIsExportingWord] = useState(false)
+  const [headerLabels, setHeaderLabels] = useState<string[]>(['', '', '', '', '', '', '', ''])
+  
+  const HEADER_PLACEHOLDERS = [
+    'SỞ GDĐT HÀ NỘI',
+    'TRƯỜNG THPT CHU VĂN AN',
     'Đề chính thức',
     '(Đề thi gồm có 0\\zpageref{\\made-lastpage} trang)',
-    'ĐỀ KIỂM TRA',
-    'Môn: TOÁN',
-    'Thời gian làm bài: 90 phút',
-    '(Không kể thời gian phát đề)'
-  ])
+    'ĐỀ KIỂM TRA GIỮA HỌC KÌ I NĂM 2026-2027',
+    'Môn: TOÁN 12',
+    'Thời gian: 90 phút',
+    'không kể thời gian phát đề'
+  ]
+
   const [headerStyles, setHeaderStyles] = useState<{ bold: boolean; italic: boolean; underline: boolean; color: string }[]>(
     Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' }))
   )
@@ -694,7 +698,7 @@ export default function AiExamPage() {
     try {
       const bodyPayload: Record<string, unknown> = {
         title: title,
-        headerLabels: headerLabels,
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
         headerStyles: headerStyles,
         examCodes: examCodes,
         duration: result?.exam_info?.duration || 90,
@@ -768,6 +772,100 @@ export default function AiExamPage() {
   };
 
   // ── Compile PDF ──
+  const handleExportWord = async () => {
+    if (questions.length === 0) return;
+    
+    const currentAllExams = [...allExamsQuestions];
+    if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions;
+    
+    // Giới hạn giáo viên
+    if (isLimitedRole(userRole)) {
+      const examsToCheck = currentAllExams.length > 0 ? currentAllExams : [questions];
+      if (examsToCheck.length > TEACHER_LIMITS.MAX_EXAMS_PER_BATCH) {
+        setLimitReason('question_limit')
+        setLimitDetail(`Số lượng đề: ${examsToCheck.length}/${TEACHER_LIMITS.MAX_EXAMS_PER_BATCH} đề. Giảm số đề hoặc liên hệ Admin.`)
+        setShowLimitModal(true)
+        return;
+      }
+      const quota = await checkExportQuota()
+      if (!quota.allowed) {
+        setLimitReason('daily_limit')
+        setLimitDetail('')
+        setShowLimitModal(true)
+        return;
+      }
+    }
+
+    setIsExportingWord(true);
+    try {
+      const title = result?.exam_info?.title || 'Đề thi mới'
+      const payload: Record<string, unknown> = {
+        title,
+        headerLabels,
+        headerStyles,
+        examCodes,
+        duration: result?.exam_info?.duration || 90,
+        grade: result?.exam_info?.grade || 12,
+        excelOptions,
+        qrCodeOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+      };
+
+      if (currentAllExams.length > 1) {
+        payload.exams = currentAllExams.map(qs => ({
+          questions: qs.map(q => ({
+            id: q.id,
+            latex_content: q.latex_content,
+            question_type: q.question_type,
+            correct_answer: q.correct_answer ?? '',
+            phan: q.phan,
+          })),
+        }));
+      } else {
+        payload.questions = questions.map(q => ({
+          id: q.id,
+          latex_content: q.latex_content,
+          question_type: q.question_type,
+          correct_answer: q.correct_answer ?? '',
+          phan: q.phan,
+        }));
+      }
+
+      const res = await fetch('/api/export-word', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: 'Lỗi không xác định' }));
+        showToast('error', '❌ Xuất Word thất bại: ' + (json.error || 'Lỗi'));
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const sanitizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      link.download = `${sanitizedTitle || 'exam_package'}_word.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      if (isLimitedRole(userRole)) {
+        await logExport('ai_exam_word', '/admin/ai-exam');
+      }
+    } catch (err) {
+      showToast('error', 'Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'));
+    } finally {
+      setIsExportingWord(false);
+    }
+  };
+
+  // ── Compile PDF ──
   const [isCompilingPdf, setIsCompilingPdf] = useState(false)
   const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null)
   const [showPdfPreview, setShowPdfPreview] = useState(false)
@@ -785,7 +883,7 @@ export default function AiExamPage() {
       const title = result?.exam_info?.title || 'Đề thi mới'
       const bodyPayload: Record<string, unknown> = {
         title,
-        headerLabels,
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
         headerStyles,
         examCodes,
         duration: result?.exam_info?.duration || 90,
@@ -1231,16 +1329,7 @@ export default function AiExamPage() {
                     disabled={questions.length === 0}
                     style={{ background: '#10b981', color: 'white', border: 'none' }}
                   >
-                    📥 Xuất LaTeX (.tex)
-                  </button>
-
-                  <button
-                    className="btn btn-sm"
-                    onClick={handleCompilePdf}
-                    disabled={questions.length === 0 || isCompilingPdf}
-                    style={{ background: '#6366f1', color: 'white', border: 'none', fontWeight: 600, opacity: (questions.length === 0 || isCompilingPdf) ? 0.7 : 1, cursor: isCompilingPdf ? 'wait' : 'pointer' }}
-                  >
-                    {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
+                    📥 Xuất file
                   </button>
 
                   <button
@@ -1664,11 +1753,11 @@ export default function AiExamPage() {
                           >
                             {isLocked ? '(Đề thi gồm có X trang) 🔒' : (
                               isSelected ? (
-                                <input type="text" value={headerLabels[i]} autoFocus
+                                <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
                                   onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
                                   onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
                                   style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
-                              ) : (headerLabels[i] || '...')
+                              ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)
                             )}
                           </div>
                         )
@@ -1690,11 +1779,11 @@ export default function AiExamPage() {
                             onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                           >
                             {isSelected ? (
-                              <input type="text" value={headerLabels[i]} autoFocus
+                              <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
                                 onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
                                 onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedLine(null) }}
                                 style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
-                            ) : (headerLabels[i] || '...')}
+                            ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)}
                           </div>
                         )
                       })}
@@ -1768,26 +1857,18 @@ export default function AiExamPage() {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
+                    <button onClick={() => { setShowExportModal(false); handleExportTex() }} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
                     <button
-                      onClick={() => setShowExportModal(false)}
-                      style={{
-                        padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
-                        background: '#f8fafc', color: '#475569', cursor: 'pointer', fontSize: '14px', fontWeight: 500
-                      }}
+                      onClick={() => { setShowExportModal(false); handleExportWord() }}
+                      disabled={isExportingWord}
+                      className="btn btn-primary"
+                      style={{ background: '#2563eb', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(37,99,235,0.3)', cursor: isExportingWord ? 'wait' : 'pointer', opacity: isExportingWord ? 0.7 : 1 }}
                     >
-                      Hủy bỏ
+                      {isExportingWord ? '⏳ Đang xuất Word...' : '📝 Xuất file Word'}
                     </button>
-                    <button
-                      onClick={() => { setShowExportModal(false); handleExportTex(); }}
-                      style={{
-                        padding: '10px 24px', borderRadius: '8px', border: 'none',
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white',
-                        cursor: 'pointer', fontSize: '14px', fontWeight: 700,
-                        boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      📥 Xuất file .tex
+                    <button onClick={() => { setShowExportModal(false); handleCompilePdf() }} disabled={isCompilingPdf} className="btn btn-primary" style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
+                      {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
                     </button>
                   </div>
                 </div>

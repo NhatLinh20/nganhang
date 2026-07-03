@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import QRCode from 'qrcode'
-import { generateTNMakerExcel, generateAZOTAExcel, generateYoungMixExcel, generateSmartTestExcel, generateOLMExcel, buildExamAnswers, parseMCAnswer, getAnswer } from '@/lib/answer-export-utils'
+import { generateTNMakerExcel, generateAZOTAExcel, generateYoungMixExcel, generateSmartTestExcel, generateOLMExcel, buildExamAnswers, parseMCAnswer, getAnswer, buildAnswerSheetTex } from '@/lib/answer-export-utils'
 import AdmZip from 'adm-zip'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -324,6 +324,7 @@ export async function POST(request: NextRequest) {
       excelOptions,
       qrCodeOptions,
       includeAnswerTable,
+      includeAnswerSheet,
     } = JSON.parse(bodyText)
 
     const displayTitle = title || 'ĐỀ KIỂM TRA'
@@ -572,6 +573,63 @@ export async function POST(request: NextRequest) {
     } catch (xlsxErr) {
       console.error('Excel generation error (non-fatal):', xlsxErr)
       // Non-fatal: still return ZIP without Excel files
+    }
+
+    // ── Generate PDF Answer Sheet ──
+    if (includeAnswerSheet) {
+      try {
+        console.log('[export-word] Generating Answer Sheet PDF...')
+        const configDir = path.join(process.cwd(), 'public', 'latex-config')
+        const ansZip = new AdmZip()
+        
+        // Add shared files
+        const sharedFiles = ['khaibaochung.tex', 'ex_test.sty', 'ex_tkz-euclide.sty', 'tkz-linknodes.sty', 'tkz-tab-vn.sty', 'twemojis.sty']
+        for (const filename of sharedFiles) {
+          const filePath = path.join(configDir, filename)
+          if (fs.existsSync(filePath)) ansZip.addFile(filename, fs.readFileSync(filePath))
+        }
+        
+        // Add empty folders
+        ansZip.addFile('ans/', Buffer.alloc(0))
+        ansZip.addFile('data/', Buffer.alloc(0))
+
+        let mainTex = '\\documentclass[12pt,a4paper,twoside]{book}\n'
+        mainTex += '\\input{khaibaochung}\n'
+        mainTex += '\\begin{document}\n'
+        
+        for (let i = 0; i < examSets.length; i++) {
+          const qs = examSets[i]
+          const mcCount = qs.filter(q => ['Trắc nghiệm', '1'].includes(String(q.question_type)) || String(q.phan) === '1').length
+          const tfCount = qs.filter(q => ['Đúng/Sai', '2'].includes(String(q.question_type)) || String(q.phan) === '2').length
+          const saCount = qs.filter(q => ['Trả lời kết quả', '3'].includes(String(q.question_type)) || String(q.phan) === '3').length
+          
+          mainTex += buildAnswerSheetTex(codes[i], mcCount, tfCount, saCount)
+        }
+        mainTex += '\\end{document}\n'
+        
+        ansZip.addFile('main.tex', Buffer.from(mainTex, 'utf-8'))
+        const ansZipBuffer = ansZip.toBuffer()
+
+        // Call VPS to compile PDF
+        const API_URL = process.env.NEXT_PUBLIC_TIKZ_API_URL || process.env.TIKZ_API_URL || ''
+        if (API_URL) {
+          const formData = new FormData()
+          formData.append('file', new Blob([ansZipBuffer], { type: 'application/zip' }), 'exam.zip')
+          const pdfRes = await fetch(`${API_URL}/compile-zip`, {
+            method: 'POST',
+            body: formData,
+          })
+          if (pdfRes.ok) {
+            const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
+            outputZip.addFile('phieu_tra_loi_trac_nghiem.pdf', pdfBuffer)
+            console.log('[export-word] Included phieu_tra_loi_trac_nghiem.pdf successfully.')
+          } else {
+            console.error('[export-word] VPS /compile-zip error for answer sheet:', await pdfRes.text())
+          }
+        }
+      } catch (pdfErr) {
+        console.error('Answer Sheet PDF generation error (non-fatal):', pdfErr)
+      }
     }
 
 

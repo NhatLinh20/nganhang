@@ -641,7 +641,7 @@
 }
 
 /* Minimal Theme Specific Overrides */
-.themeMinimal .slideCounter { background: rgba(0,0,0,0.05); color: #4b5563; }
+.themeMinimal .slideCounter { box-shadow: none; }
 .themeMinimal .slideTypeBadge.mc { background: #eff6ff; color: #2563eb; }
 .themeMinimal .slideTypeBadge.tf { background: #f0fdf4; color: #16a34a; }
 .themeMinimal .slideTypeBadge.sa { background: #fefce8; color: #ca8a04; }
@@ -682,13 +682,15 @@
 .topLeft { display: flex; align-items: center; gap: 0.75rem; }
 
 .slideCounter {
-  font-size: 0.92rem;
-  font-weight: 600;
-  padding: 0.3rem 0.85rem;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.4rem 1.2rem;
   border-radius: 20px;
-  background: rgba(255,255,255,0.1);
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+  letter-spacing: 0.02em;
 }
-.themeLight .slideCounter { background: rgba(0,0,0,0.08); }
 
 .slideTypeBadge {
   display: inline-flex;

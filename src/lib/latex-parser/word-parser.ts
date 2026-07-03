@@ -100,6 +100,9 @@ export function preprocessWordTexContent(text: string): string {
   // 1.5 Loại bỏ \centerline bao quanh tikzpicture (Pandoc không parse được môi trường bên trong \centerline)
   cleaned = cleaned.replace(/\\centerline\s*\{\s*(\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\})\s*\}/g, '$1')
 
+  // 1.8 Unwrap immini -> text then centered image
+  cleaned = unwrapImmini(cleaned)
+
   return cleaned
 }
 
@@ -124,8 +127,19 @@ function unwrapImmini(text: string): string {
           if (arg2) {
             const before = result.slice(0, i)
             const after = result.slice(arg2.endIdx + 1)
-            result = before + arg2.content + '\n' + arg1.content + after
-            i = before.length + arg2.content.length + 1 + arg1.content.length
+            
+            // Put text (arg1) first, then image (arg2) centered
+            // If arg1 contains \choice, place the image BEFORE \choice
+            const choiceMatch = arg1.content.match(/\\choice(?:TF)?(?:\[\d+\])?\s*\{/)
+            if (choiceMatch && choiceMatch.index !== undefined) {
+              const textBeforeChoice = arg1.content.slice(0, choiceMatch.index)
+              const choicePart = arg1.content.slice(choiceMatch.index)
+              result = before + textBeforeChoice + '\n\n\\begin{center}\n' + arg2.content + '\n\\end{center}\n\n' + choicePart + after
+              i = before.length + textBeforeChoice.length + 18 + arg2.content.length + 16 // advance past replaced content
+            } else {
+              result = before + arg1.content + '\n\n\\begin{center}\n' + arg2.content + '\n\\end{center}\n\n' + after
+              i = before.length + arg1.content.length + 18 + arg2.content.length + 16 // advance past replaced content
+            }
             continue
           }
         }
@@ -157,16 +171,23 @@ export function segmentContentDetailed(text: string, tikzKeys: string[]): WordSe
 
   // ─── 1. Extract TikZ/tabular → placeholder ───
   const tikzBlocks: string[] = []
+  
+  // Xử lý an toàn: Ưu tiên bóc tách nếu center bọc sát tikz/tabular (không có chữ khác xen vào)
   let processed = text.replace(
-    /(?:\\begin\{center\}\s*)?\\begin\{(tikzpicture|tabular)\}[\s\S]*?\\end\{\1\}\s*(?:\\end\{center\})?/g,
-    (match) => {
-      // Bỏ wrapper center nếu có
-      const code = match
-        .replace(/\\begin\{center\}/g, '')
-        .replace(/\\end\{center\}/g, '')
-        .trim()
+    /\\begin\{center\}\s*(\\begin\{(tikzpicture|tabular)\}[\s\S]*?\\end\{\2\})\s*\\end\{center\}/g,
+    (_, inner) => {
       const idx = tikzBlocks.length
-      tikzBlocks.push(code)
+      tikzBlocks.push(inner.trim())
+      return `__TIKZ_${idx}__`
+    }
+  )
+  
+  // Sau đó bóc tách các tikz/tabular còn lại (nếu nó đứng độc lập hoặc trong center chứa chữ)
+  processed = processed.replace(
+    /\\begin\{(tikzpicture|tabular)\}[\s\S]*?\\end\{\1\}/g,
+    (match) => {
+      const idx = tikzBlocks.length
+      tikzBlocks.push(match.trim())
       return `__TIKZ_${idx}__`
     }
   )

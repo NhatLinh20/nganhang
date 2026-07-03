@@ -366,6 +366,10 @@ export default function QuestionsClient({ userRole }: { userRole: string }) {
       if (filter.variant !== undefined) params.set('variant', String(filter.variant))
       if (filter.difficulty) params.set('difficulty', filter.difficulty)
       if (filter.question_type) params.set('question_type', filter.question_type)
+      if (filter.has_image !== undefined) params.set('has_image', String(filter.has_image))
+      if (filter.category_code) params.set('category_code', filter.category_code)
+      if (debouncedSearchId) params.set('search_id', debouncedSearchId)
+      if (debouncedSearchContent) params.set('search_content', debouncedSearchContent)
 
       const res = await fetch(`/api/questions/export-bank?${params}`)
       if (!res.ok) {
