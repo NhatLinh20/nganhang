@@ -825,7 +825,14 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
 
       const pdfBlob = await compilePdfZip(zipBlob);
       const url = URL.createObjectURL(pdfBlob);
-      window.open(url, '_blank');
+      const link = document.createElement('a');
+      link.href = url;
+      const sanitizedTitle = configTitle.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      link.download = `${sanitizedTitle || 'exam_package'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (err) {
       alert('Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'));
     } finally {
