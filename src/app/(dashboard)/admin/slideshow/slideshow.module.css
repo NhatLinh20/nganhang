@@ -727,6 +727,48 @@
 .themeLight .exitBtn { border-color: rgba(0,0,0,0.15); background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.6); }
 .exitBtn:hover { background: rgba(244,67,54,0.15); color: #ef5350; border-color: rgba(244,67,54,0.3); }
 
+/* Audio Buttons */
+.audioBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.themeLight .audioBtn { border-color: rgba(0,0,0,0.15); background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.7); }
+.audioBtn:hover:not(:disabled) { background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+.audioBtn:disabled { opacity: 0.5; cursor: wait; }
+
+.audioActive {
+  background: rgba(59,130,246,0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59,130,246,0.5) !important;
+  animation: pulseAudio 1.5s infinite;
+}
+.themeLight .audioActive { background: rgba(37,99,235,0.1) !important; color: #1d4ed8 !important; border-color: rgba(37,99,235,0.3) !important; }
+
+@keyframes pulseAudio {
+  0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+
+.autoPlayToggle {
+  color: rgba(255,255,255,0.7);
+  user-select: none;
+}
+.themeLight .autoPlayToggle {
+  color: rgba(0,0,0,0.7);
+}
+
+
 /* Progress */
 .progressBar { height: 3px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
 .themeLight .progressBar { background: rgba(0,0,0,0.08); }

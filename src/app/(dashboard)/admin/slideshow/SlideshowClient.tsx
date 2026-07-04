@@ -14,6 +14,7 @@ import {
   type ContentSegment,
 } from '@/lib/latex-parser/slideshow-parser'
 import { compileTikz } from '@/lib/tikz-api'
+import { createClient } from '@/lib/supabase/client'
 
 // ═══════════════════════════════════════════════════
 // CONSTANTS
@@ -137,6 +138,12 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   const [slideDirection, setSlideDirection] = useState<'next' | 'prev'>('next')
   const [zoomLevel, setZoomLevel] = useState(100)
 
+  // ─── Audio State ───
+  const [playingPart, setPlayingPart] = useState<string | null>(null)
+  const [isAudioLoading, setIsAudioLoading] = useState(false)
+  const [autoPlay, setAutoPlay] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
   // ═══════════════════════════════════════════════
   // ON MOUNT: check sessionStorage for code from other pages
   // ═══════════════════════════════════════════════
@@ -188,6 +195,131 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   })
+
+  // ═══════════════════════════════════════════════
+  // AUDIO HELPERS
+  // ═══════════════════════════════════════════════
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+    setPlayingPart(null)
+    setIsAudioLoading(false)
+  }, [])
+
+  const getQuestionText = (q: SlideQuestion) => {
+    let text = q.bodySegments.map(s => s.content).join('')
+    if (q.questionType === 'multiple_choice' && q.choices) {
+      text += '\n' + q.choices.map(c => c.label + '. ' + (c.segments ? c.segments.map(s => s.content).join('') : c.content)).join('\n')
+    }
+    if (q.questionType === 'true_false' && q.tfStatements) {
+      text += '\n' + q.tfStatements.map(s => s.label + ') ' + (s.segments ? s.segments.map(s => s.content).join('') : s.content)).join('\n')
+    }
+    if (q.questionType === 'short_answer' && q.shortAnswer) {
+      text += '\nĐáp số: ' + q.shortAnswer
+    }
+    return text
+  }
+
+  const getSolutionText = (q: SlideQuestion) => {
+    if (!q.solutionSegments) return ''
+    return q.solutionSegments.map(s => s.content).join('')
+  }
+
+  // Generate SHA-256 hash for content_hash
+  const hashText = async (text: string) => {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(text)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  const playAudio = async (q: SlideQuestion, part: 'question' | 'solution') => {
+    if (playingPart === part) {
+      stopAudio()
+      return
+    }
+    stopAudio()
+    
+    const text = part === 'question' ? getQuestionText(q) : getSolutionText(q)
+    if (!text.trim()) return
+
+    setPlayingPart(part)
+    setIsAudioLoading(true)
+
+    try {
+      const contentHash = await hashText(text)
+      const supabase = createClient()
+      
+      // 1. Check DB cache
+      const { data: cached, error: cacheErr } = await supabase
+        .from('question_audio')
+        .select('audio_url')
+        .eq('content_hash', contentHash)
+        .eq('voice', 'Kore')
+        .maybeSingle()
+
+      if (cached?.audio_url) {
+        // Play from cache
+        const audio = new Audio(cached.audio_url)
+        audioRef.current = audio
+        audio.onended = () => setPlayingPart(null)
+        await audio.play()
+        setIsAudioLoading(false)
+        return
+      }
+
+      // 2. Call VPS TTS API if no cache
+      const vpsUrl = process.env.NEXT_PUBLIC_VPS_URL || process.env.NEXT_PUBLIC_TIKZ_API_URL || 'http://42.96.15.5:3001'
+      const res = await fetch(`${vpsUrl}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'Kore' })
+      })
+
+      if (!res.ok) throw new Error('TTS API failed')
+      const data = await res.json()
+
+      // Insert to Supabase for future use
+      const { error: insertError } = await supabase.from('question_audio').insert({
+        content_hash: contentHash,
+        voice: 'Kore',
+        audio_url: `${vpsUrl}${data.audio_url}`
+      })
+      if (insertError) {
+        console.warn('Could not cache audio URL:', insertError.message)
+      }
+
+      // Play new audio
+      const audio = new Audio(`${vpsUrl}${data.audio_url}`)
+      audioRef.current = audio
+      audio.onended = () => setPlayingPart(null)
+      await audio.play()
+    } catch (err) {
+      console.error('Audio play error:', err)
+      setPlayingPart(null)
+      alert('Lỗi tạo audio: ' + (err as Error).message)
+    } finally {
+      setIsAudioLoading(false)
+    }
+  }
+
+  // Handle slide change to pause audio and trigger auto-play
+  useEffect(() => {
+    if (phase !== 'present') return
+    stopAudio()
+    const q = questions[currentSlide]
+    if (q && autoPlay) {
+      // Add slight delay so it doesn't immediately play before render
+      const timer = setTimeout(() => {
+        playAudio(q, 'question')
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [currentSlide, phase, autoPlay])
 
   // ═══════════════════════════════════════════════
   // HANDLERS
@@ -621,7 +753,27 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
               {TYPE_ICONS[q.questionType]} {TYPE_LABELS[q.questionType]}
             </span>
           </div>
-          <div className={styles.topRight} style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className={styles.topRight} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button 
+              className={`${styles.audioBtn} ${playingPart === 'question' ? styles.audioActive : ''}`} 
+              onClick={() => playAudio(q, 'question')}
+              disabled={isAudioLoading && playingPart !== 'question'}
+              title="Đọc câu hỏi">
+              {isAudioLoading && playingPart === 'question' ? '⏳' : (playingPart === 'question' ? '⏸' : '🔊')} Đọc đề
+            </button>
+            {q.solutionSegments && q.solutionSegments.length > 0 && (
+              <button 
+                className={`${styles.audioBtn} ${playingPart === 'solution' ? styles.audioActive : ''}`} 
+                onClick={() => playAudio(q, 'solution')}
+                disabled={isAudioLoading && playingPart !== 'solution'}
+                title="Đọc lời giải">
+                {isAudioLoading && playingPart === 'solution' ? '⏳' : (playingPart === 'solution' ? '⏸' : '🔊')} Đọc lời giải
+              </button>
+            )}
+            <label className={styles.autoPlayToggle} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '13px', marginLeft: '0.5rem', marginRight: '0.5rem' }}>
+              <input type="checkbox" checked={autoPlay} onChange={e => setAutoPlay(e.target.checked)} /> Auto-play
+            </label>
+            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.3)' }} />
             <button className={styles.exitBtn} onClick={() => setZoomLevel(p => Math.max(p - 10, 50))} title="Thu nhỏ (-)">A-</button>
             <button className={styles.exitBtn} onClick={() => setZoomLevel(p => Math.min(p + 10, 250))} title="Phóng to (+)">A+</button>
             <button className={styles.exitBtn} onClick={exitPresent} style={{ marginLeft: '0.5rem' }}>✕ Thoát</button>

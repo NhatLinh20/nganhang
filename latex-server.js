@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -19,8 +20,13 @@ app.use(bodyParser.json({ limit: '1mb' }));
 // Directories
 const TMP_DIR = fs.existsSync('/dev/shm') ? '/dev/shm/latex-tmp' : path.join(__dirname, 'tmp');
 const CACHE_DIR = path.join(__dirname, 'cache');
+const AUDIO_DIR = path.join(__dirname, 'audio');
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR);
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR);
+if (!fs.existsSync(AUDIO_DIR)) fs.mkdirSync(AUDIO_DIR);
+
+// Serve audio files statically
+app.use('/audio', express.static(AUDIO_DIR));
 
 // Multer setup for handling ZIP uploads
 const upload = multer({ dest: TMP_DIR });
@@ -205,6 +211,105 @@ app.post('/compile-zip', upload.single('file'), async (req, res) => {
 
     console.error('Compilation failed:', errorLog || error.message);
     res.status(500).json({ error: 'LaTeX compilation failed.', details: errorLog || error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// TTS API
+// ═══════════════════════════════════════════════════
+
+function expandCustomMacros(latex) {
+  if (!latex) return '';
+  return latex
+    .replace(/\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g, "")
+    .replace(/\\begin\{tabular\}[\s\S]*?\\end\{tabular\}/g, "")
+    .replace(/\\immini\s*\{/g, "")
+    .replace(/\\choice/g, "Các lựa chọn: ")
+    .replace(/\\loigiai\s*\{/g, "Lời giải: ")
+    .replace(/\\vv\{([^}]+)\}/g, "vectơ $1")
+    .replace(/\\overrightarrow\{([^}]+)\}/g, "vectơ $1")
+    .replace(/\\hoac\{([^}]+)\}\{([^}]+)\}/g, "$1 hoặc $2")
+    .replace(/\\heva\{([^}]+)\}/g, "hệ phương trình $1")
+    .replace(/\\True/g, "Đáp án đúng:")
+    .replace(/\\textbf\{([^}]+)\}/g, "$1")
+    .replace(/\\textit\{([^}]+)\}/g, "$1")
+    .replace(/\{\s*\}/g, "")
+}
+
+app.post('/api/tts', async (req, res) => {
+  const { text, voice = 'Kore' } = req.body;
+  if (!text) return res.status(400).json({ error: 'Missing text' });
+
+  const keysStr = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY;
+  if (!keysStr) return res.status(500).json({ error: 'Missing GEMINI_API_KEY on VPS' });
+  const keys = keysStr.split(',').map(k => k.trim()).filter(Boolean);
+  const apiKey = keys[Math.floor(Math.random() * keys.length)];
+
+  let cleanedLatex = '';
+  try {
+    // 1. Chuẩn hoá văn bản (LaTeX -> Tiếng Việt)
+    cleanedLatex = expandCustomMacros(text);
+    
+    // Gọi model Gemini (generateContent) với Audio Output
+    const ttsRes = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/interactions",
+      {
+        method: "POST",
+        headers: { 
+          "x-goog-api-key": apiKey,
+          "Content-Type": "application/json",
+          "Api-Revision": "2026-05-20"
+        },
+        body: JSON.stringify({
+          model: "gemini-3.1-flash-tts-preview",
+          input: cleanedLatex,
+          response_format: { type: "audio" },
+          generation_config: {
+            speech_config: [{ voice }]
+          }
+        })
+      }
+    );
+    
+    if (!ttsRes.ok) throw new Error("TTS API error: " + await ttsRes.text());
+    const ttsData = await ttsRes.json();
+    
+    // Tìm part chứa audio trong API interactions
+    const audioContent = ttsData.steps?.[0]?.content?.find(c => c.mime_type && c.mime_type.startsWith("audio/"));
+    
+    if (!audioContent || !audioContent.data) {
+      console.error("Gemini response:", JSON.stringify(ttsData, null, 2));
+      throw new Error("No audio data returned");
+    }
+
+    const pcmBase64 = audioContent.data;
+
+    const pcmBuffer = Buffer.from(pcmBase64, "base64");
+    const hash = getHash(cleanedLatex + voice); // Hash dựa trên text + voice
+    const pcmFile = path.join(TMP_DIR, `${hash}.pcm`);
+    const mp3File = path.join(AUDIO_DIR, `${hash}.mp3`);
+
+    // Lưu cache (hoặc kiểm tra cache trước khi gọi API)
+    if (fs.existsSync(mp3File)) {
+       return res.json({ audio_url: `/audio/${hash}.mp3`, hash });
+    }
+
+    // Ghi file PCM
+    fs.writeFileSync(pcmFile, pcmBuffer);
+
+    // Dùng ffmpeg convert PCM -> MP3
+    // Gemini trả về 24kHz 16-bit mono PCM. 
+    // Format: s16le (signed 16-bit little endian), ar (sample rate) 24000, ac (channels) 1
+    await execAsync(`ffmpeg -y -f s16le -ar 24000 -ac 1 -i ${pcmFile} -b:a 64k ${mp3File}`);
+
+    // Xoá file PCM
+    if (fs.existsSync(pcmFile)) fs.unlinkSync(pcmFile);
+
+    res.json({ audio_url: `/audio/${hash}.mp3`, hash });
+
+  } catch (err) {
+    console.error("TTS Pipeline error:", err, "TEXT:", text, "CLEANED:", cleanedLatex || "N/A");
+    res.status(500).json({ error: "TTS Pipeline failed", details: err.message });
   }
 });
 
