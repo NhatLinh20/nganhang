@@ -321,12 +321,6 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
       setupAudioEvents(audio)
       audioRef.current = audio
       await audio.play()
-      // 3. Trigger prefetch for the next slide in the background
-      const currentIndex = questions.findIndex(x => x.id === q.id)
-      if (currentIndex >= 0 && currentIndex + 1 < questions.length) {
-        // Run prefetch silently without await
-        prefetchAudio(questions[currentIndex + 1], part)
-      }
 
     } catch (err) {
       console.error('Audio play error:', err)
@@ -395,6 +389,13 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
       prefetchAudio(questions[0], 'both')
     }
   }, [phase, questions])
+
+  // Prefetch audio for the NEXT question automatically whenever we are on a slide
+  useEffect(() => {
+    if (phase === 'present' && currentSlide + 1 < questions.length) {
+      prefetchAudio(questions[currentSlide + 1], 'both')
+    }
+  }, [currentSlide, phase, questions])
 
   // ═══════════════════════════════════════════════
   // HANDLERS

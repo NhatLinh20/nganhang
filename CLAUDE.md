@@ -595,9 +595,13 @@ Components: `ScanClient.tsx` (35KB) + `ScanDashboard.tsx` (82KB).
 
 ### 5.9 Trình chiếu (`/admin/slideshow`)
 
-- Parse LaTeX → slides trình chiếu.
-- Render KaTeX + TikZ trực tiếp trên browser.
-- Component: `SlideshowClient.tsx` (39KB).
+- Hỗ trợ 3 giai đoạn: Input (nhập code/import), Review (kiểm tra & sửa lỗi), và Present (trình chiếu toàn màn hình).
+- Parse LaTeX → slides trình chiếu. Tự động trích xuất các block TikZ để batch-compile SVG.
+- Hỗ trợ fallback: nếu VPS lỗi TikZ, cho phép upload/paste hình ảnh thủ công.
+- Tích hợp Text-To-Speech (TTS) đọc câu hỏi & lời giải qua `/api/tts` (cache audio trong bảng `question_audio`).
+- Các tính năng Present: Điều khiển bằng bàn phím (mũi tên, phím Space), hiện/ẩn đáp án (A), hiện lời giải (S), zoom (+/-), tự động autoplay audio.
+- Render KaTeX + TikZ trực tiếp trên browser. Hỗ trợ giao diện sáng (light), tối (blue), tối giản (minimal).
+- Component: `SlideshowClient.tsx` (43KB).
 
 ### 5.10 Xử lý TeX (`/admin/tex-processor`)
 
@@ -655,6 +659,16 @@ Chỉ áp dụng cho role `teacher` (admin không bị giới hạn):
 - Component `TikZImage.tsx` compile TikZ code → SVG.
 - Gọi API VPS `42.96.15.5:3001/compile` (proxy qua `/api/tikz`).
 - Hỗ trợ: đồ thị, hình hình học, bảng biến thiên.
+
+### 5.17 Xuất file Word & Bảng Đáp Án (`/api/export-word`)
+
+- **Pipeline xuất Word**: `Parse LaTeX` → `Expand Macros` (xóa lệnh lạ) → `Batch Compile TikZ (SVG)` → Gói thành ZIP.
+- Gửi ZIP tới Pandoc VPS (`/convert-to-docx`) → trả về file `.docx`.
+- **Hậu xử lý DOCX**: Canh giữa text, tối ưu bảng biểu (ẩn viền, full-width 10 cột grid), tự động thêm Header/Footer (trang số, mã đề).
+- **Tích hợp xuất đáp án App chấm thi**: Sinh file Excel theo chuẩn TNMaker, Azota, YoungMix, SmartTest, OLM.
+- **Tạo mã QR đáp án**: Hỗ trợ xuất ảnh QR Code chứa đáp án trắc nghiệm/điền khuyết.
+- Sinh phiếu trả lời trắc nghiệm (PDF) tổng hợp các mã đề.
+- Tất cả đóng gói thành 1 file ZIP duy nhất gửi về client.
 
 ---
 
@@ -801,6 +815,7 @@ Nội dung...
 | `/api/exams/stats`                    | GET            | Thống kê đề thi              |
 | `/api/export-lesson`                  | POST           | Xuất bài học                  |
 | `/api/export-log`                     | GET/POST       | Kiểm tra & ghi log xuất file   |
+| `/api/export-word`                    | POST           | Xuất Word, Excel, PDF Đáp án |
 | `/api/export-zip`                     | POST           | Xuất ZIP (LaTeX + PDF)          |
 | `/api/import`                         | POST/PUT       | Import câu hỏi / Preview parse |
 | `/api/lesson-builder/fetch-questions` | GET            | Lấy câu hỏi cho bài học     |
@@ -814,6 +829,7 @@ Nội dung...
 | `/api/scan-omr/health`                | GET            | Health check Python service      |
 | `/api/scan-results`                   | GET/POST       | CRUD kết quả quét             |
 | `/api/sessions`                       | GET/POST       | Sessions management              |
+| `/api/tts`                            | POST           | Text-To-Speech proxy tới VPS    |
 
 ---
 
@@ -948,4 +964,3 @@ const supabaseAdmin = createAdminClient()
 10. **Next.js 16** — phiên bản mới, đọc docs trong `node_modules/next/dist/docs/` trước khi code.
 11. **Tất cả giao diện bằng tiếng Việt** — error messages, labels, placeholders.
 12. **File `.env.local` chứa secrets** — KHÔNG commit, KHÔNG expose ra client (trừ `NEXT_PUBLIC_*`).
-
