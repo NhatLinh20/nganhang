@@ -270,8 +270,8 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
         .maybeSingle()
 
       if (cached?.audio_url) {
-        // Play from cache
-        const audio = new Audio(cached.audio_url)
+        // Play from cache using proxy to avoid mixed content
+        const audio = new Audio(`/api/proxy-audio?url=${encodeURIComponent(cached.audio_url)}`)
         audio.playbackRate = playbackRate
         audioRef.current = audio
         audio.onended = () => setPlayingPart(null)
@@ -280,9 +280,8 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
         return
       }
 
-      // 2. Call VPS TTS API if no cache
-      const vpsUrl = process.env.NEXT_PUBLIC_VPS_URL || process.env.NEXT_PUBLIC_TIKZ_API_URL || 'http://42.96.15.5:3001'
-      const res = await fetch(`${vpsUrl}/api/tts`, {
+      // 2. Call our local proxy API instead of VPS directly to avoid mixed content (HTTPS to HTTP)
+      const res = await fetch(`/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice: 'Kore' })
@@ -291,18 +290,21 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
       if (!res.ok) throw new Error('TTS API failed')
       const data = await res.json()
 
+      const vpsUrl = process.env.NEXT_PUBLIC_VPS_URL || process.env.NEXT_PUBLIC_TIKZ_API_URL || 'http://42.96.15.5:3001'
+      const finalAudioUrl = `${vpsUrl}${data.audio_url}`
+
       // Insert to Supabase for future use
       const { error: insertError } = await supabase.from('question_audio').insert({
         content_hash: contentHash,
         voice: 'Kore',
-        audio_url: `${vpsUrl}${data.audio_url}`
+        audio_url: finalAudioUrl
       })
       if (insertError) {
         console.warn('Could not cache audio URL:', insertError.message)
       }
 
-      // Play new audio
-      const audio = new Audio(`${vpsUrl}${data.audio_url}`)
+      // Play new audio via proxy
+      const audio = new Audio(`/api/proxy-audio?url=${encodeURIComponent(finalAudioUrl)}`)
       audio.playbackRate = playbackRate
       audioRef.current = audio
       audio.onended = () => setPlayingPart(null)
