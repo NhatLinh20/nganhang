@@ -97,6 +97,9 @@ export function preprocessWordTexContent(text: string): string {
   // 1. Loại bỏ các comment LaTeX % ...
   cleaned = cleaned.replace(/(^|[^\\])%.*$/gm, '$1')
 
+  // 1.1 Sửa lỗi cú pháp dư thừa \limits (ví dụ: \limits\limits) làm hỏng pandoc math parser
+  cleaned = cleaned.replace(/(?:\\limits){2,}/g, '\\limits')
+
   // 1.5 Loại bỏ \centerline bao quanh tikzpicture (Pandoc không parse được môi trường bên trong \centerline)
   cleaned = cleaned.replace(/\\centerline\s*\{\s*(\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\})\s*\}/g, '$1')
 
@@ -277,6 +280,18 @@ function parseFormattedText(
       result.push({ type: 'math-inline', latex: mathInlineBlocks[idx] || '' })
       i += imathMatch[0].length
       continue
+    }
+
+    // \text{...} (chỉ còn lại bên ngoài math mode)
+    if (text.startsWith('\\text', i) && text[i + 5] === '{') {
+      const braceStart = i + 5
+      const inner = extractBalancedContent(text, braceStart)
+      if (inner) {
+        const children = parseFormattedText(inner.content, tikzBlocks, mathDisplayBlocks, mathInlineBlocks, tikzKeys)
+        result.push(...children)
+        i = inner.endIdx + 1
+        continue
+      }
     }
 
     // Kiểm tra \textbf{...}

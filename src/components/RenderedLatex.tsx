@@ -31,6 +31,9 @@ export function renderLatexContent(text: string): string {
   // 1. Loại bỏ comment LaTeX (dấu % đến hết dòng, trừ khi bị escape \%)
   let processed = text.replace(/(^|[^\\])%.*/g, '$1')
 
+  // 1.1 Sửa lỗi cú pháp \limits dư thừa gây lỗi cho KaTeX parser
+  processed = processed.replace(/(?:\\limits){2,}/g, '\\limits')
+
   // 2. Chuẩn hóa môi trường align*, align, eqnarray*, eqnarray
   processed = processed.replace(/\\begin\{align\*\}([\s\S]*?)\\end\{align\*\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
   processed = processed.replace(/\\begin\{align\}([\s\S]*?)\\end\{align\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
@@ -49,7 +52,7 @@ export function renderLatexContent(text: string): string {
     return `__DISPLAY_MATH_${mathBlocks.length - 1}__`
   })
   
-  processed = processed.replace(/(\$[^\n$]+?\$)/g, (match) => {
+  processed = processed.replace(/(\$([^$]+?)\$)/g, (match) => {
     mathBlocks.push(renderKatex(match.slice(1, -1), false))
     return `__INLINE_MATH_${mathBlocks.length - 1}__`
   })
