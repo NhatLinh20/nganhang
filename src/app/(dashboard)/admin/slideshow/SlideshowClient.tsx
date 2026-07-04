@@ -143,6 +143,8 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   const [isAudioLoading, setIsAudioLoading] = useState(false)
   const [autoPlay, setAutoPlay] = useState(false)
   const [playbackRate, setPlaybackRate] = useState<number>(1)
+  const [audioProgress, setAudioProgress] = useState(0)
+  const [audioDuration, setAudioDuration] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
@@ -214,6 +216,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     }
     setPlayingPart(null)
     setIsAudioLoading(false)
+    setAudioProgress(0)
   }, [])
 
   const getQuestionText = (q: SlideQuestion) => {
@@ -242,6 +245,15 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     const hashBuffer = await crypto.subtle.digest('SHA-256', data)
     const hashArray = Array.from(new Uint8Array(hashBuffer))
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  const setupAudioEvents = (audio: HTMLAudioElement) => {
+    audio.ontimeupdate = () => setAudioProgress(audio.currentTime)
+    audio.onloadedmetadata = () => setAudioDuration(audio.duration)
+    audio.onended = () => {
+      setPlayingPart(null)
+      setAudioProgress(0)
+    }
   }
 
   const playAudio = async (q: SlideQuestion, part: 'question' | 'solution' | 'both') => {
@@ -273,8 +285,8 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
         // Play from cache using proxy to avoid mixed content
         const audio = new Audio(`/api/proxy-audio?url=${encodeURIComponent(cached.audio_url)}`)
         audio.playbackRate = playbackRate
+        setupAudioEvents(audio)
         audioRef.current = audio
-        audio.onended = () => setPlayingPart(null)
         await audio.play()
         setIsAudioLoading(false)
         return
@@ -306,15 +318,60 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
       // Play new audio via proxy
       const audio = new Audio(`/api/proxy-audio?url=${encodeURIComponent(finalAudioUrl)}`)
       audio.playbackRate = playbackRate
+      setupAudioEvents(audio)
       audioRef.current = audio
-      audio.onended = () => setPlayingPart(null)
       await audio.play()
+      // 3. Trigger prefetch for the next slide in the background
+      const currentIndex = questions.findIndex(x => x.id === q.id)
+      if (currentIndex >= 0 && currentIndex + 1 < questions.length) {
+        // Run prefetch silently without await
+        prefetchAudio(questions[currentIndex + 1], part)
+      }
+
     } catch (err) {
       console.error('Audio play error:', err)
       setPlayingPart(null)
       alert('Lỗi tạo audio: ' + (err as Error).message)
     } finally {
       setIsAudioLoading(false)
+    }
+  }
+
+  const prefetchAudio = async (q: SlideQuestion, part: 'question' | 'solution' | 'both') => {
+    try {
+      const text = part === 'question' ? getQuestionText(q) : part === 'solution' ? getSolutionText(q) : getQuestionText(q) + '\n\n Lời giải: \n\n' + getSolutionText(q)
+      if (!text.trim()) return
+
+      const contentHash = await hashText(text)
+      const supabase = createClient()
+      
+      const { data: cached } = await supabase
+        .from('question_audio')
+        .select('audio_url')
+        .eq('content_hash', contentHash)
+        .eq('voice', 'Kore')
+        .maybeSingle()
+
+      if (cached?.audio_url) return
+
+      const res = await fetch(`/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'Kore' })
+      })
+
+      if (!res.ok) return
+      const data = await res.json()
+      const vpsUrl = process.env.NEXT_PUBLIC_VPS_URL || process.env.NEXT_PUBLIC_TIKZ_API_URL || 'http://42.96.15.5:3001'
+      const finalAudioUrl = `${vpsUrl}${data.audio_url}`
+
+      await supabase.from('question_audio').insert({
+        content_hash: contentHash,
+        voice: 'Kore',
+        audio_url: finalAudioUrl
+      })
+    } catch (e) {
+      console.warn('Prefetch failed:', e)
     }
   }
 
@@ -326,15 +383,30 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     if (q && autoPlay) {
       // Add slight delay so it doesn't immediately play before render
       const timer = setTimeout(() => {
-        playAudio(q, 'question')
+        playAudio(q, 'both')
       }, 500)
       return () => clearTimeout(timer)
     }
   }, [currentSlide, phase, autoPlay])
 
+  // Prefetch audio for the first question when entering review phase
+  useEffect(() => {
+    if (phase === 'review' && questions.length > 0) {
+      prefetchAudio(questions[0], 'both')
+    }
+  }, [phase, questions])
+
   // ═══════════════════════════════════════════════
   // HANDLERS
   // ═══════════════════════════════════════════════
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = Number(e.target.value)
+    if (audioRef.current) {
+      audioRef.current.currentTime = time
+      setAudioProgress(time)
+    }
+  }
 
   const handleParse = async () => {
     if (!editorContent.trim()) return
@@ -766,30 +838,24 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
           </div>
           <div className={styles.topRight} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button 
-              className={`${styles.audioBtn} ${playingPart === 'question' ? styles.audioActive : ''}`} 
-              onClick={() => playAudio(q, 'question')}
-              disabled={isAudioLoading && playingPart !== 'question'}
-              title="Đọc câu hỏi">
-              {isAudioLoading && playingPart === 'question' ? '⏳' : (playingPart === 'question' ? '⏸' : '🔊')} Đọc đề
+              className={`${styles.audioBtn} ${playingPart === 'both' ? styles.audioActive : ''}`} 
+              onClick={() => playAudio(q, 'both')}
+              disabled={isAudioLoading && playingPart !== 'both'}
+              title="Đọc đề + lời giải"
+              style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+              {isAudioLoading && playingPart === 'both' ? '⏳' : (playingPart === 'both' ? '⏸' : '🔊')} Đọc đề + LG
             </button>
-            {q.solutionSegments && q.solutionSegments.length > 0 && (
-              <>
-                <button 
-                  className={`${styles.audioBtn} ${playingPart === 'solution' ? styles.audioActive : ''}`} 
-                  onClick={() => playAudio(q, 'solution')}
-                  disabled={isAudioLoading && playingPart !== 'solution'}
-                  title="Đọc lời giải">
-                  {isAudioLoading && playingPart === 'solution' ? '⏳' : (playingPart === 'solution' ? '⏸' : '🔊')} Đọc lời giải
-                </button>
-                <button 
-                  className={`${styles.audioBtn} ${playingPart === 'both' ? styles.audioActive : ''}`} 
-                  onClick={() => playAudio(q, 'both')}
-                  disabled={isAudioLoading && playingPart !== 'both'}
-                  title="Đọc đề + lời giải"
-                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
-                  {isAudioLoading && playingPart === 'both' ? '⏳' : (playingPart === 'both' ? '⏸' : '🔊')} Đọc đề + LG
-                </button>
-              </>
+            {audioDuration > 0 && playingPart === 'both' && (
+              <input
+                type="range"
+                min={0}
+                max={audioDuration || 1}
+                step={0.1}
+                value={audioProgress}
+                onChange={handleSeek}
+                style={{ width: '80px', cursor: 'pointer', accentColor: '#10b981' }}
+                title="Tua âm thanh"
+              />
             )}
             <select 
               value={playbackRate} 
