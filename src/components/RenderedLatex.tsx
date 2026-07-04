@@ -34,6 +34,9 @@ export function renderLatexContent(text: string): string {
   // 1.1 Sửa lỗi cú pháp \limits dư thừa gây lỗi cho KaTeX parser
   processed = processed.replace(/(?:\\limits){2,}/g, '\\limits')
 
+  // Chuyển đổi \vec thành \overrightarrow để KaTeX hiển thị đẹp và đầy đủ dấu mũi tên
+  processed = processed.replace(/\\vec\b/g, '\\overrightarrow')
+
   // 2. Chuẩn hóa môi trường align*, align, eqnarray*, eqnarray
   processed = processed.replace(/\\begin\{align\*\}([\s\S]*?)\\end\{align\*\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')
   processed = processed.replace(/\\begin\{align\}([\s\S]*?)\\end\{align\}/g, '$$$$\\begin{aligned}$1\\end{aligned}$$$$')

@@ -38,6 +38,10 @@ img, svg {
   max-width: 100%;
 }
 
+.katex svg {
+  display: inline;
+}
+
 button {
   cursor: pointer;
   border: none;

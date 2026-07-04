@@ -250,28 +250,37 @@ app.post('/api/tts', async (req, res) => {
     // 1. Chuẩn hoá văn bản (LaTeX -> Tiếng Việt)
     cleanedLatex = expandCustomMacros(text);
     
-    // Gọi model Gemini (generateContent) với Audio Output
-    const ttsRes = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/interactions",
-      {
-        method: "POST",
-        headers: { 
-          "x-goog-api-key": apiKey,
-          "Content-Type": "application/json",
-          "Api-Revision": "2026-05-20"
-        },
-        body: JSON.stringify({
-          model: "gemini-3.1-flash-tts-preview",
-          input: cleanedLatex,
-          response_format: { type: "audio" },
-          generation_config: {
-            speech_config: [{ voice }]
-          }
-        })
-      }
-    );
+    let ttsRes = null;
+    let lastErrorText = "";
+    const models = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"];
+
+    for (const modelName of models) {
+      ttsRes = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/interactions",
+        {
+          method: "POST",
+          headers: { 
+            "x-goog-api-key": apiKey,
+            "Content-Type": "application/json",
+            "Api-Revision": "2026-05-20"
+          },
+          body: JSON.stringify({
+            model: modelName,
+            input: cleanedLatex,
+            response_format: { type: "audio" },
+            generation_config: {
+              speech_config: [{ voice }]
+            }
+          })
+        }
+      );
+
+      if (ttsRes.ok) break;
+      lastErrorText = await ttsRes.text();
+      // Nếu lỗi quá hạn mức (429) hoặc lỗi khác, tiếp tục thử model tiếp theo
+    }
     
-    if (!ttsRes.ok) throw new Error("TTS API error: " + await ttsRes.text());
+    if (!ttsRes.ok) throw new Error("TTS API error: " + lastErrorText);
     const ttsData = await ttsRes.json();
     
     // Tìm part chứa audio trong API interactions

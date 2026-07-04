@@ -142,7 +142,14 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   const [playingPart, setPlayingPart] = useState<string | null>(null)
   const [isAudioLoading, setIsAudioLoading] = useState(false)
   const [autoPlay, setAutoPlay] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState<number>(1)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate
+    }
+  }, [playbackRate])
 
   // ═══════════════════════════════════════════════
   // ON MOUNT: check sessionStorage for code from other pages
@@ -237,14 +244,14 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
   }
 
-  const playAudio = async (q: SlideQuestion, part: 'question' | 'solution') => {
+  const playAudio = async (q: SlideQuestion, part: 'question' | 'solution' | 'both') => {
     if (playingPart === part) {
       stopAudio()
       return
     }
     stopAudio()
     
-    const text = part === 'question' ? getQuestionText(q) : getSolutionText(q)
+    const text = part === 'question' ? getQuestionText(q) : part === 'solution' ? getSolutionText(q) : getQuestionText(q) + '\n\n Lời giải: \n\n' + getSolutionText(q)
     if (!text.trim()) return
 
     setPlayingPart(part)
@@ -265,6 +272,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
       if (cached?.audio_url) {
         // Play from cache
         const audio = new Audio(cached.audio_url)
+        audio.playbackRate = playbackRate
         audioRef.current = audio
         audio.onended = () => setPlayingPart(null)
         await audio.play()
@@ -295,6 +303,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
 
       // Play new audio
       const audio = new Audio(`${vpsUrl}${data.audio_url}`)
+      audio.playbackRate = playbackRate
       audioRef.current = audio
       audio.onended = () => setPlayingPart(null)
       await audio.play()
@@ -762,14 +771,36 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
               {isAudioLoading && playingPart === 'question' ? '⏳' : (playingPart === 'question' ? '⏸' : '🔊')} Đọc đề
             </button>
             {q.solutionSegments && q.solutionSegments.length > 0 && (
-              <button 
-                className={`${styles.audioBtn} ${playingPart === 'solution' ? styles.audioActive : ''}`} 
-                onClick={() => playAudio(q, 'solution')}
-                disabled={isAudioLoading && playingPart !== 'solution'}
-                title="Đọc lời giải">
-                {isAudioLoading && playingPart === 'solution' ? '⏳' : (playingPart === 'solution' ? '⏸' : '🔊')} Đọc lời giải
-              </button>
+              <>
+                <button 
+                  className={`${styles.audioBtn} ${playingPart === 'solution' ? styles.audioActive : ''}`} 
+                  onClick={() => playAudio(q, 'solution')}
+                  disabled={isAudioLoading && playingPart !== 'solution'}
+                  title="Đọc lời giải">
+                  {isAudioLoading && playingPart === 'solution' ? '⏳' : (playingPart === 'solution' ? '⏸' : '🔊')} Đọc lời giải
+                </button>
+                <button 
+                  className={`${styles.audioBtn} ${playingPart === 'both' ? styles.audioActive : ''}`} 
+                  onClick={() => playAudio(q, 'both')}
+                  disabled={isAudioLoading && playingPart !== 'both'}
+                  title="Đọc đề + lời giải"
+                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                  {isAudioLoading && playingPart === 'both' ? '⏳' : (playingPart === 'both' ? '⏸' : '🔊')} Đọc đề + LG
+                </button>
+              </>
             )}
+            <select 
+              value={playbackRate} 
+              onChange={e => setPlaybackRate(Number(e.target.value))}
+              className={styles.autoPlayToggle}
+              style={{ background: 'transparent', border: '1px solid currentColor', borderRadius: '4px', padding: '2px 4px', fontSize: '13px', marginLeft: '0.5rem' }}
+              title="Tốc độ đọc">
+              <option value={0.75} style={{color: '#000'}}>0.75x</option>
+              <option value={1} style={{color: '#000'}}>1x</option>
+              <option value={1.25} style={{color: '#000'}}>1.25x</option>
+              <option value={1.5} style={{color: '#000'}}>1.5x</option>
+              <option value={2} style={{color: '#000'}}>2x</option>
+            </select>
             <label className={styles.autoPlayToggle} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '13px', marginLeft: '0.5rem', marginRight: '0.5rem' }}>
               <input type="checkbox" checked={autoPlay} onChange={e => setAutoPlay(e.target.checked)} /> Auto-play
             </label>
