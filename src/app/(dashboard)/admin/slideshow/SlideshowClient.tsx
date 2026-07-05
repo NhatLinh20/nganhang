@@ -143,6 +143,7 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
   const [isAudioLoading, setIsAudioLoading] = useState(false)
   const [autoPlay, setAutoPlay] = useState(false)
   const [playbackRate, setPlaybackRate] = useState<number>(1)
+  const [showQuestionList, setShowQuestionList] = useState(false)
   const [audioProgress, setAudioProgress] = useState(0)
   const [audioDuration, setAudioDuration] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -831,11 +832,39 @@ export default function SlideshowClient({ userRole }: { userRole: string }) {
     const overlay = (
       <div className={`${styles.presentOverlay} ${themeClass}`}>
         <div className={styles.topBar}>
-          <div className={styles.topLeft}>
-            <span className={styles.slideCounter}>Câu {currentSlide + 1}/{questions.length}</span>
+          <div className={styles.topLeft} style={{ position: 'relative' }}>
+            <button 
+              className={styles.slideCounter} 
+              style={{ cursor: 'pointer', border: 'none', outline: 'none' }}
+              onClick={() => setShowQuestionList(!showQuestionList)}
+              title="Mở danh sách câu hỏi"
+            >
+              Câu {currentSlide + 1}/{questions.length} ▾
+            </button>
             <span className={`${styles.slideTypeBadge} ${styles[TYPE_CSS[q.questionType]]}`}>
               {TYPE_ICONS[q.questionType]} {TYPE_LABELS[q.questionType]}
             </span>
+            {showQuestionList && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '0.5rem', background: '#fff', color: '#000', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: '300px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', padding: '8px', minWidth: '200px' }}>
+                {questions.map((qItem, idx) => (
+                  <button 
+                    key={qItem.id} 
+                    onClick={() => { 
+                      setSlideDirection(idx > currentSlide ? 'next' : 'prev');
+                      setCurrentSlide(idx); 
+                      setShowQuestionList(false); 
+                      setSlideKey(p => p + 1); 
+                      setShowAnswer(false); 
+                      setShowSolution(false); 
+                      stopAudio(); 
+                    }} 
+                    style={{ padding: '6px', border: '1px solid #eee', borderRadius: '4px', background: currentSlide === idx ? '#3b82f6' : '#f9fafb', color: currentSlide === idx ? '#fff' : '#111827', cursor: 'pointer', fontSize: '13px', fontWeight: currentSlide === idx ? 'bold' : 'normal' }}
+                  >
+                    Câu {idx + 1}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className={styles.topRight} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button 
