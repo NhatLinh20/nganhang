@@ -876,8 +876,8 @@ export default function OnlineExamClient() {
             <div className={styles.inputActions}>
               <button className={styles.importBtn} onClick={() => fileInputRef.current?.click()}>📁 Import file .tex</button>
               <input ref={fileInputRef} type="file" accept=".tex,.txt" style={{ display: 'none' }} onChange={handleImportFile} />
-              <button className={styles.parseBtn} onClick={handleParse} disabled={!editorContent.trim()}>
-                {examTabs.length > 1 ? `⚡ Parse tất cả ${examTabs.length} đề` : '⚡ Parse câu hỏi'}
+              <button className={styles.parseBtn} onClick={handleParse} disabled={!editorContent.trim() || isCompiling}>
+                {isCompiling ? '⏳ Đang parse...' : (examTabs.length > 1 ? `⚡ Parse tất cả ${examTabs.length} đề` : '⚡ Parse câu hỏi')}
               </button>
             </div>
           </div>
