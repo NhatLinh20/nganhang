@@ -592,11 +592,37 @@ export default function OnlineExamClient() {
       if (!vpsRes.ok) throw new Error('Không thể tải dữ liệu đề thi từ máy chủ')
       const vpsData = await vpsRes.json()
 
-      const fetchedQuestions: SlideQuestion[] = vpsData.questions_data || []
-      const fetchedImageMap: Record<string, string> = vpsData.image_map || {}
+      let fetchedQuestions: SlideQuestion[] = []
+      let fetchedImageMap: Record<string, string> = {}
+      let reconstructedContent = ''
 
-      // 2. Reconstruct editor content
-      const reconstructedContent = fetchedQuestions.map(q => q.rawLatex || '').join('\n\n')
+      if (vpsData.variants && Array.isArray(vpsData.variants) && vpsData.variants.length > 0) {
+        // Multi-variant exam
+        const newExamTabs = vpsData.variants.map((v: any, idx: number) => {
+          const code = (v.questions_data || []).map((q: any) => q.rawLatex || '').join('\n\n')
+          return { label: `Đề ${idx + 1}`, code }
+        })
+        const newAllTabQuestions = vpsData.variants.map((v: any) => v.questions_data || [])
+        
+        setExamTabs(newExamTabs)
+        setAllTabQuestions(newAllTabQuestions)
+        setActiveTabIndex(0)
+        
+        fetchedQuestions = newAllTabQuestions[0]
+        reconstructedContent = newExamTabs[0].code
+        
+        vpsData.variants.forEach((v: any) => {
+          if (v.image_map) Object.assign(fetchedImageMap, v.image_map)
+        })
+      } else {
+        // Single-variant exam
+        fetchedQuestions = vpsData.questions_data || []
+        fetchedImageMap = vpsData.image_map || {}
+        reconstructedContent = fetchedQuestions.map(q => q.rawLatex || '').join('\n\n')
+        setExamTabs([])
+        setAllTabQuestions([])
+        setActiveTabIndex(0)
+      }
 
       // 3. Set states
       setEditingExamId(selectedExam.id)
