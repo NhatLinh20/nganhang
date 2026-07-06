@@ -1295,7 +1295,7 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                     }))
                     sessionStorage.setItem('online_exam_multi', JSON.stringify({ exams: examData }))
                     sessionStorage.removeItem('online_exam_code')
-                    window.location.href = '/admin/online-exams'
+                    window.location.href = '/teacher/online-exams'
                   }}
                   disabled={questions.length === 0}
                   style={{ background: '#8b5cf6', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px', borderRadius: 6, cursor: questions.length > 0 ? 'pointer' : 'not-allowed', opacity: questions.length > 0 ? 1 : 0.5 }}

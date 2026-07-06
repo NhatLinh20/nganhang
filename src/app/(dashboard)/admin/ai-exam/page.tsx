@@ -1387,7 +1387,7 @@ export default function AiExamPage() {
                       }))
                       sessionStorage.setItem('online_exam_multi', JSON.stringify({ exams: examData }))
                       sessionStorage.removeItem('online_exam_code')
-                      window.location.href = '/admin/online-exams'
+                      window.location.href = '/teacher/online-exams'
                     }}
                     disabled={questions.length === 0}
                     style={{ background: '#8b5cf6', color: 'white', border: 'none', fontWeight: 600, opacity: questions.length > 0 ? 1 : 0.5, cursor: questions.length > 0 ? 'pointer' : 'not-allowed' }}
