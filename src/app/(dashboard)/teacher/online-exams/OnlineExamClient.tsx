@@ -1041,7 +1041,9 @@ export default function OnlineExamClient() {
                       <td>⏺ Trắc nghiệm</td>
                       <td>{countByType('multiple_choice')}</td>
                       <td><input className={styles.scoringInput} type="number" step="0.01" value={mcScore} onChange={e => setMcScore(Number(e.target.value))} /></td>
-                      <td>{Math.round(countByType('multiple_choice') * mcScore * 100) / 100}</td>
+                      <td>
+                        <input className={styles.scoringInput} type="number" step="0.01" value={Math.round(countByType('multiple_choice') * mcScore * 100) / 100} onChange={e => setMcScore(Number(e.target.value) / countByType('multiple_choice'))} />
+                      </td>
                     </tr>
                   )}
                   {countByType('true_false') > 0 && (
@@ -1049,7 +1051,9 @@ export default function OnlineExamClient() {
                       <td>☑ Đúng/Sai</td>
                       <td>{countByType('true_false')}</td>
                       <td><input className={styles.scoringInput} type="number" step="0.01" value={tfScore} onChange={e => setTfScore(Number(e.target.value))} /></td>
-                      <td>{Math.round(countByType('true_false') * tfScore * 100) / 100}</td>
+                      <td>
+                        <input className={styles.scoringInput} type="number" step="0.01" value={Math.round(countByType('true_false') * tfScore * 100) / 100} onChange={e => setTfScore(Number(e.target.value) / countByType('true_false'))} />
+                      </td>
                     </tr>
                   )}
                   {countByType('short_answer') > 0 && (
@@ -1057,7 +1061,9 @@ export default function OnlineExamClient() {
                       <td>✍ Trả lời ngắn</td>
                       <td>{countByType('short_answer')}</td>
                       <td><input className={styles.scoringInput} type="number" step="0.01" value={saScore} onChange={e => setSaScore(Number(e.target.value))} /></td>
-                      <td>{Math.round(countByType('short_answer') * saScore * 100) / 100}</td>
+                      <td>
+                        <input className={styles.scoringInput} type="number" step="0.01" value={Math.round(countByType('short_answer') * saScore * 100) / 100} onChange={e => setSaScore(Number(e.target.value) / countByType('short_answer'))} />
+                      </td>
                     </tr>
                   )}
                   {countByType('essay') > 0 && (
@@ -1065,7 +1071,9 @@ export default function OnlineExamClient() {
                       <td>📝 Tự luận</td>
                       <td>{countByType('essay')}</td>
                       <td><input className={styles.scoringInput} type="number" step="0.01" value={essayScore} onChange={e => setEssayScore(Number(e.target.value))} /></td>
-                      <td>{Math.round(countByType('essay') * essayScore * 100) / 100}</td>
+                      <td>
+                        <input className={styles.scoringInput} type="number" step="0.01" value={Math.round(countByType('essay') * essayScore * 100) / 100} onChange={e => setEssayScore(Number(e.target.value) / countByType('essay'))} />
+                      </td>
                     </tr>
                   )}
                   <tr className={styles.totalScoreRow}>
