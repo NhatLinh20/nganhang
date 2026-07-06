@@ -21,9 +21,11 @@ app.use(bodyParser.json({ limit: '1mb' }));
 const TMP_DIR = fs.existsSync('/dev/shm') ? '/dev/shm/latex-tmp' : path.join(__dirname, 'tmp');
 const CACHE_DIR = path.join(__dirname, 'cache');
 const AUDIO_DIR = path.join(__dirname, 'audio');
+const EXAMS_DIR = path.join(__dirname, 'exams');
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR);
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR);
 if (!fs.existsSync(AUDIO_DIR)) fs.mkdirSync(AUDIO_DIR);
+if (!fs.existsSync(EXAMS_DIR)) fs.mkdirSync(EXAMS_DIR);
 
 // Serve audio files statically
 app.use('/audio', express.static(AUDIO_DIR));
@@ -319,6 +321,52 @@ app.post('/api/tts', async (req, res) => {
   } catch (err) {
     console.error("TTS Pipeline error:", err, "TEXT:", text, "CLEANED:", cleanedLatex || "N/A");
     res.status(500).json({ error: "TTS Pipeline failed", details: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// ONLINE EXAM STORAGE API
+// ═══════════════════════════════════════════════════
+
+// POST /api/exams — Lưu đề thi (JSON) lên VPS
+app.post('/api/exams', (req, res) => {
+  try {
+    const { examId, data } = req.body;
+    if (!examId || !data) return res.status(400).json({ error: 'Missing examId or data' });
+    
+    const filePath = path.join(EXAMS_DIR, `${examId}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data));
+    
+    res.json({ success: true, url: `/api/exams/${examId}` });
+  } catch (err) {
+    console.error('Save exam error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/exams/:id — Lấy đề thi từ VPS
+app.get('/api/exams/:id', (req, res) => {
+  try {
+    const filePath = path.join(EXAMS_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Exam not found' });
+    
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    res.json(data);
+  } catch (err) {
+    console.error('Get exam error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/exams/:id — Xóa đề thi khỏi VPS
+app.delete('/api/exams/:id', (req, res) => {
+  try {
+    const filePath = path.join(EXAMS_DIR, `${req.params.id}.json`);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete exam error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

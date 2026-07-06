@@ -1281,6 +1281,28 @@ export default function ExamCreatorClient({ userRole }: { userRole: string }) {
                   🖥️ Trình chiếu
                 </button>
 
+                <button
+                  className={styles.mainTab}
+                  onClick={() => {
+                    const currentAllExams = [...allExamsQuestions]
+                    if (currentAllExams.length > 0) currentAllExams[activeExamIndex] = questions
+                    const sourceExams = currentAllExams.length > 1
+                      ? currentAllExams
+                      : [questions]
+                    const examData = sourceExams.map((qs, idx) => ({
+                      label: `Đề ${idx + 1}`,
+                      code: qs.map(q => q.latex_content).join('\n\n')
+                    }))
+                    sessionStorage.setItem('online_exam_multi', JSON.stringify({ exams: examData }))
+                    sessionStorage.removeItem('online_exam_code')
+                    window.location.href = '/admin/online-exams'
+                  }}
+                  disabled={questions.length === 0}
+                  style={{ background: '#8b5cf6', color: 'white', border: 'none', fontWeight: 600, padding: '8px 16px', borderRadius: 6, cursor: questions.length > 0 ? 'pointer' : 'not-allowed', opacity: questions.length > 0 ? 1 : 0.5 }}
+                >
+                  📋 Thi Online
+                </button>
+
 
               </div>
             </div>

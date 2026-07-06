@@ -35,7 +35,11 @@ export async function proxy(request: NextRequest) {
 
   // Các route công khai (không cần đăng nhập)
   const publicRoutes = ['/', '/login', '/register', '/forgot-password']
-  const isPublicRoute = publicRoutes.some(r => pathname === r || pathname.startsWith('/api/auth'))
+  const isPublicRoute = publicRoutes.some(r => pathname === r) || 
+                        pathname.startsWith('/api/auth') || 
+                        pathname.startsWith('/exam/') || 
+                        pathname.startsWith('/api/online-exams/by-code/') ||
+                        pathname.match(/^\/api\/online-exams\/[^\/]+\/submit$/)
 
   // Chưa đăng nhập → redirect về login
   if (!user && !isPublicRoute) {
