@@ -587,9 +587,8 @@ export default function OnlineExamClient() {
   const handleEditExam = async () => {
     if (!selectedExam) return
     try {
-      // 1. Fetch data from VPS
-      const vpsUrl = process.env.NEXT_PUBLIC_VPS_URL || process.env.NEXT_PUBLIC_TIKZ_API_URL || 'http://42.96.15.5:3001'
-      const vpsRes = await fetch(`${vpsUrl}/api/exams/${selectedExam.id}`)
+      // 1. Fetch data from Next.js Proxy API (avoids Mixed Content on Vercel)
+      const vpsRes = await fetch(`/api/online-exams/${selectedExam.id}/data`)
       if (!vpsRes.ok) throw new Error('Không thể tải dữ liệu đề thi từ máy chủ')
       const vpsData = await vpsRes.json()
 
