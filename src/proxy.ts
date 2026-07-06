@@ -124,8 +124,18 @@ export async function proxy(request: NextRequest) {
     // Xử lý các route admin và teacher
     if (pathname.startsWith('/admin') || pathname.startsWith('/teacher')) {
       if (role === 'teacher') {
-        // Giáo viên được phép vào /teacher/*, /admin/ai-exam, /admin/questions, /admin/lesson-builder, /admin/ai-chat, /admin/tex-processor, /admin/slideshow
-        if (!pathname.startsWith('/teacher') && pathname !== '/admin/ai-exam' && pathname !== '/admin/questions' && pathname !== '/admin/lesson-builder' && pathname !== '/admin/ai-chat' && pathname !== '/admin/tex-processor' && pathname !== '/admin/slideshow') {
+      // Giáo viên được phép vào /teacher/*, /admin/ai-exam, /admin/questions, /admin/lesson-builder, /admin/ai-chat, /admin/tex-processor, /admin/slideshow
+        const teacherAllowedAdminRoutes = [
+          '/admin/ai-exam',
+          '/admin/questions',
+          '/admin/lesson-builder',
+          '/admin/ai-chat',
+          '/admin/tex-processor',
+          '/admin/slideshow',
+        ]
+        const isAllowed = pathname.startsWith('/teacher') ||
+          teacherAllowedAdminRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
+        if (!isAllowed) {
           return NextResponse.redirect(new URL('/admin/questions', request.url))
         }
       } else if (role === 'student') {

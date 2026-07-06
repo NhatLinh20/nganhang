@@ -35,7 +35,7 @@ const navItems = [
       { href: '/admin/tex-processor', icon: '🔧', label: 'Xử lí TeX' },
       { href: '/admin/lesson-builder', icon: '📖', label: 'Tạo bài học' },
       { href: '/admin/slideshow', icon: '🖥️', label: 'Trình chiếu' },
-      { href: '/admin/online-exams', icon: '📋', label: 'Thi online' },
+      { href: '/teacher/online-exams', icon: '📋', label: 'Thi online' },
     ],
   },
   {
@@ -75,7 +75,7 @@ export default function Sidebar({ userRole, userEmail }: SidebarProps) {
             item.href === '/teacher/scan' ||
             item.href === '/admin/lesson-builder' ||
             item.href === '/admin/slideshow' ||
-            item.href === '/admin/online-exams'
+            item.href === '/teacher/online-exams'
           )
         }
       }
