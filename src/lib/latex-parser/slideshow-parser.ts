@@ -115,8 +115,8 @@ export function segmentContent(text: string): ContentSegment[] {
   if (!text || !text.trim()) return []
 
   const segments: ContentSegment[] = []
-  // Regex: khớp tikzpicture hoặc tabular có hoặc không bọc trong \begin{center}...\end{center}
-  const mediaRegex = /(?:\\begin\{center\}\s*)?\\begin\{(tikzpicture|tabular)\}[\s\S]*?\\end\{\1\}\s*(?:\\end\{center\})?/g
+  // Regex: khớp tikzpicture hoặc tabular, và có thể lấy luôn các lệnh \definecolor, \colorlet nằm ngay trước đó.
+  const mediaRegex = /(?:(?:\\(?:definecolor|colorlet)\s*\{[^\}]+\}\s*\{[^\}]+\}(?:\s*\{[^\}]+\})?\s*)*)(?:\\begin\{center\}\s*)?\\begin\{(tikzpicture|tabular)\}[\s\S]*?\\end\{\1\}\s*(?:\\end\{center\})?/g
 
   let lastIdx = 0
   let match: RegExpExecArray | null
