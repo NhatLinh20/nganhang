@@ -1,7 +1,7 @@
 // src/app/api/ai/chat/route.ts
 import { NextRequest } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { SYSTEM_INSTRUCTION } from '@/lib/ai-system-instruction'
+import { SYSTEM_INSTRUCTION, SYSTEM_INSTRUCTION_TIKZ, SYSTEM_INSTRUCTION_BBT } from '@/lib/ai-system-instruction'
 
 // Tăng giới hạn timeout tối đa cho Vercel (Hobby tier hỗ trợ max 60s)
 export const maxDuration = 60;
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     const uploadedFiles = formData.getAll('files') as File[]
     const modelName = (formData.get('model') as string) || 'gemini-3.5-flash'
     const customApiKey = formData.get('custom_api_key') as string | null
+    const promptMode = (formData.get('prompt_mode') as string) || 'full'
 
     if (!messagesRaw) {
       return new Response(JSON.stringify({ error: 'Thiếu nội dung tin nhắn' }), {
@@ -46,9 +47,13 @@ export async function POST(req: NextRequest) {
     // Build Gemini SDK
     const apiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY!
     const genAI = new GoogleGenerativeAI(apiKey)
+    let currentSystemInstruction = SYSTEM_INSTRUCTION
+    if (promptMode === 'tikz') currentSystemInstruction = SYSTEM_INSTRUCTION_TIKZ
+    if (promptMode === 'bbt') currentSystemInstruction = SYSTEM_INSTRUCTION_BBT
+
     const model = genAI.getGenerativeModel({
       model: modelName,
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: currentSystemInstruction,
     })
 
     // Prepare the last user message content (may include image)

@@ -605,8 +605,8 @@
     flex-direction: column;
   }
   .questionArea {
-    padding: 0.8rem;
-    max-height: calc(100vh - 60px - 140px);
+    padding: 0.8rem 0.8rem 160px 0.8rem;
+    max-height: calc(100dvh - 60px);
   }
   .questionNav {
     width: 100%;

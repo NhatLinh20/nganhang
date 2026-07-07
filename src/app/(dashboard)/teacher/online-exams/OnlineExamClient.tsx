@@ -13,6 +13,8 @@ import {
   type ContentSegment,
 } from '@/lib/latex-parser/slideshow-parser'
 import { compileTikz } from '@/lib/tikz-api'
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 
 // ═══════════════════════════════════════════════════
 // TYPES
@@ -143,6 +145,8 @@ export default function OnlineExamClient() {
   const [tfScore, setTfScore] = useState(1)
   const [saScore, setSaScore] = useState(0.5)
   const [essayScore, setEssayScore] = useState(1)
+  const [showAnswerKey, setShowAnswerKey] = useState(false)
+  const [answerKeyTab, setAnswerKeyTab] = useState(0)
 
   // ─── Create: Step 4 (Publish) ───
   const [publishedExam, setPublishedExam] = useState<OnlineExam | null>(null)
@@ -582,6 +586,75 @@ export default function OnlineExamClient() {
     await fetch(`/api/online-exams/${selectedExam.id}`, { method: 'DELETE' })
     setPhase('list')
     loadExams()
+  }
+
+  // ═══════════════════════════════════════════════════
+  // EXCEL EXPORT
+  // ═══════════════════════════════════════════════════
+  const handleExportExcel = async () => {
+    if (!selectedExam || submissions.length === 0) return
+
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet('Kết quả')
+
+    // Format Headers
+    sheet.columns = [
+      { header: 'STT', key: 'stt', width: 8 },
+      { header: 'Họ tên', key: 'name', width: 25 },
+      { header: 'SBD', key: 'code', width: 15 },
+      { header: 'Mã đề', key: 'variant', width: 10 },
+      { header: 'Điểm', key: 'score', width: 12 },
+      { header: 'Thời gian', key: 'time', width: 15 },
+      { header: 'Nộp lúc', key: 'submitted', width: 25 },
+    ]
+
+    // Style Header Row
+    const headerRow = sheet.getRow(1)
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } }
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+    headerRow.height = 25
+
+    // Add Data
+    submissions.forEach((sub, idx) => {
+      const minutes = Math.floor(sub.time_spent_seconds / 60)
+      const seconds = sub.time_spent_seconds % 60
+      const row = sheet.addRow({
+        stt: idx + 1,
+        name: sub.student_name,
+        code: sub.student_code,
+        variant: sub.variant_index !== undefined ? `Đề ${sub.variant_index + 1}` : '—',
+        score: sub.score,
+        time: `${minutes}p${seconds}s`,
+        submitted: new Date(sub.submitted_at).toLocaleString('vi-VN'),
+      })
+      
+      // Center align columns
+      row.getCell('stt').alignment = { horizontal: 'center' }
+      row.getCell('code').alignment = { horizontal: 'center' }
+      row.getCell('variant').alignment = { horizontal: 'center' }
+      row.getCell('score').alignment = { horizontal: 'center' }
+      row.getCell('score').font = { bold: true, color: { argb: 'FF059669' } }
+      row.getCell('time').alignment = { horizontal: 'center' }
+      row.getCell('submitted').alignment = { horizontal: 'center' }
+    })
+
+    // Add Borders to all cells
+    sheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        }
+      })
+    })
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const safeTitle = selectedExam.title.replace(/[^a-zA-Z0-9_\-\u00C0-\u1EF9]/g, '_')
+    saveAs(blob, `KetQua_${safeTitle}.xlsx`)
   }
 
   const handleEditExam = async () => {
@@ -1084,6 +1157,195 @@ export default function OnlineExamClient() {
               </table>
             </div>
 
+            {/* Answer Key Detail */}
+            {questions.length > 0 && (() => {
+              const isMulti = examTabs.length > 1 && allTabQuestions.length > 1
+              const tabsList = isMulti ? allTabQuestions : [questions]
+              const tabLabels = isMulti ? examTabs.map(t => t.label) : ['']
+
+              // Helper: render answer key for a given list of questions
+              const renderAnswerKey = (qs: SlideQuestion[], tabIdx: number) => {
+                const mcQs = qs.map((q, i) => ({ q, i })).filter(x => x.q.questionType === 'multiple_choice')
+                const tfQs = qs.map((q, i) => ({ q, i })).filter(x => x.q.questionType === 'true_false')
+                const saQs = qs.map((q, i) => ({ q, i })).filter(x => x.q.questionType === 'short_answer')
+                const esQs = qs.map((q, i) => ({ q, i })).filter(x => x.q.questionType === 'essay')
+                let globalIdx = 0
+
+                const updateQuestion = (qIdx: number, updater: (q: SlideQuestion) => SlideQuestion) => {
+                  if (isMulti) {
+                    const newAll = [...allTabQuestions]
+                    const newQs = [...newAll[tabIdx]]
+                    newQs[qIdx] = updater({ ...newQs[qIdx] })
+                    newAll[tabIdx] = newQs
+                    setAllTabQuestions(newAll)
+                    if (tabIdx === activeTabIndex) setQuestions(newQs)
+                  } else {
+                    const newQs = [...questions]
+                    newQs[qIdx] = updater({ ...newQs[qIdx] })
+                    setQuestions(newQs)
+                  }
+                }
+
+                return (
+                  <>
+                    {/* Trắc nghiệm */}
+                    {mcQs.length > 0 && (() => {
+                      const startIdx = globalIdx; globalIdx += mcQs.length
+                      return (
+                        <div className={styles.answerKeyGroup}>
+                          <div className={`${styles.answerKeyGroupTitle} ${styles.mc}`}>⏺ Trắc nghiệm ({mcQs.length} câu)</div>
+                          <div className={styles.answerKeyGrid}>
+                            {mcQs.map((item, j) => {
+                              const correct = item.q.choices?.find(c => c.isCorrect)
+                              return (
+                                <div key={item.i} className={styles.answerKeyItem}>
+                                  <span className={styles.answerKeyNum}>{startIdx + j + 1}.</span>
+                                  <select
+                                    className={styles.answerKeyInput}
+                                    style={{ width: 48 }}
+                                    value={correct?.label || ''}
+                                    onChange={e => {
+                                      updateQuestion(item.i, q => {
+                                        if (q.choices) q.choices = q.choices.map(c => ({ ...c, isCorrect: c.label === e.target.value }))
+                                        return q
+                                      })
+                                    }}
+                                  >
+                                    {item.q.choices?.map(c => (
+                                      <option key={c.label} value={c.label}>{c.label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Đúng/Sai */}
+                    {tfQs.length > 0 && (() => {
+                      const startIdx = globalIdx; globalIdx += tfQs.length
+                      return (
+                        <div className={styles.answerKeyGroup}>
+                          <div className={`${styles.answerKeyGroupTitle} ${styles.tf}`}>☑ Đúng/Sai ({tfQs.length} câu)</div>
+                          <div className={styles.answerKeyGrid}>
+                            {tfQs.map((item, j) => (
+                              <div key={item.i} className={styles.answerKeyItem}>
+                                <span className={styles.answerKeyNum}>{startIdx + j + 1}.</span>
+                                <div className={styles.answerKeyTfGroup}>
+                                  {(item.q.tfStatements || []).map((st, sIdx) => (
+                                    <button
+                                      key={sIdx}
+                                      type="button"
+                                      className={`${styles.answerKeyTfBtn} ${st.isTrue ? styles.true : styles.false}`}
+                                      title={`${st.label}) ${st.isTrue ? 'Đúng' : 'Sai'} — click để đổi`}
+                                      onClick={() => {
+                                        updateQuestion(item.i, q => {
+                                          if (q.tfStatements) q.tfStatements = q.tfStatements.map((s, si) => si === sIdx ? { ...s, isTrue: !s.isTrue } : s)
+                                          return q
+                                        })
+                                      }}
+                                    >
+                                      {st.isTrue ? 'Đ' : 'S'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Trả lời ngắn */}
+                    {saQs.length > 0 && (() => {
+                      const startIdx = globalIdx; globalIdx += saQs.length
+                      return (
+                        <div className={styles.answerKeyGroup}>
+                          <div className={`${styles.answerKeyGroupTitle} ${styles.sa}`}>✍ Trả lời ngắn ({saQs.length} câu)</div>
+                          <div className={styles.answerKeyGrid}>
+                            {saQs.map((item, j) => (
+                              <div key={item.i} className={styles.answerKeyItem}>
+                                <span className={styles.answerKeyNum}>{startIdx + j + 1}.</span>
+                                <input
+                                  className={`${styles.answerKeyInput} ${styles.wide}`}
+                                  value={item.q.shortAnswer || ''}
+                                  onChange={e => {
+                                    const val = e.target.value
+                                    updateQuestion(item.i, q => ({ ...q, shortAnswer: val }))
+                                  }}
+                                  placeholder="Nhập đáp án..."
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Tự luận */}
+                    {esQs.length > 0 && (() => {
+                      const startIdx = globalIdx; globalIdx += esQs.length
+                      return (
+                        <div className={styles.answerKeyGroup}>
+                          <div className={`${styles.answerKeyGroupTitle} ${styles.es}`}>📝 Tự luận ({esQs.length} câu)</div>
+                          <div className={styles.answerKeyEssayNote}>
+                            {esQs.map((_, j) => `Câu ${startIdx + j + 1}`).join(', ')} — Chấm thủ công
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </>
+                )
+              }
+
+              return (
+                <div className={styles.answerKeySection}>
+                  <div className={styles.answerKeyHeader} onClick={() => setShowAnswerKey(!showAnswerKey)}>
+                    <span className={styles.answerKeyTitle}>
+                      📋 Chi tiết đáp án {isMulti ? `(${tabsList.length} đề)` : `(${questions.length} câu)`}
+                    </span>
+                    <span className={styles.answerKeyToggle}>{showAnswerKey ? '▲ Thu gọn' : '▼ Mở rộng'}</span>
+                  </div>
+                  {showAnswerKey && (
+                    <div className={styles.answerKeyBody}>
+                      {isMulti ? (
+                        <>
+                          {/* Tab switcher for multi-variant */}
+                          <div style={{ display: 'flex', gap: 6, marginBottom: '0.8rem', flexWrap: 'wrap' }}>
+                            {tabLabels.map((label, tIdx) => (
+                              <button
+                                key={tIdx}
+                                type="button"
+                                onClick={() => setAnswerKeyTab(tIdx)}
+                                style={{
+                                  padding: '5px 14px',
+                                  borderRadius: 6,
+                                  border: answerKeyTab === tIdx ? '2px solid #3b82f6' : '1px solid #cbd5e1',
+                                  background: answerKeyTab === tIdx ? '#dbeafe' : 'white',
+                                  color: answerKeyTab === tIdx ? '#1d4ed8' : '#64748b',
+                                  fontWeight: answerKeyTab === tIdx ? 700 : 500,
+                                  fontSize: '0.8rem',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s',
+                                }}
+                              >
+                                {label} ({tabsList[tIdx]?.length || 0} câu)
+                              </button>
+                            ))}
+                          </div>
+                          {tabsList[answerKeyTab] && renderAnswerKey(tabsList[answerKeyTab], answerKeyTab)}
+                        </>
+                      ) : (
+                        renderAnswerKey(questions, 0)
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             <div className={styles.navActions}>
               <button className={styles.backBtn} onClick={() => setCreateStep(2)}>← Quay lại</button>
               <button className={styles.publishBtn} onClick={handlePublish} disabled={publishing}>
@@ -1177,6 +1439,13 @@ export default function OnlineExamClient() {
                 onClick={togglePublish}
               >
                 {selectedExam.is_published ? '✅ Đang mở' : '⏸ Đã đóng'}
+              </button>
+              <button 
+                className={styles.importBtn} 
+                style={{ padding: '0.4rem 0.8rem', marginLeft: '0.5rem', background: '#10b981', color: '#fff', border: 'none' }} 
+                onClick={handleExportExcel}
+              >
+                📊 Xuất Excel
               </button>
               <button className={styles.importBtn} style={{ padding: '0.4rem 0.8rem', marginLeft: '0.5rem' }} onClick={handleEditExam}>
                 ✏️ Sửa đề thi

@@ -40,11 +40,13 @@ function renderSegment(seg: WordSegment, imagePaths: Map<string, string>): strin
     case 'text':
       return expandMacros(seg.content)
 
-    case 'math-inline':
-      return `$${expandMacros(seg.latex).trim()}$`
+    case 'math-inline': {
+      const latex = expandMacros(seg.latex).trim().replace(/^\$/, '').replace(/\$([.,;:]*)$/, '$1')
+      return `$${latex}$`
+    }
 
     case 'math-display': {
-      const latex = expandMacros(seg.latex).trim()
+      const latex = expandMacros(seg.latex).trim().replace(/^\$/, '').replace(/\$([.,;:]*)$/, '$1')
       // align, gather, multline là các môi trường có sẵn mode toán
       if (/^\\begin\{(align|gather|multline)/.test(latex)) {
         return `\n${latex}\n`
@@ -259,6 +261,7 @@ const PREAMBLE = `\\documentclass[12pt,a4paper]{article}
 \\usepackage{graphicx}
 \\usepackage[left=1.5cm,right=1cm,top=1.3cm,bottom=1.3cm]{geometry}
 \\usepackage{lastpage}
+\\usepackage{xcolor}
 % Font Times New Roman (cần XeLaTeX + fontspec — uncomment nếu VPS hỗ trợ):
 % \\usepackage{fontspec}
 % \\setmainfont{Times New Roman}

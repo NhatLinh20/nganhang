@@ -14,6 +14,8 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "adm-zip": "^0.5.17",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
     "jsqr": "^1.4.0",
     "jszip": "^3.10.1",
     "katex": "^0.17.0",
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
     "@types/pdfjs-dist": "^2.10.377",
     "@types/qrcode": "^1.5.6",

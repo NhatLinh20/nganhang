@@ -9,10 +9,12 @@ import {
 } from '@/lib/latex-parser/normalizer'
 import { extractAndValidateBlocks } from '@/lib/latex-parser'
 import { extractExBlocks } from '@/lib/latex-parser/file-parser'
-import { detectQuestionType } from '@/lib/latex-parser/answer-parser'
+import { detectQuestionType, detectMCAnswer, detectTFAnswer, detectShortAnswer } from '@/lib/latex-parser/answer-parser'
 import type { ErrorBlock } from '@/lib/latex-parser'
 import { extractComments, findValidCategoryCode } from '@/lib/latex-parser/category-parser'
 import { CHAPTER_NAMES, LESSON_NAMES, VARIANT_NAMES } from '@/lib/curriculum-labels'
+import { compilePdfZip } from '@/lib/tikz-api'
+import PdfPreviewModal from '@/components/PdfPreviewModal'
 
 // ═══ Tool definitions ═══
 interface TexTool {
@@ -44,6 +46,21 @@ const TOOL_SECTIONS: ToolSection[] = [
     ],
   },
 ]
+
+const HEADER_PLACEHOLDERS = [
+  'SỞ GDĐT HÀ NỘI',
+  'TRƯỜNG THPT CHU VĂN AN',
+  'Đề chính thức',
+  '(Đề thi gồm có 0\\\\zpageref{\\\\made-lastpage} trang)',
+  'ĐỀ KIỂM TRA GIỮA HỌC KÌ I NĂM 2026-2027',
+  'Môn: TOÁN 12',
+  'Thời gian: 90 phút',
+  'không kể thời gian phát đề'
+]
+
+const LATEX_COLORS = ['', 'red', 'blue', 'green', 'purple', 'orange', 'brown', 'cyan', 'magenta']
+
+const generateExamCode = (): string => String(Math.floor(1000 + Math.random() * 9000))
 
 // ═══ LaTeX Syntax Highlighter ═══
 function escapeHtml(str: string): string {
@@ -185,6 +202,25 @@ export default function TexProcessorPage() {
   const [selectedDiff, setSelectedDiff] = useState<string>('N')
   const [selectedLesson, setSelectedLesson] = useState<number>(1)
   const [selectedVariant, setSelectedVariant] = useState<number>(1)
+
+  // ═══ Export Modal State ═══
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [headerLabels, setHeaderLabels] = useState<string[]>(['', '', '', '', '', '', '', ''])
+  const [headerStyles, setHeaderStyles] = useState<{ bold: boolean; italic: boolean; underline: boolean; color: string }[]>(
+    Array.from({ length: 8 }, () => ({ bold: false, italic: false, underline: false, color: '' }))
+  )
+  const [selectedExportLine, setSelectedExportLine] = useState<number | null>(null)
+  const [examCodes, setExamCodes] = useState<string[]>([generateExamCode()])
+  const [excelOptions, setExcelOptions] = useState<string[]>([])
+  const [showExcelDropdown, setShowExcelDropdown] = useState(false)
+  const [includeAnswerTable, setIncludeAnswerTable] = useState(true)
+  const [includeAnswerSheet, setIncludeAnswerSheet] = useState(false)
+  const [qrCodeOptions, setQrCodeOptions] = useState<string[]>([])
+  const [showQrDropdown, setShowQrDropdown] = useState(false)
+  const [isExportingWord, setIsExportingWord] = useState(false)
+  const [isCompilingPdf, setIsCompilingPdf] = useState(false)
+  const [showPdfPreview, setShowPdfPreview] = useState(false)
+  const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null)
 
   // ═══ Refs ═══
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -810,6 +846,168 @@ export default function TexProcessorPage() {
     }
   }
 
+  // ═══ Export: Build questions from editor content ═══
+  const buildQuestionsFromEditor = useCallback(() => {
+    const blocks = extractExBlocks(editorContent)
+    if (blocks.length === 0) return []
+
+    return blocks.map((block, i) => {
+      const type = detectQuestionType(block)
+      let correct_answer: string | null = null
+      if (type === 'multiple_choice') correct_answer = detectMCAnswer(block)
+      else if (type === 'true_false') correct_answer = detectTFAnswer(block)
+      else if (type === 'short_answer') correct_answer = detectShortAnswer(block)
+
+      return {
+        id: `tex-${i + 1}`,
+        latex_content: block.trim(),
+        question_type: type,
+        correct_answer: correct_answer ?? '',
+        phan: type === 'multiple_choice' ? 1 : type === 'true_false' ? 2 : type === 'short_answer' ? 3 : 4,
+      }
+    })
+  }, [editorContent])
+
+  // ═══ Export Tex ═══
+  const handleExportTex = async () => {
+    const questions = buildQuestionsFromEditor()
+    if (questions.length === 0) {
+      showToast('⚠️ Không tìm thấy câu hỏi \\begin{ex}...\\end{ex}', 'info')
+      return
+    }
+    try {
+      const payload = {
+        title: headerLabels[4]?.trim() || 'De_Thi',
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
+        headerStyles,
+        examCodes,
+        duration: 90,
+        grade: 12,
+        excelOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
+        questions,
+      }
+      const res = await fetch('/api/export-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        alert('❌ Xuất ZIP thất bại: ' + (json.error || 'Lỗi'))
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'exam_package.zip'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      showToast('✅ Đã xuất file .tex thành công', 'success')
+    } catch (err) {
+      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+    }
+  }
+
+  // ═══ Export Word ═══
+  const handleExportWord = async () => {
+    const questions = buildQuestionsFromEditor()
+    if (questions.length === 0) {
+      showToast('⚠️ Không tìm thấy câu hỏi \\begin{ex}...\\end{ex}', 'info')
+      return
+    }
+    setIsExportingWord(true)
+    try {
+      const payload = {
+        title: headerLabels[4]?.trim() || 'De_Thi',
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
+        headerStyles,
+        examCodes,
+        duration: 90,
+        grade: 12,
+        excelOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
+        questions,
+      }
+      const res = await fetch('/api/export-word', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: 'Lỗi không xác định' }))
+        alert('❌ Xuất Word thất bại: ' + (json.error || 'Lỗi'))
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'exam_word.zip'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      showToast('✅ Đã xuất file Word thành công', 'success')
+    } catch (err) {
+      alert('Lỗi kết nối: ' + (err instanceof Error ? err.message : 'Unknown'))
+    } finally {
+      setIsExportingWord(false)
+    }
+  }
+
+  // ═══ Compile PDF ═══
+  const handleCompilePdf = async () => {
+    const questions = buildQuestionsFromEditor()
+    if (questions.length === 0) {
+      showToast('⚠️ Không tìm thấy câu hỏi \\begin{ex}...\\end{ex}', 'info')
+      return
+    }
+    setIsCompilingPdf(true)
+    try {
+      const payload = {
+        title: headerLabels[4]?.trim() || 'De_Thi',
+        headerLabels: headerLabels.map((lbl, i) => lbl?.trim() ? lbl : HEADER_PLACEHOLDERS[i]),
+        headerStyles,
+        examCodes,
+        duration: 90,
+        grade: 12,
+        excelOptions,
+        includeAnswerTable,
+        includeAnswerSheet,
+        qrCodeOptions,
+        questions,
+      }
+      const res = await fetch('/api/export-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        alert('❌ Tạo dữ liệu LaTeX thất bại: ' + (json.error || 'Lỗi'))
+        setIsCompilingPdf(false)
+        return
+      }
+      const zipBlob = await res.blob()
+      const pdfBlob = await compilePdfZip(zipBlob)
+      setPdfPreviewBlob(pdfBlob)
+      setShowPdfPreview(true)
+      showToast('✅ Biên dịch PDF thành công', 'success')
+    } catch (err) {
+      alert('Lỗi biên dịch PDF: ' + (err instanceof Error ? err.message : 'Unknown'))
+    } finally {
+      setIsCompilingPdf(false)
+    }
+  }
+
   const handleCopyToClipboard = async () => {
     if (!editorContent) return
     try {
@@ -832,13 +1030,24 @@ export default function TexProcessorPage() {
         title="Xử lí TeX"
         subtitle="Chuẩn hóa, định dạng và xử lý code LaTeX"
         actions={
-          <button 
-            className="btn btn-primary" 
-            onClick={handleCopyToClipboard} 
-            disabled={!editorContent.trim()}
-          >
-            📋 Copy Code
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              className="btn" 
+              onClick={() => setShowExportModal(true)} 
+              disabled={!editorContent.trim()}
+              title="Xuất file .tex, Word hoặc biên dịch PDF"
+              style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', color: 'white', border: 'none', fontWeight: 600 }}
+            >
+              📥 Xuất file
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleCopyToClipboard} 
+              disabled={!editorContent.trim()}
+            >
+              📋 Copy Code
+            </button>
+          </div>
         }
       />
 
@@ -932,6 +1141,7 @@ export default function TexProcessorPage() {
                 <span className={styles.toolBtnText}>{isAutoAssigning ? 'Đang gán...' : 'Gán ID tự động'}</span>
               </button>
             </div>
+
 
             {/* ═══ VALIDATION RESULTS ═══ */}
             {hasValidated && (
@@ -1263,6 +1473,274 @@ export default function TexProcessorPage() {
           </div>
         </div>
       )}
+
+      {/* ═══ EXPORT MODAL ═══ */}
+      {showExportModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 1120, padding: 24, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>📝 Xuất file từ TeX Editor</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>Cấu hình tiêu đề, mã đề rồi chọn định dạng xuất</p>
+              </div>
+              <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24 }}>
+              {/* ── LEFT COLUMN ── */}
+              <div style={{ flex: '1 1 65%', display: 'flex', flexDirection: 'column' }}>
+                {/* Formatting Toolbar */}
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginRight: 4 }}>Định dạng:</span>
+                  {(['bold', 'italic', 'underline'] as const).map(prop => (
+                    <button key={prop} type="button" disabled={selectedExportLine === null || selectedExportLine === 3} onClick={() => {
+                      if (selectedExportLine === null || selectedExportLine === 3) return
+                      const ns = [...headerStyles]; ns[selectedExportLine] = { ...ns[selectedExportLine], [prop]: !ns[selectedExportLine][prop] }; setHeaderStyles(ns)
+                    }} style={{
+                      width: 30, height: 30, borderRadius: 6, border: `1.5px solid ${selectedExportLine !== null && selectedExportLine !== 3 && headerStyles[selectedExportLine]?.[prop] ? '#3b82f6' : '#cbd5e1'}`,
+                      background: selectedExportLine !== null && selectedExportLine !== 3 && headerStyles[selectedExportLine]?.[prop] ? '#dbeafe' : 'white',
+                      cursor: selectedExportLine === null || selectedExportLine === 3 ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: prop === 'bold' ? 700 : 400, fontStyle: prop === 'italic' ? 'italic' : 'normal',
+                      textDecoration: prop === 'underline' ? 'underline' : 'none',
+                      color: selectedExportLine !== null && selectedExportLine !== 3 && headerStyles[selectedExportLine]?.[prop] ? '#1d4ed8' : '#94a3b8',
+                      opacity: selectedExportLine === null || selectedExportLine === 3 ? 0.5 : 1, transition: 'all 0.15s',
+                    }}>
+                      {prop === 'bold' ? 'B' : prop === 'italic' ? 'I' : 'U'}
+                    </button>
+                  ))}
+                  <select value={selectedExportLine !== null && selectedExportLine !== 3 ? headerStyles[selectedExportLine]?.color || '' : ''}
+                    disabled={selectedExportLine === null || selectedExportLine === 3}
+                    onChange={e => {
+                      if (selectedExportLine === null || selectedExportLine === 3) return
+                      const ns = [...headerStyles]; ns[selectedExportLine] = { ...ns[selectedExportLine], color: e.target.value }; setHeaderStyles(ns)
+                    }} style={{
+                      height: 30, padding: '0 8px', borderRadius: 6, border: '1.5px solid #cbd5e1', fontSize: 12,
+                      cursor: selectedExportLine === null || selectedExportLine === 3 ? 'not-allowed' : 'pointer',
+                      background: selectedExportLine !== null && selectedExportLine !== 3 && headerStyles[selectedExportLine]?.color ? headerStyles[selectedExportLine].color : 'white',
+                      color: selectedExportLine !== null && selectedExportLine !== 3 && headerStyles[selectedExportLine]?.color ? 'white' : '#64748b',
+                      opacity: selectedExportLine === null || selectedExportLine === 3 ? 0.5 : 1, transition: 'all 0.15s',
+                    }}>
+                    <option value="">🎨 Màu</option>
+                    {LATEX_COLORS.filter(c => c).map(c => <option key={c} value={c} style={{ background: c, color: 'white' }}>{c}</option>)}
+                  </select>
+                </div>
+
+                {/* WYSIWYG Preview */}
+                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px', marginBottom: 16 }} onClick={e => { if (e.target === e.currentTarget) setSelectedExportLine(null) }}>
+                  <div style={{ display: 'flex', gap: 0 }}>
+                    <div style={{ flex: '0 0 45%', textAlign: 'center', padding: '4px 8px' }}>
+                      {[0, 1, 2, 3].map(i => {
+                        const s = headerStyles[i]; const isSelected = selectedExportLine === i; const isLocked = i === 3
+                        return (
+                          <div key={i} onClick={e => { e.stopPropagation(); if (!isLocked) setSelectedExportLine(i) }}
+                            style={{ padding: '3px 6px', borderRadius: 4, marginBottom: 2, cursor: isLocked ? 'default' : 'text',
+                              outline: isSelected ? '2px solid #3b82f6' : 'none', outlineOffset: 1,
+                              background: isSelected ? '#eff6ff' : 'transparent', transition: 'all 0.15s',
+                              fontSize: i === 0 ? '13px' : '12px',
+                              fontWeight: s.bold ? 700 : 400, fontStyle: isLocked ? 'italic' : (s.italic ? 'italic' : 'normal'),
+                              textDecoration: s.underline ? 'underline' : 'none', color: isLocked ? '#9ca3af' : (s.color || 'inherit'),
+                            }}
+                          >
+                            {isLocked ? '(Đề thi gồm có X trang) 🔒' : (
+                              isSelected ? (
+                                <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
+                                  onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
+                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedExportLine(null) }}
+                                  style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
+                              ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div style={{ flex: '0 0 55%', textAlign: 'center', padding: '4px 8px' }}>
+                      {[4, 5, 6, 7].map(i => {
+                        const s = headerStyles[i]; const isSelected = selectedExportLine === i
+                        return (
+                          <div key={i} onClick={e => { e.stopPropagation(); setSelectedExportLine(i) }}
+                            style={{ padding: '3px 6px', borderRadius: 4, marginBottom: 2, cursor: 'text',
+                              outline: isSelected ? '2px solid #3b82f6' : 'none', outlineOffset: 1,
+                              background: isSelected ? '#eff6ff' : 'transparent', transition: 'all 0.15s',
+                              fontSize: i === 4 ? '13px' : '12px',
+                              fontWeight: s.bold ? 700 : 400, fontStyle: s.italic ? 'italic' : 'normal',
+                              textDecoration: s.underline ? 'underline' : 'none', color: s.color || 'inherit',
+                            }}
+                          >
+                            {isSelected ? (
+                              <input type="text" value={headerLabels[i]} autoFocus placeholder={HEADER_PLACEHOLDERS[i]}
+                                onChange={e => { const n = [...headerLabels]; n[i] = e.target.value; setHeaderLabels(n) }}
+                                onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedExportLine(null) }}
+                                style={{ width: '100%', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: 'inherit', padding: 0 }} />
+                            ) : (headerLabels[i] || <span style={{ opacity: 0.5 }}>{HEADER_PLACEHOLDERS[i]}</span>)}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ borderTop: '2px double #94a3b8', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
+                    <span style={{ fontStyle: 'italic' }}>Họ và tên thí sinh: .........................</span>
+                    <span style={{ fontStyle: 'italic' }}>Số báo danh: ....................</span>
+                    <span style={{ fontWeight: 700, border: '1px solid #333', padding: '1px 6px', fontSize: '12px', color: '#2563eb' }}>{examCodes[0] || '1234'}</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8', marginTop: 6 }}>💡 Click vào dòng để chỉnh sửa • Dùng toolbar phía trên để định dạng</div>
+                </div>
+
+                {/* Exam Codes */}
+                <div style={{ background: '#f0fdf4', padding: 16, borderRadius: 10, marginBottom: 16, border: '1px solid #bbf7d0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', letterSpacing: '0.05em' }}>MÃ ĐỀ THI</div>
+                    <button type="button" onClick={() => setExamCodes([generateExamCode()])}
+                      style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #86efac', background: 'white', color: '#166534', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                      🎲 Tạo mã ngẫu nhiên
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    <input type="text" value={examCodes[0] || ''} maxLength={4} onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                      setExamCodes([val])
+                    }} style={{ width: 64, padding: '8px 4px', textAlign: 'center', fontWeight: 700, fontSize: 16, borderRadius: 8, border: '2px solid #86efac', outline: 'none', color: '#166534', letterSpacing: 2 }} />
+                  </div>
+                </div>
+
+                {/* Export Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 'auto', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={() => setShowExportModal(false)} className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 15 }}>Hủy bỏ</button>
+                    <button onClick={handleExportTex} className="btn btn-primary" style={{ background: '#10b981', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(16,185,129,0.3)' }}>📥 Xuất file .tex</button>
+                    <button onClick={handleExportWord} disabled={isExportingWord} className="btn btn-primary"
+                      style={{ background: '#2563eb', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(37,99,235,0.3)', cursor: isExportingWord ? 'wait' : 'pointer', opacity: isExportingWord ? 0.7 : 1 }}>
+                      {isExportingWord ? '⏳ Đang xuất Word...' : '📝 Xuất file Word'}
+                    </button>
+                    <button onClick={handleCompilePdf} disabled={isCompilingPdf} className="btn btn-primary"
+                      style={{ background: '#6366f1', border: 'none', padding: '10px 24px', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 6px rgba(99,102,241,0.3)', cursor: isCompilingPdf ? 'wait' : 'pointer', opacity: isCompilingPdf ? 0.7 : 1 }}>
+                      {isCompilingPdf ? '⏳ Đang biên dịch...' : '📄 Biên dịch PDF'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── RIGHT COLUMN (Options) ── */}
+              <div style={{ flex: '0 0 280px', background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tùy chọn xuất</h4>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Bảng đáp án Excel:</label>
+                  <div style={{ position: 'relative' }}>
+                    <div onClick={() => setShowExcelDropdown(!showExcelDropdown)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', cursor: 'pointer' }}>
+                      <span>
+                        {excelOptions.includes('all') || excelOptions.length === 5 ? 'Xuất tất cả các loại bảng'
+                          : excelOptions.length > 0 ? `Đã chọn ${excelOptions.length} bảng`
+                          : 'Không xuất bảng đáp án'}
+                      </span>
+                      <span style={{ transform: showExcelDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                    </div>
+                    {showExcelDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {[
+                          { id: 'azota', label: 'Bảng Azota' },
+                          { id: 'tnmaker', label: 'Bảng TNMaker' },
+                          { id: 'youngmix', label: 'Bảng Young Mix (Chấm thi QM)' },
+                          { id: 'smarttest', label: 'Bảng Smart Test' },
+                          { id: 'olm', label: 'Bảng OLM' },
+                        ].map(opt => (
+                          <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px' }}>
+                            <input type="checkbox" checked={excelOptions.includes('all') || excelOptions.includes(opt.id)}
+                              onChange={e => {
+                                if (excelOptions.includes('all') || excelOptions.length === 5) {
+                                  setExcelOptions(['azota', 'tnmaker', 'youngmix', 'smarttest', 'olm'].filter(x => x !== opt.id))
+                                } else {
+                                  if (e.target.checked) setExcelOptions([...excelOptions, opt.id])
+                                  else setExcelOptions(excelOptions.filter(x => x !== opt.id))
+                                }
+                              }}
+                              style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                        <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }}></div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px', fontWeight: 600 }}>
+                          <input type="checkbox" checked={excelOptions.includes('all') || excelOptions.length === 5}
+                            onChange={e => { if (e.target.checked) setExcelOptions(['all']); else setExcelOptions([]) }}
+                            style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} />
+                          <span>Tất cả</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <input type="checkbox" checked={includeAnswerTable} onChange={e => setIncludeAnswerTable(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>Đáp án cuối đề</span>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', background: 'white', padding: '10px 12px', borderRadius: '8px', border: includeAnswerSheet ? '1.5px solid #10b981' : '1px solid #cbd5e1', transition: 'all 0.2s' }}>
+                    <input type="checkbox" checked={includeAnswerSheet} onChange={e => setIncludeAnswerSheet(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }} />
+                    <span style={{ flex: 1 }}>Phiếu trả lời trắc nghiệm</span>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>📱 Tạo QR Code đáp án:</label>
+                  <div style={{ position: 'relative' }}>
+                    <div onClick={() => setShowQrDropdown(!showQrDropdown)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', cursor: 'pointer' }}>
+                      <span>
+                        {qrCodeOptions.length === 2 ? 'Xuất tất cả QR Code'
+                          : qrCodeOptions.length > 0 ? `Đã chọn ${qrCodeOptions.length} loại`
+                          : 'Không xuất QR Code'}
+                      </span>
+                      <span style={{ transform: showQrDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                    </div>
+                    {showQrDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 10, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {[
+                          { id: '0', label: 'QR TNMaker' },
+                          { id: '1', label: 'QR Young Mix (Chấm thi QM)' },
+                        ].map(opt => (
+                          <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px' }}>
+                            <input type="checkbox" checked={qrCodeOptions.includes(opt.id)}
+                              onChange={e => {
+                                if (e.target.checked) setQrCodeOptions([...qrCodeOptions, opt.id])
+                                else setQrCodeOptions(qrCodeOptions.filter(x => x !== opt.id))
+                              }}
+                              style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                        <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }}></div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155', padding: '4px', fontWeight: 600 }}>
+                          <input type="checkbox" checked={qrCodeOptions.length === 2}
+                            onChange={e => { if (e.target.checked) setQrCodeOptions(['0', '1']); else setQrCodeOptions([]) }}
+                            style={{ width: 14, height: 14, accentColor: '#10b981', cursor: 'pointer' }} />
+                          <span>Tất cả</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Placeholder */}
+                <div style={{ flex: 1, border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, minHeight: '100px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Không gian chờ cập nhật...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        pdfBlob={pdfPreviewBlob}
+        onClose={() => { setShowPdfPreview(false); setPdfPreviewBlob(null) }}
+        fileName="exam.pdf"
+        isLoading={isCompilingPdf && !pdfPreviewBlob}
+      />
     </div>
   )
 }

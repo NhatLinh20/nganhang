@@ -330,6 +330,12 @@ export async function POST(request: NextRequest) {
     const displayTitle = title || 'ĐỀ KIỂM TRA'
     const displayGrade = grade || 12
     const displayDuration = duration || 90
+    
+    if (Array.isArray(headerLabels) && headerLabels.length === 8) {
+      if (headerLabels[3] && headerLabels[3].includes('zpageref')) {
+        headerLabels[3] = '(Đề thi gồm có .... trang)'
+      }
+    }
     const validHeaderLabels = Array.isArray(headerLabels) && headerLabels.length === 8 ? headerLabels : undefined
     const validHeaderStyles = Array.isArray(headerStyles) && headerStyles.length === 8 ? headerStyles : undefined
     const validExamCodes = Array.isArray(examCodes) ? examCodes : []
